@@ -1,14 +1,53 @@
 import { useState } from 'react'
+import { Link, useLocation } from 'react-router-dom'
 import { motion } from 'framer-motion'
 import { Menu, X, GraduationCap } from 'lucide-react'
 
 const navLinks = [
-  { label: 'Beranda', href: '#' },
-  { label: 'Alumni', href: '#alumni' },
-  { label: 'Berita', href: '#berita' },
-  { label: 'Agenda', href: '#agenda' },
-  { label: 'Karir', href: '#karir' },
+  { label: 'Beranda', href: '/' },
+  { label: 'Alumni', href: '/#alumni' },
+  { label: 'Berita', href: '/berita' },
+  { label: 'Agenda', href: '/#agenda' },
+  { label: 'Karir', href: '/#karir' },
 ]
+
+function NavLink({ label, href, onClick }) {
+  const location = useLocation()
+  const isActive =
+    href === '/berita'
+      ? location.pathname.startsWith('/berita')
+      : href === '/'
+      ? location.pathname === '/'
+      : false
+
+  const isExternal = href.startsWith('/#')
+
+  if (isExternal) {
+    return (
+      <a
+        href={href}
+        onClick={onClick}
+        className={`text-sm font-medium transition-colors ${
+          isActive ? 'text-white' : 'text-white/70 hover:text-white'
+        }`}
+      >
+        {label}
+      </a>
+    )
+  }
+
+  return (
+    <Link
+      to={href}
+      onClick={onClick}
+      className={`text-sm font-medium transition-colors ${
+        isActive ? 'text-white' : 'text-white/70 hover:text-white'
+      }`}
+    >
+      {label}
+    </Link>
+  )
+}
 
 export default function Navbar() {
   const [open, setOpen] = useState(false)
@@ -24,7 +63,7 @@ export default function Navbar() {
         <div className="flex items-center justify-between h-16">
 
           {/* Logo */}
-          <a href="/" className="flex items-center gap-3">
+          <Link to="/" className="flex items-center gap-3">
             <div className="w-9 h-9 rounded-full bg-[#F0A500] flex items-center justify-center flex-shrink-0">
               <GraduationCap className="w-5 h-5 text-[#0A2415]" />
             </div>
@@ -36,35 +75,29 @@ export default function Navbar() {
                 Pondok Pesantren Daarul Mughni
               </p>
             </div>
-          </a>
+          </Link>
 
           {/* Desktop nav */}
           <div className="hidden lg:flex items-center gap-8">
             {navLinks.map(({ label, href }) => (
-              <a
-                key={label}
-                href={href}
-                className="text-white/70 hover:text-white text-sm font-medium transition-colors"
-              >
-                {label}
-              </a>
+              <NavLink key={label} label={label} href={href} />
             ))}
           </div>
 
           {/* CTA buttons */}
           <div className="hidden lg:flex items-center gap-3">
-            <a
-              href="/masuk"
+            <Link
+              to="/masuk"
               className="text-white/80 hover:text-white text-sm font-medium transition-colors px-3 py-2"
             >
               Masuk
-            </a>
-            <a
-              href="/daftar"
+            </Link>
+            <Link
+              to="/daftar"
               className="bg-[#F0A500] hover:bg-[#D4920A] text-[#0A2415] text-sm font-bold px-5 py-2.5 rounded transition-colors"
             >
               Daftar Alumni
-            </a>
+            </Link>
           </div>
 
           {/* Mobile hamburger */}
@@ -88,28 +121,29 @@ export default function Navbar() {
           >
             <div className="space-y-1 mb-4">
               {navLinks.map(({ label, href }) => (
-                <a
+                <NavLink
                   key={label}
+                  label={label}
                   href={href}
-                  className="block px-3 py-2.5 text-white/80 hover:text-white hover:bg-white/5 rounded text-sm"
-                >
-                  {label}
-                </a>
+                  onClick={() => setOpen(false)}
+                />
               ))}
             </div>
             <div className="flex gap-3 px-3">
-              <a
-                href="/masuk"
+              <Link
+                to="/masuk"
+                onClick={() => setOpen(false)}
                 className="flex-1 text-center border border-white/30 text-white text-sm font-medium px-4 py-2.5 rounded"
               >
                 Masuk
-              </a>
-              <a
-                href="/daftar"
+              </Link>
+              <Link
+                to="/daftar"
+                onClick={() => setOpen(false)}
                 className="flex-1 text-center bg-[#F0A500] text-[#0A2415] text-sm font-bold px-4 py-2.5 rounded"
               >
                 Daftar Alumni
-              </a>
+              </Link>
             </div>
           </motion.div>
         )}

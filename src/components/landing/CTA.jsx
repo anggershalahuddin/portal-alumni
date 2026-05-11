@@ -1,3 +1,4 @@
+import { Link } from 'react-router-dom'
 import { motion } from 'framer-motion'
 import { ArrowRight } from 'lucide-react'
 import { fadeUp, stagger, viewport } from '@/lib/animations'
@@ -56,19 +57,19 @@ export default function CTA() {
           transition={{ duration: 0.6, ease: 'easeOut' }}
           className="flex flex-wrap justify-center gap-4"
         >
-          <a
-            href="/daftar"
+          <Link
+            to="/daftar"
             className="inline-flex items-center gap-2 bg-[#F0A500] hover:bg-[#D4920A] text-[#0A2415] font-bold px-8 py-3.5 rounded transition-colors"
           >
             Daftar Akun Sekarang
             <ArrowRight className="w-4 h-4" />
-          </a>
-          <a
-            href="/masuk"
+          </Link>
+          <Link
+            to="/masuk"
             className="inline-flex items-center border border-white/25 hover:border-white/50 text-white font-medium px-8 py-3.5 rounded transition-colors"
           >
             Masuk
-          </a>
+          </Link>
         </motion.div>
       </motion.div>
     </section>

@@ -1,3 +1,4 @@
+import { Link } from 'react-router-dom'
 import { motion } from 'framer-motion'
 import { ArrowUpRight, Calendar } from 'lucide-react'
 import { fadeUp, stagger, viewport } from '@/lib/animations'
@@ -10,6 +11,7 @@ const tagStyle = {
 
 const news = [
   {
+    slug: 'alumni-angkatan-2012-luncurkan-beasiswa',
     tag: 'Kabar Alumni',
     date: '12 Nov 2024',
     title: 'Alumni Angkatan 2012 Luncurkan Beasiswa untuk Santri Berprestasi',
@@ -19,6 +21,7 @@ const news = [
       'https://images.unsplash.com/photo-1523050854058-8df90110c9f1?auto=format&fit=crop&w=800&q=80',
   },
   {
+    slug: 'pondok-pesantren-raih-penghargaan-berprestasi',
     tag: 'Info Pondok',
     date: '10 Nov 2024',
     title: 'Pondok Pesantren Raih Penghargaan Pesantren Berprestasi',
@@ -28,6 +31,7 @@ const news = [
       'https://images.unsplash.com/photo-1564769625905-50e93615e769?auto=format&fit=crop&w=800&q=80',
   },
   {
+    slug: 'kunjungan-kerja-alumni-startup-unicorn',
     tag: 'Kegiatan',
     date: '8 Nov 2024',
     title: 'Kunjungan Kerja Alumni ke Kantor Startup Unicorn',
@@ -60,13 +64,13 @@ export default function News() {
               Update terbaru seputar prestasi dan kegiatan keluarga besar Daarul Mughni.
             </p>
           </div>
-          <a
-            href="/berita"
+          <Link
+            to="/berita"
             className="hidden sm:inline-flex items-center gap-1.5 text-[#1A5C38] hover:text-[#0A2415] text-sm font-bold transition-colors border border-[#1A5C38]/40 hover:border-[#0A2415] px-4 py-2 rounded"
           >
             Lihat Semua Berita
             <ArrowUpRight className="w-3.5 h-3.5" />
-          </a>
+          </Link>
         </motion.div>
 
         {/* Cards */}
@@ -77,58 +81,57 @@ export default function News() {
           variants={stagger}
           className="grid md:grid-cols-3 gap-6"
         >
-          {news.map(({ tag, date, title, excerpt, image }) => (
+          {news.map(({ slug, tag, date, title, excerpt, image }) => (
             <motion.article
               key={title}
               variants={fadeUp}
               transition={{ duration: 0.5, ease: 'easeOut' }}
               className="group border border-gray-100 rounded-xl overflow-hidden hover:shadow-xl hover:-translate-y-1 transition-all duration-300"
             >
-              <div className="h-48 relative overflow-hidden">
-                <img
-                  src={image}
-                  alt={title}
-                  className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-500"
-                />
-                <div className="absolute inset-0 bg-gradient-to-t from-black/50 via-transparent to-transparent" />
-                <div className="absolute top-4 left-4">
-                  <span className={`text-xs font-bold px-2.5 py-1 rounded-full ${tagStyle[tag]}`}>
-                    {tag}
+              <Link to={`/berita/${slug}`}>
+                <div className="h-48 relative overflow-hidden">
+                  <img
+                    src={image}
+                    alt={title}
+                    className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-500"
+                  />
+                  <div className="absolute inset-0 bg-gradient-to-t from-black/50 via-transparent to-transparent" />
+                  <div className="absolute top-4 left-4">
+                    <span className={`text-xs font-bold px-2.5 py-1 rounded-full ${tagStyle[tag]}`}>
+                      {tag}
+                    </span>
+                  </div>
+                </div>
+
+                <div className="p-5">
+                  <div className="flex items-center gap-1.5 text-gray-400 text-xs mb-3">
+                    <Calendar className="w-3 h-3" />
+                    {date}
+                  </div>
+                  <h3 className="text-[#0A2415] font-bold text-base leading-snug mb-2 group-hover:text-[#1A5C38] transition-colors">
+                    {title}
+                  </h3>
+                  <p className="text-gray-500 text-sm leading-relaxed mb-4 line-clamp-2">
+                    {excerpt}
+                  </p>
+                  <span className="inline-flex items-center gap-1 text-[#1A5C38] text-sm font-bold">
+                    Selengkapnya
+                    <ArrowUpRight className="w-3.5 h-3.5" />
                   </span>
                 </div>
-              </div>
-
-              <div className="p-5">
-                <div className="flex items-center gap-1.5 text-gray-400 text-xs mb-3">
-                  <Calendar className="w-3 h-3" />
-                  {date}
-                </div>
-                <h3 className="text-[#0A2415] font-bold text-base leading-snug mb-2 group-hover:text-[#1A5C38] transition-colors">
-                  {title}
-                </h3>
-                <p className="text-gray-500 text-sm leading-relaxed mb-4 line-clamp-2">
-                  {excerpt}
-                </p>
-                <a
-                  href="/berita"
-                  className="inline-flex items-center gap-1 text-[#1A5C38] text-sm font-bold hover:gap-2 transition-all"
-                >
-                  Selengkapnya
-                  <ArrowUpRight className="w-3.5 h-3.5" />
-                </a>
-              </div>
+              </Link>
             </motion.article>
           ))}
         </motion.div>
 
         <div className="sm:hidden mt-8 text-center">
-          <a
-            href="/berita"
+          <Link
+            to="/berita"
             className="inline-flex items-center gap-1.5 text-[#1A5C38] text-sm font-bold border border-[#1A5C38]/40 px-5 py-2.5 rounded"
           >
             Lihat Semua Berita
             <ArrowUpRight className="w-3.5 h-3.5" />
-          </a>
+          </Link>
         </div>
       </div>
     </section>
