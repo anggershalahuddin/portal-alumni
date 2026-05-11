@@ -1,4 +1,5 @@
 import { useState } from 'react'
+import { motion } from 'framer-motion'
 import { Menu, X, GraduationCap } from 'lucide-react'
 
 const navLinks = [
@@ -13,7 +14,12 @@ export default function Navbar() {
   const [open, setOpen] = useState(false)
 
   return (
-    <nav className="fixed top-0 left-0 right-0 z-50 bg-[#0A2415]/95 backdrop-blur-sm border-b border-white/10">
+    <motion.nav
+      initial={{ opacity: 0, y: -16 }}
+      animate={{ opacity: 1, y: 0 }}
+      transition={{ duration: 0.5, ease: 'easeOut' }}
+      className="fixed top-0 left-0 right-0 z-50 bg-[#0A2415]/95 backdrop-blur-sm border-b border-white/10"
+    >
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
         <div className="flex items-center justify-between h-16">
 
@@ -73,7 +79,13 @@ export default function Navbar() {
 
         {/* Mobile menu */}
         {open && (
-          <div className="lg:hidden py-4 border-t border-white/10">
+          <motion.div
+            initial={{ opacity: 0, height: 0 }}
+            animate={{ opacity: 1, height: 'auto' }}
+            exit={{ opacity: 0, height: 0 }}
+            transition={{ duration: 0.25 }}
+            className="lg:hidden py-4 border-t border-white/10 overflow-hidden"
+          >
             <div className="space-y-1 mb-4">
               {navLinks.map(({ label, href }) => (
                 <a
@@ -99,9 +111,9 @@ export default function Navbar() {
                 Daftar Alumni
               </a>
             </div>
-          </div>
+          </motion.div>
         )}
       </div>
-    </nav>
+    </motion.nav>
   )
 }

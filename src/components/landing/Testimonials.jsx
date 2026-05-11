@@ -1,3 +1,6 @@
+import { motion } from 'framer-motion'
+import { fadeUp, stagger, viewport } from '@/lib/animations'
+
 const testimonials = [
   {
     name: 'Dr. Ahmad Fauzi',
@@ -32,24 +35,39 @@ export default function Testimonials() {
   return (
     <section className="bg-white py-24">
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+
         {/* Header */}
-        <div className="text-center mb-14">
+        <motion.div
+          initial="hidden"
+          whileInView="show"
+          viewport={viewport}
+          variants={fadeUp}
+          transition={{ duration: 0.55, ease: 'easeOut' }}
+          className="text-center mb-14"
+        >
           <h2 className="text-3xl font-bold text-[#0A2415] mb-3 tracking-tight">
             Apa Kata Mereka?
           </h2>
           <p className="text-gray-500 text-sm">
             Kisah inspiratif dari para alumni yang telah berkarya di berbagai bidang.
           </p>
-        </div>
+        </motion.div>
 
         {/* Cards */}
-        <div className="grid md:grid-cols-3 gap-6">
+        <motion.div
+          initial="hidden"
+          whileInView="show"
+          viewport={viewport}
+          variants={stagger}
+          className="grid md:grid-cols-3 gap-6"
+        >
           {testimonials.map(({ name, batch, role, initials, color, quote }) => (
-            <div
+            <motion.div
               key={name}
-              className="bg-[#F8FAF9] border border-gray-100 rounded-xl p-6 flex flex-col hover:shadow-lg transition-shadow"
+              variants={fadeUp}
+              transition={{ duration: 0.5, ease: 'easeOut' }}
+              className="bg-[#F8FAF9] border border-gray-100 rounded-xl p-6 flex flex-col hover:shadow-lg transition-shadow duration-300"
             >
-              {/* Quote icon */}
               <svg
                 className="w-8 h-8 mb-5 opacity-70"
                 style={{ color: '#F0A500' }}
@@ -63,7 +81,6 @@ export default function Testimonials() {
                 "{quote}"
               </p>
 
-              {/* Author */}
               <div className="flex items-center gap-3 pt-5 border-t border-gray-100">
                 <div
                   className="w-10 h-10 rounded-full flex items-center justify-center text-white text-sm font-bold flex-shrink-0"
@@ -78,9 +95,9 @@ export default function Testimonials() {
                   </div>
                 </div>
               </div>
-            </div>
+            </motion.div>
           ))}
-        </div>
+        </motion.div>
       </div>
     </section>
   )

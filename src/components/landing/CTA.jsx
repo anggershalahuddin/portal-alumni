@@ -1,14 +1,16 @@
+import { motion } from 'framer-motion'
 import { ArrowRight } from 'lucide-react'
+import { fadeUp, stagger, viewport } from '@/lib/animations'
 
 export default function CTA() {
   return (
     <section
       className="py-24 relative overflow-hidden"
       style={{
-        background: 'linear-gradient(135deg, #061410 0%, #0A2415 35%, #1A5C38 65%, #0A2415 100%)',
+        background:
+          'linear-gradient(135deg, #061410 0%, #0A2415 35%, #1A5C38 65%, #0A2415 100%)',
       }}
     >
-      {/* Dot pattern */}
       <div
         className="absolute inset-0"
         style={{
@@ -17,8 +19,6 @@ export default function CTA() {
           backgroundSize: '26px 26px',
         }}
       />
-
-      {/* Glow effects */}
       <div
         className="absolute inset-0"
         style={{
@@ -27,15 +27,35 @@ export default function CTA() {
         }}
       />
 
-      <div className="relative max-w-3xl mx-auto px-4 sm:px-6 lg:px-8 text-center">
-        <h2 className="text-4xl font-bold text-white mb-4 tracking-tight">
+      <motion.div
+        initial="hidden"
+        whileInView="show"
+        viewport={viewport}
+        variants={stagger}
+        className="relative max-w-3xl mx-auto px-4 sm:px-6 lg:px-8 text-center"
+      >
+        <motion.h2
+          variants={fadeUp}
+          transition={{ duration: 0.6, ease: 'easeOut' }}
+          className="text-4xl font-bold text-white mb-4 tracking-tight"
+        >
           Siap Terhubung Kembali?
-        </h2>
-        <p className="text-white/60 text-base mb-10 leading-relaxed max-w-xl mx-auto">
+        </motion.h2>
+
+        <motion.p
+          variants={fadeUp}
+          transition={{ duration: 0.6, ease: 'easeOut' }}
+          className="text-white/60 text-base mb-10 leading-relaxed max-w-xl mx-auto"
+        >
           Dapatkan akses eksklusif ke direktori alumni, info bursa kerja, dan jalin
           kolaborasi bisnis dengan sesama lulusan Daarul Mughni.
-        </p>
-        <div className="flex flex-wrap justify-center gap-4">
+        </motion.p>
+
+        <motion.div
+          variants={fadeUp}
+          transition={{ duration: 0.6, ease: 'easeOut' }}
+          className="flex flex-wrap justify-center gap-4"
+        >
           <a
             href="/daftar"
             className="inline-flex items-center gap-2 bg-[#F0A500] hover:bg-[#D4920A] text-[#0A2415] font-bold px-8 py-3.5 rounded transition-colors"
@@ -49,8 +69,8 @@ export default function CTA() {
           >
             Masuk
           </a>
-        </div>
-      </div>
+        </motion.div>
+      </motion.div>
     </section>
   )
 }

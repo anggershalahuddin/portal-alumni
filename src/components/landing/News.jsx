@@ -1,4 +1,6 @@
+import { motion } from 'framer-motion'
 import { ArrowUpRight, Calendar } from 'lucide-react'
+import { fadeUp, stagger, viewport } from '@/lib/animations'
 
 const tagStyle = {
   'Kabar Alumni': 'bg-[#E8F5EE] text-[#1A5C38] border border-[#1A5C38]/15',
@@ -40,8 +42,16 @@ export default function News() {
   return (
     <section className="bg-white py-24">
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+
         {/* Header */}
-        <div className="flex items-end justify-between mb-12">
+        <motion.div
+          initial="hidden"
+          whileInView="show"
+          viewport={viewport}
+          variants={fadeUp}
+          transition={{ duration: 0.55, ease: 'easeOut' }}
+          className="flex items-end justify-between mb-12"
+        >
           <div>
             <h2 className="text-3xl font-bold text-[#0A2415] mb-2 tracking-tight">
               Kabar Alumni & Pondok
@@ -57,25 +67,30 @@ export default function News() {
             Lihat Semua Berita
             <ArrowUpRight className="w-3.5 h-3.5" />
           </a>
-        </div>
+        </motion.div>
 
         {/* Cards */}
-        <div className="grid md:grid-cols-3 gap-6">
+        <motion.div
+          initial="hidden"
+          whileInView="show"
+          viewport={viewport}
+          variants={stagger}
+          className="grid md:grid-cols-3 gap-6"
+        >
           {news.map(({ tag, date, title, excerpt, image }) => (
-            <article
+            <motion.article
               key={title}
+              variants={fadeUp}
+              transition={{ duration: 0.5, ease: 'easeOut' }}
               className="group border border-gray-100 rounded-xl overflow-hidden hover:shadow-xl hover:-translate-y-1 transition-all duration-300"
             >
-              {/* Image */}
               <div className="h-48 relative overflow-hidden">
                 <img
                   src={image}
                   alt={title}
                   className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-500"
                 />
-                {/* Overlay gradient */}
                 <div className="absolute inset-0 bg-gradient-to-t from-black/50 via-transparent to-transparent" />
-                {/* Tag on image */}
                 <div className="absolute top-4 left-4">
                   <span className={`text-xs font-bold px-2.5 py-1 rounded-full ${tagStyle[tag]}`}>
                     {tag}
@@ -83,7 +98,6 @@ export default function News() {
                 </div>
               </div>
 
-              {/* Content */}
               <div className="p-5">
                 <div className="flex items-center gap-1.5 text-gray-400 text-xs mb-3">
                   <Calendar className="w-3 h-3" />
@@ -103,11 +117,10 @@ export default function News() {
                   <ArrowUpRight className="w-3.5 h-3.5" />
                 </a>
               </div>
-            </article>
+            </motion.article>
           ))}
-        </div>
+        </motion.div>
 
-        {/* Mobile: lihat semua */}
         <div className="sm:hidden mt-8 text-center">
           <a
             href="/berita"

@@ -1,4 +1,6 @@
+import { motion } from 'framer-motion'
 import { MapPin, Clock, CalendarDays, ArrowRight } from 'lucide-react'
+import { fadeLeft, fadeUp, stagger, viewport } from '@/lib/animations'
 
 const events = [
   {
@@ -38,7 +40,14 @@ export default function Agenda() {
         <div className="grid lg:grid-cols-[380px_1fr] gap-14 items-start">
 
           {/* Left: intro */}
-          <div className="lg:sticky lg:top-24">
+          <motion.div
+            initial="hidden"
+            whileInView="show"
+            viewport={viewport}
+            variants={fadeLeft}
+            transition={{ duration: 0.65, ease: 'easeOut' }}
+            className="lg:sticky lg:top-24"
+          >
             <div className="inline-flex items-center justify-center w-12 h-12 rounded-xl bg-[#F0A500] mb-6">
               <CalendarDays className="w-6 h-6 text-[#0A2415]" />
             </div>
@@ -56,13 +65,21 @@ export default function Agenda() {
               Lihat Kalender Lengkap
               <ArrowRight className="w-4 h-4" />
             </a>
-          </div>
+          </motion.div>
 
           {/* Right: Event list */}
-          <div className="space-y-3">
+          <motion.div
+            initial="hidden"
+            whileInView="show"
+            viewport={viewport}
+            variants={stagger}
+            className="space-y-3"
+          >
             {events.map(({ day, month, title, location, time }) => (
-              <div
+              <motion.div
                 key={title}
+                variants={fadeUp}
+                transition={{ duration: 0.45, ease: 'easeOut' }}
                 className="flex gap-5 bg-white rounded-xl p-5 border border-amber-100 hover:border-[#F0A500]/50 hover:shadow-md transition-all group cursor-pointer"
               >
                 {/* Date box */}
@@ -73,10 +90,8 @@ export default function Agenda() {
                   </div>
                 </div>
 
-                {/* Divider */}
                 <div className="w-px bg-amber-100 self-stretch flex-shrink-0" />
 
-                {/* Details */}
                 <div className="flex-1 min-w-0">
                   <h3 className="font-bold text-[#0A2415] text-sm leading-snug mb-2 group-hover:text-[#1A5C38] transition-colors">
                     {title}
@@ -92,9 +107,9 @@ export default function Agenda() {
                     </span>
                   </div>
                 </div>
-              </div>
+              </motion.div>
             ))}
-          </div>
+          </motion.div>
         </div>
       </div>
     </section>
