@@ -22,6 +22,12 @@ import AdminBeritaPage from './pages/admin/AdminBeritaPage'
 import AdminAgendaPage from './pages/admin/AdminAgendaPage'
 import AdminAngkatanPage from './pages/admin/AdminAngkatanPage'
 import AdminDataAlumniPage from './pages/admin/AdminDataAlumniPage'
+import AdminGaleriPage from './pages/admin/AdminGaleriPage'
+import AdminOrganisasiPage from './pages/admin/AdminOrganisasiPage'
+import AdminKarirPage from './pages/admin/AdminKarirPage'
+import AdminPengaturanPage from './pages/admin/AdminPengaturanPage'
+import AdminNotifikasiPage from './pages/admin/AdminNotifikasiPage'
+import AdminLogPage from './pages/admin/AdminLogPage'
 
 function App() {
   return (
@@ -51,6 +57,12 @@ function App() {
         <Route path="/admin/agenda" element={<AdminAgendaPage />} />
         <Route path="/admin/angkatan" element={<AdminAngkatanPage />} />
         <Route path="/admin/alumni-data" element={<AdminDataAlumniPage />} />
+        <Route path="/admin/galeri" element={<AdminGaleriPage />} />
+        <Route path="/admin/organisasi" element={<AdminOrganisasiPage />} />
+        <Route path="/admin/karir" element={<AdminKarirPage />} />
+        <Route path="/admin/pengaturan" element={<AdminPengaturanPage />} />
+        <Route path="/admin/notifikasi" element={<AdminNotifikasiPage />} />
+        <Route path="/admin/log" element={<AdminLogPage />} />
       </Routes>
     </BrowserRouter>
   )

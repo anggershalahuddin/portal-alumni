@@ -1,9 +1,9 @@
 export const TOTAL_ALUMNI = 1240
 export const TOTAL_VERIFIED = 892
 
-export const angkatanList = Array.from({ length: 19 }, (_, i) => {
-  const year = 2024 - i
-  return { year, generasi: year - 1999 }
+export const angkatanList = Array.from({ length: 20 }, (_, i) => {
+  const year = 2025 - i
+  return { year, angkatanKe: year - 2005 }
 })
 
 export const wilayahList = [

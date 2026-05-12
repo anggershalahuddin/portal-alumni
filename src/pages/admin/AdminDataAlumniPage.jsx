@@ -1,8 +1,9 @@
 import { useState, useMemo } from 'react'
+import * as XLSX from 'xlsx'
 import {
   Search, Download, ChevronDown, X, BadgeCheck,
   GraduationCap, Briefcase, BookOpen, Mail, Globe,
-  Link2, Filter, Eye,
+  Link2, Filter, Eye, FileSpreadsheet,
 } from 'lucide-react'
 import AdminSidebar from '@/components/admin/AdminSidebar'
 import { PaginationBar, PerPageSelector } from '@/components/PaginationBar'
@@ -62,6 +63,36 @@ function exportCSV(rows) {
   a.download = `data-alumni-daarul-mughni-${new Date().toISOString().slice(0, 10)}.csv`
   a.click()
   URL.revokeObjectURL(url)
+}
+
+function exportXLSX(rows) {
+  const headers = [
+    'Nama', 'Tahun Lulus', 'Angkatan Ke', 'Nama Angkatan',
+    'Bidang', 'Profesi', 'Perusahaan', 'Domisili',
+    'Keahlian', 'Bahasa', 'Email Kontak', 'LinkedIn', 'Website',
+    'Pengalaman Terbaru', 'Institusi Pengalaman', 'Periode Pengalaman',
+    'Pendidikan Terakhir', 'Institusi Pendidikan', 'Tahun Pendidikan',
+    'Status Verifikasi',
+  ]
+  const data = rows.map(({ alumni, detail, angkatanInfo }) => {
+    const pengExp = detail?.pengalaman?.[0]
+    const pengPend = detail?.pendidikan?.[0]
+    return [
+      alumni.name, alumni.angkatan,
+      angkatanInfo?.angkatanKe ?? '', angkatanInfo?.nama ?? '',
+      alumni.bidang, alumni.profesi, alumni.perusahaan, alumni.domisili,
+      (alumni.keahlian ?? []).join('; '), (detail?.bahasa ?? []).join('; '),
+      detail?.kontak?.email ?? '', detail?.kontak?.linkedin ?? '', detail?.kontak?.website ?? '',
+      pengExp?.jabatan ?? '', pengExp?.institusi ?? '', pengExp?.periode ?? '',
+      pengPend?.gelar ?? '', pengPend?.institusi ?? '', pengPend?.tahun ?? '',
+      alumni.isVerified ? 'Terverifikasi' : 'Belum Terverifikasi',
+    ]
+  })
+  const ws = XLSX.utils.aoa_to_sheet([headers, ...data])
+  ws['!cols'] = headers.map((_, i) => ({ wch: i < 3 ? 20 : 18 }))
+  const wb = XLSX.utils.book_new()
+  XLSX.utils.book_append_sheet(wb, ws, 'Data Alumni')
+  XLSX.writeFile(wb, `data-alumni-daarul-mughni-${new Date().toISOString().slice(0, 10)}.xlsx`)
 }
 
 // ── Avatar ────────────────────────────────────────────────────────────────────
@@ -314,14 +345,21 @@ export default function AdminDataAlumniPage() {
             <h1 className="text-lg font-bold text-[#0A2415]">Data Alumni</h1>
             <p className="text-xs text-gray-400 mt-0.5">Seluruh data biodata, pendidikan, dan pekerjaan alumni terdaftar</p>
           </div>
-          <button
-            onClick={() => exportCSV(filtered)}
-            className="flex items-center gap-2 px-4 py-2.5 rounded-xl text-sm font-bold text-white transition-colors"
-            style={{ backgroundColor: '#1A5C38' }}
-          >
-            <Download className="w-4 h-4" />
-            Export CSV ({filtered.length})
-          </button>
+          <div className="flex items-center gap-2">
+            <button
+              onClick={() => exportCSV(filtered)}
+              className="flex items-center gap-1.5 px-3 py-2 rounded-xl text-sm font-semibold border border-gray-200 bg-white text-gray-700 hover:bg-gray-50"
+            >
+              <Download className="w-4 h-4" /> CSV
+            </button>
+            <button
+              onClick={() => exportXLSX(filtered)}
+              className="flex items-center gap-1.5 px-3 py-2 rounded-xl text-sm font-bold text-white"
+              style={{ backgroundColor: '#1A5C38' }}
+            >
+              <FileSpreadsheet className="w-4 h-4" /> Excel ({filtered.length})
+            </button>
+          </div>
         </header>
 
         <div className="flex-1 p-6">

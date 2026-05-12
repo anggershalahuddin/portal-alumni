@@ -52,10 +52,10 @@ export default function Footer() {
                 <p className="text-[10px] text-white/35 uppercase tracking-widest leading-none mb-0.5">
                   Alumni Portal
                 </p>
-                <p className="text-sm font-bold text-white leading-none">
-                  Pondok Pesantren
+                <p className="text-xs font-bold text-white leading-tight">
+                  Pondok Pesantren Modern Perpaduan
                 </p>
-                <p className="text-sm font-bold text-white leading-none">
+                <p className="text-xs font-bold leading-tight" style={{ color: '#F0A500' }}>
                   Daarul Mughni Al Maaliki
                 </p>
               </div>

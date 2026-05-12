@@ -1,6 +1,11 @@
 import { useState } from 'react'
-import { Bell, Shield, Search, Users, CheckCircle, Newspaper, CalendarDays, TrendingUp, Clock } from 'lucide-react'
+import { Bell, Shield, Search, Users, Newspaper, CalendarDays, TrendingUp, Clock, Image, Briefcase } from 'lucide-react'
 import AdminSidebar from '../../components/admin/AdminSidebar'
+import { news } from '../../data/news'
+import { agendaData } from '../../data/agenda'
+import { alumniData, TOTAL_ALUMNI, TOTAL_VERIFIED, getInitials } from '../../data/alumni'
+import { initialGaleri } from '../../data/galeri'
+import { initialLowongan } from '../../data/lowongan'
 
 const MONTHLY = [
   { label: 'Jan', value: 45 }, { label: 'Feb', value: 52 }, { label: 'Mar', value: 48 },
@@ -10,24 +15,24 @@ const MONTHLY = [
 ]
 
 const recentVerifikasi = [
-  { id: 1, name: 'Ahmad Fauzi', angkatan: 2015, status: 'menunggu', tanggal: '12 Okt', avatar: 'AF' },
-  { id: 2, name: 'Siti Maryam', angkatan: 2018, status: 'menunggu', tanggal: '11 Okt', avatar: 'SM' },
-  { id: 3, name: 'Budi Santoso', angkatan: 2012, status: 'disetujui', tanggal: '10 Okt', avatar: 'BS' },
-  { id: 4, name: 'Nurul Hidayah', angkatan: 2020, status: 'menunggu', tanggal: '10 Okt', avatar: 'NH' },
-  { id: 5, name: 'Fatimah Az-Zahra', angkatan: 2019, status: 'ditolak', tanggal: '08 Okt', avatar: 'FA' },
+  { id: 1, name: 'Ahmad Fauzi', angkatan: 2015, status: 'menunggu', tanggal: '12 Okt' },
+  { id: 2, name: 'Siti Maryam', angkatan: 2018, status: 'menunggu', tanggal: '11 Okt' },
+  { id: 3, name: 'Budi Santoso', angkatan: 2012, status: 'disetujui', tanggal: '10 Okt' },
+  { id: 4, name: 'Nurul Hidayah', angkatan: 2020, status: 'menunggu', tanggal: '10 Okt' },
+  { id: 5, name: 'Fatimah Az-Zahra', angkatan: 2019, status: 'ditolak', tanggal: '08 Okt' },
 ]
 
-const recentBerita = [
-  { judul: 'Persiapan Reuni Akbar 25 Tahun Daarul Mughni', tanggal: '13 Okt' },
-  { judul: 'Pondok Pesantren Resmikan Gedung Laboratorium Bahasa Baru', tanggal: '12 Okt' },
-  { judul: 'Prestasi Santri: Juara Umum Musabaqah Antar Pondok Se-Bogor', tanggal: '08 Okt' },
-]
+const pendingVerifikasi = TOTAL_ALUMNI - TOTAL_VERIFIED
+
+const recentBerita = news.slice(0, 3).map(n => ({ judul: n.title, tanggal: n.date }))
 
 const statCards = [
-  { label: 'Total Alumni', value: '5.247', icon: Users, color: '#1A5C38', light: '#F0FDF4' },
-  { label: 'Pending Verifikasi', value: '7', icon: Clock, color: '#D97706', light: '#FFFBEB' },
-  { label: 'Total Berita', value: '48', icon: Newspaper, color: '#7C3AED', light: '#FAF5FF' },
-  { label: 'Total Agenda', value: '12', icon: CalendarDays, color: '#0E7490', light: '#ECFEFF' },
+  { label: 'Total Alumni', value: TOTAL_ALUMNI.toLocaleString('id-ID'), icon: Users, color: '#1A5C38', light: '#F0FDF4' },
+  { label: 'Pending Verifikasi', value: pendingVerifikasi.toString(), icon: Clock, color: '#D97706', light: '#FFFBEB' },
+  { label: 'Total Berita', value: news.length.toString(), icon: Newspaper, color: '#7C3AED', light: '#FAF5FF' },
+  { label: 'Total Agenda', value: agendaData.length.toString(), icon: CalendarDays, color: '#0E7490', light: '#ECFEFF' },
+  { label: 'Foto Galeri', value: initialGaleri.filter(g => g.aktif).length.toString(), icon: Image, color: '#DB2777', light: '#FDF2F8' },
+  { label: 'Lowongan Aktif', value: initialLowongan.filter(l => l.aktif).length.toString(), icon: Briefcase, color: '#0369A1', light: '#F0F9FF' },
 ]
 
 function StatusBadge({ status }) {
@@ -110,7 +115,7 @@ export default function AdminDashboardPage() {
           </div>
 
           {/* Stat cards */}
-          <div className="grid grid-cols-2 xl:grid-cols-4 gap-4">
+          <div className="grid grid-cols-2 lg:grid-cols-3 xl:grid-cols-6 gap-4">
             {statCards.map(({ label, value, icon: Icon, color, light }) => (
               <div key={label} className="bg-white rounded-2xl p-5 border border-gray-100">
                 <div className="flex items-center justify-between mb-3">
@@ -175,7 +180,7 @@ export default function AdminDashboardPage() {
                     <td className="px-5 py-3">
                       <div className="flex items-center gap-2.5">
                         <div className="w-7 h-7 rounded-full flex items-center justify-center text-[10px] font-bold text-white flex-shrink-0" style={{ backgroundColor: '#1A5C38' }}>
-                          {r.avatar}
+                          {getInitials(r.name)}
                         </div>
                         <span className="text-sm font-semibold text-gray-800">{r.name}</span>
                       </div>

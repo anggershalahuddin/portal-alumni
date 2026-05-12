@@ -1,0 +1,394 @@
+import { useState } from 'react'
+import { Search, Plus, Trash2, Edit2, Briefcase, X, Check, MapPin, Clock, ChevronDown, ChevronUp, Tag, Layers, Bell, Shield } from 'lucide-react'
+import AdminSidebar from '../../components/admin/AdminSidebar'
+import ConfirmDialog from '../../components/admin/ConfirmDialog'
+import { initialLowongan, bidangLowongan as seedBidang, tipeLowongan } from '../../data/lowongan'
+
+function KelolaBidangModal({ bidangs, onClose, onAdd, onDelete }) {
+  const [newLabel, setNewLabel] = useState('')
+  const [newValue, setNewValue] = useState('')
+
+  function handleAdd() {
+    const label = newLabel.trim()
+    const value = newValue.trim() || label.toLowerCase().replace(/\s+/g, '-').replace(/[^a-z0-9-]/g, '')
+    if (!label || bidangs.find(b => b.value === value)) return
+    onAdd({ value, label })
+    setNewLabel('')
+    setNewValue('')
+  }
+
+  return (
+    <div className="fixed inset-0 z-50 flex items-center justify-center p-4" style={{ backgroundColor: 'rgba(0,0,0,0.5)' }}>
+      <div className="bg-white rounded-2xl shadow-xl w-full max-w-sm overflow-hidden">
+        <div className="flex items-center justify-between px-6 py-4 border-b border-gray-100">
+          <h2 className="text-base font-bold text-gray-900">Kelola Bidang Lowongan</h2>
+          <button onClick={onClose} className="p-1 rounded-lg hover:bg-gray-100"><X className="w-4 h-4 text-gray-500" /></button>
+        </div>
+        <div className="px-6 py-5 space-y-5">
+          <div>
+            <p className="text-xs font-bold text-gray-400 uppercase tracking-wider mb-3">Bidang Tersedia</p>
+            <div className="flex flex-wrap gap-2">
+              {bidangs.map(b => (
+                <span key={b.value} className="inline-flex items-center gap-1 text-xs font-semibold px-3 py-1.5 rounded-full bg-blue-50 text-blue-700 border border-blue-200">
+                  {b.label}
+                  <button onClick={() => onDelete(b.value)} className="opacity-50 hover:opacity-100"><X className="w-3 h-3" /></button>
+                </span>
+              ))}
+            </div>
+          </div>
+          <div className="border-t border-gray-100 pt-4 space-y-3">
+            <p className="text-xs font-bold text-gray-400 uppercase tracking-wider">Tambah Bidang Baru</p>
+            <input value={newLabel} onChange={e => setNewLabel(e.target.value)} onKeyDown={e => e.key === 'Enter' && handleAdd()} placeholder="Label bidang, cth: Keamanan" className="w-full px-3 py-2 rounded-xl border border-gray-200 text-sm outline-none focus:border-green-400" />
+            <input value={newValue} onChange={e => setNewValue(e.target.value)} placeholder="Nilai (opsional, cth: keamanan)" className="w-full px-3 py-2 rounded-xl border border-gray-200 text-sm outline-none focus:border-green-400 text-gray-400" />
+            <button onClick={handleAdd} disabled={!newLabel.trim()} className="w-full py-2 rounded-xl text-sm font-bold text-white disabled:opacity-40" style={{ backgroundColor: '#1A5C38' }}>
+              Tambah Bidang
+            </button>
+          </div>
+        </div>
+      </div>
+    </div>
+  )
+}
+
+function LowonganModal({ item, onClose, onSave, bidangs }) {
+  const isEdit = !!item?.id
+  const today = new Date().toISOString().split('T')[0]
+  const [form, setForm] = useState(
+    item ?? {
+      judul: '', instansi: '', tipe: 'fulltime', bidang: 'pendidikan',
+      lokasi: 'Klapanunggal, Bogor', deskripsi: '', syarat: [''],
+      gaji: '', deadline: '', tanggalPosting: today, tags: [], aktif: true, slug: '',
+    }
+  )
+  const [syaratInput, setSyaratInput] = useState((item?.syarat ?? ['']).join('\n'))
+  const [tagInput, setTagInput] = useState('')
+
+  function set(field, val) { setForm(f => ({ ...f, [field]: val })) }
+
+  function addTag() {
+    const t = tagInput.trim()
+    if (t && !(form.tags ?? []).includes(t)) set('tags', [...(form.tags ?? []), t])
+    setTagInput('')
+  }
+
+  function removeTag(t) { set('tags', (form.tags ?? []).filter(x => x !== t)) }
+
+  function handleSave() {
+    if (!form.judul.trim() || !form.instansi.trim()) return
+    const syarat = syaratInput.split('\n').map(s => s.trim()).filter(Boolean)
+    const slug = form.slug || form.judul.toLowerCase().replace(/[^a-z0-9]+/g, '-').replace(/^-|-$/g, '')
+    onSave({ ...form, syarat, slug })
+  }
+
+  return (
+    <div className="fixed inset-0 z-50 flex items-center justify-center" style={{ backgroundColor: 'rgba(0,0,0,0.4)' }}>
+      <div className="bg-white rounded-2xl shadow-xl w-full max-w-2xl mx-4 overflow-hidden">
+        <div className="flex items-center justify-between px-6 py-4 border-b border-gray-100">
+          <h2 className="text-base font-bold text-gray-900">{isEdit ? 'Edit Lowongan' : 'Buat Lowongan Baru'}</h2>
+          <button onClick={onClose} className="p-1 rounded-lg hover:bg-gray-100"><X className="w-4 h-4 text-gray-500" /></button>
+        </div>
+        <div className="px-6 py-5 space-y-4 max-h-[75vh] overflow-y-auto">
+          <div>
+            <label className="text-xs font-semibold text-gray-700 mb-1 block">Judul Lowongan</label>
+            <input value={form.judul} onChange={e => set('judul', e.target.value)} placeholder="cth. Guru Matematika – MTs Daarul Mughni" className="w-full px-3 py-2 rounded-xl border border-gray-200 text-sm outline-none focus:border-green-400" />
+          </div>
+          <div>
+            <label className="text-xs font-semibold text-gray-700 mb-1 block">Instansi / Unit Kerja</label>
+            <input value={form.instansi} onChange={e => set('instansi', e.target.value)} placeholder="cth. MTs Daarul Mughni Al Maaliki" className="w-full px-3 py-2 rounded-xl border border-gray-200 text-sm outline-none focus:border-green-400" />
+          </div>
+          <div className="grid grid-cols-2 gap-3">
+            <div>
+              <label className="text-xs font-semibold text-gray-700 mb-1 block">Bidang</label>
+              <select value={form.bidang} onChange={e => set('bidang', e.target.value)} className="w-full px-3 py-2 rounded-xl border border-gray-200 text-sm outline-none focus:border-green-400 bg-white">
+                {bidangs.map(b => <option key={b.value} value={b.value}>{b.label}</option>)}
+              </select>
+            </div>
+            <div>
+              <label className="text-xs font-semibold text-gray-700 mb-1 block">Tipe Pekerjaan</label>
+              <select value={form.tipe} onChange={e => set('tipe', e.target.value)} className="w-full px-3 py-2 rounded-xl border border-gray-200 text-sm outline-none focus:border-green-400 bg-white">
+                {tipeLowongan.map(t => <option key={t.value} value={t.value}>{t.label}</option>)}
+              </select>
+            </div>
+          </div>
+          <div className="grid grid-cols-2 gap-3">
+            <div>
+              <label className="text-xs font-semibold text-gray-700 mb-1 block">Lokasi</label>
+              <input value={form.lokasi} onChange={e => set('lokasi', e.target.value)} placeholder="cth. Klapanunggal, Bogor" className="w-full px-3 py-2 rounded-xl border border-gray-200 text-sm outline-none focus:border-green-400" />
+            </div>
+            <div>
+              <label className="text-xs font-semibold text-gray-700 mb-1 block">Rentang Gaji</label>
+              <input value={form.gaji} onChange={e => set('gaji', e.target.value)} placeholder="cth. Rp 3.000.000 – Rp 4.500.000" className="w-full px-3 py-2 rounded-xl border border-gray-200 text-sm outline-none focus:border-green-400" />
+            </div>
+          </div>
+          <div>
+            <label className="text-xs font-semibold text-gray-700 mb-1 block">Deskripsi Pekerjaan</label>
+            <textarea value={form.deskripsi} onChange={e => set('deskripsi', e.target.value)} rows={3} placeholder="Jelaskan tugas dan tanggung jawab posisi ini..." className="w-full px-3 py-2 rounded-xl border border-gray-200 text-sm outline-none focus:border-green-400 resize-none" />
+          </div>
+          <div>
+            <label className="text-xs font-semibold text-gray-700 mb-1 block">Persyaratan (satu per baris)</label>
+            <textarea value={syaratInput} onChange={e => setSyaratInput(e.target.value)} rows={4} placeholder={'S1 Pendidikan atau relevan\nPengalaman min. 1 tahun\nMuslim/ah, berakhlak mulia'} className="w-full px-3 py-2 rounded-xl border border-gray-200 text-sm outline-none focus:border-green-400 resize-none font-mono" />
+          </div>
+          <div>
+            <label className="text-xs font-semibold text-gray-700 mb-1 block flex items-center gap-1"><Tag className="w-3.5 h-3.5" /> Tag Lowongan</label>
+            <div className="flex flex-wrap gap-1.5 mb-2">
+              {(form.tags ?? []).map(t => (
+                <span key={t} className="inline-flex items-center gap-1 text-xs px-2.5 py-1 bg-gray-100 text-gray-600 rounded-full">
+                  {t}<button type="button" onClick={() => removeTag(t)} className="opacity-60 hover:opacity-100"><X className="w-2.5 h-2.5" /></button>
+                </span>
+              ))}
+            </div>
+            <div className="flex gap-2">
+              <input value={tagInput} onChange={e => setTagInput(e.target.value)} onKeyDown={e => { if (e.key === 'Enter') { e.preventDefault(); addTag() } }} placeholder="cth. Full Time, Guru, Akuntansi..." className="flex-1 px-3 py-2 rounded-xl border border-gray-200 text-sm outline-none focus:border-green-400" />
+              <button type="button" onClick={addTag} className="px-3 py-2 rounded-xl border border-gray-200 text-gray-600 hover:bg-gray-50"><Plus className="w-4 h-4" /></button>
+            </div>
+          </div>
+          <div className="grid grid-cols-2 gap-3">
+            <div>
+              <label className="text-xs font-semibold text-gray-700 mb-1 block">Tanggal Posting</label>
+              <input type="date" value={form.tanggalPosting} onChange={e => set('tanggalPosting', e.target.value)} className="w-full px-3 py-2 rounded-xl border border-gray-200 text-sm outline-none focus:border-green-400" />
+            </div>
+            <div>
+              <label className="text-xs font-semibold text-gray-700 mb-1 block">Batas Pendaftaran</label>
+              <input type="date" value={form.deadline} onChange={e => set('deadline', e.target.value)} className="w-full px-3 py-2 rounded-xl border border-gray-200 text-sm outline-none focus:border-green-400" />
+            </div>
+          </div>
+          <label className="flex items-center gap-2 cursor-pointer">
+            <input type="checkbox" checked={form.aktif} onChange={e => set('aktif', e.target.checked)} className="w-4 h-4 accent-green-700" />
+            <span className="text-sm text-gray-700">Lowongan aktif / tampilkan ke publik</span>
+          </label>
+        </div>
+        <div className="flex justify-end gap-2 px-6 py-4 border-t border-gray-100">
+          <button onClick={onClose} className="px-4 py-2 rounded-xl text-sm font-semibold text-gray-600 hover:bg-gray-50 border border-gray-200">Batal</button>
+          <button onClick={handleSave} className="px-5 py-2 rounded-xl text-sm font-semibold text-white flex items-center gap-1.5" style={{ backgroundColor: '#1A5C38' }}>
+            <Check className="w-3.5 h-3.5" /> Simpan
+          </button>
+        </div>
+      </div>
+    </div>
+  )
+}
+
+function DetailCard({ item, onEdit, onDelete, onToggle, bidangs }) {
+  const [open, setOpen] = useState(false)
+  const tipeLabel = tipeLowongan.find(t => t.value === item.tipe)?.label ?? item.tipe
+  const bidangLabel = bidangs.find(b => b.value === item.bidang)?.label ?? item.bidang
+  const deadlinePast = item.deadline && new Date(item.deadline) < new Date()
+
+  return (
+    <div className={`bg-white rounded-2xl border overflow-hidden ${!item.aktif ? 'opacity-70' : ''} ${deadlinePast && item.aktif ? 'border-orange-200' : 'border-gray-100'}`}>
+      <div className="p-5">
+        <div className="flex items-start justify-between gap-3">
+          <div className="flex-1 min-w-0">
+            <div className="flex flex-wrap items-center gap-1.5 mb-1">
+              <span className="text-[10px] font-bold px-2 py-0.5 rounded-full bg-green-100 text-green-700">{tipeLabel}</span>
+              <span className="text-[10px] font-bold px-2 py-0.5 rounded-full bg-blue-100 text-blue-700">{bidangLabel}</span>
+              {!item.aktif && <span className="text-[10px] font-bold px-2 py-0.5 rounded-full bg-gray-100 text-gray-500">Nonaktif</span>}
+              {deadlinePast && item.aktif && <span className="text-[10px] font-bold px-2 py-0.5 rounded-full bg-orange-100 text-orange-600">Deadline Lewat</span>}
+            </div>
+            <p className="font-bold text-gray-900">{item.judul}</p>
+            <p className="text-xs text-gray-500 mt-0.5">{item.instansi}</p>
+          </div>
+          <button onClick={() => setOpen(o => !o)} className="p-1.5 rounded-lg hover:bg-gray-50 flex-shrink-0">
+            {open ? <ChevronUp className="w-4 h-4 text-gray-400" /> : <ChevronDown className="w-4 h-4 text-gray-400" />}
+          </button>
+        </div>
+        <div className="flex flex-wrap gap-x-4 gap-y-1 mt-3">
+          <div className="flex items-center gap-1 text-[11px] text-gray-500"><MapPin className="w-3 h-3" />{item.lokasi}</div>
+          {item.gaji && <div className="flex items-center gap-1 text-[11px] text-gray-500"><span className="font-semibold">Gaji:</span> {item.gaji}</div>}
+          {item.deadline && <div className="flex items-center gap-1 text-[11px] text-gray-500"><Clock className="w-3 h-3" />Deadline: {new Date(item.deadline).toLocaleDateString('id-ID', { day: 'numeric', month: 'short', year: 'numeric' })}</div>}
+        </div>
+        {item.tags?.length > 0 && (
+          <div className="flex flex-wrap gap-1.5 mt-2">
+            {item.tags.map(t => <span key={t} className="text-[10px] px-2 py-0.5 bg-gray-100 text-gray-500 rounded-full">{t}</span>)}
+          </div>
+        )}
+        {open && (
+          <div className="mt-4 pt-4 border-t border-gray-50 space-y-3">
+            {item.deskripsi && <p className="text-sm text-gray-600">{item.deskripsi}</p>}
+            {item.syarat?.length > 0 && (
+              <div>
+                <p className="text-xs font-semibold text-gray-700 mb-1.5">Persyaratan:</p>
+                <ul className="space-y-1">
+                  {item.syarat.map((s, i) => (
+                    <li key={i} className="flex items-start gap-2 text-xs text-gray-600">
+                      <Check className="w-3.5 h-3.5 text-green-600 flex-shrink-0 mt-0.5" />{s}
+                    </li>
+                  ))}
+                </ul>
+              </div>
+            )}
+          </div>
+        )}
+        <div className="flex items-center gap-2 mt-4 pt-4 border-t border-gray-50">
+          <button onClick={() => onToggle(item.id)}
+            className="flex-1 px-3 py-1.5 rounded-xl text-xs font-semibold border"
+            style={item.aktif ? { color: '#D97706', borderColor: '#FDE68A', backgroundColor: '#FFFBEB' } : { color: '#059669', borderColor: '#BBF7D0', backgroundColor: '#F0FDF4' }}>
+            {item.aktif ? 'Nonaktifkan' : 'Aktifkan'}
+          </button>
+          <button onClick={() => onEdit(item)} className="px-3 py-1.5 rounded-xl text-xs font-semibold border border-gray-200 bg-white text-gray-600 flex items-center gap-1 hover:bg-gray-50">
+            <Edit2 className="w-3 h-3" /> Edit
+          </button>
+          <button onClick={() => onDelete(item.id)} className="px-3 py-1.5 rounded-xl text-xs font-semibold border border-red-100 bg-red-50 text-red-500 flex items-center gap-1 hover:bg-red-100">
+            <Trash2 className="w-3 h-3" /> Hapus
+          </button>
+        </div>
+      </div>
+    </div>
+  )
+}
+
+export default function AdminKarirPage() {
+  const [lowongan, setLowongan] = useState(initialLowongan)
+  const [bidangs, setBidangs] = useState(seedBidang)
+  const [search, setSearch] = useState('')
+  const [filterBidang, setFilterBidang] = useState('semua')
+  const [filterStatus, setFilterStatus] = useState('semua')
+  const [modal, setModal] = useState(null)
+  const [bidangModal, setBidangModal] = useState(false)
+  const [confirm, setConfirm] = useState({ open: false })
+
+  function askConfirm(opts) { setConfirm({ open: true, ...opts }) }
+  function closeConfirm() { setConfirm({ open: false }) }
+
+  const filtered = lowongan.filter(l => {
+    const matchSearch = l.judul.toLowerCase().includes(search.toLowerCase()) || l.instansi.toLowerCase().includes(search.toLowerCase())
+    const matchBidang = filterBidang === 'semua' || l.bidang === filterBidang
+    const matchStatus = filterStatus === 'semua' || (filterStatus === 'aktif' ? l.aktif : !l.aktif)
+    return matchSearch && matchBidang && matchStatus
+  })
+
+  function handleSave(form) {
+    if (form.id) {
+      setLowongan(l => l.map(x => x.id === form.id ? form : x))
+    } else {
+      setLowongan(l => [...l, { ...form, id: Date.now() }])
+    }
+    setModal(null)
+  }
+
+  function handleDelete(id) {
+    askConfirm({ title: 'Hapus Lowongan', message: 'Apakah Anda yakin ingin menghapus lowongan ini? Tindakan ini tidak dapat dibatalkan.', confirmLabel: 'Ya, Hapus', variant: 'danger', onConfirm: () => { setLowongan(l => l.filter(x => x.id !== id)); closeConfirm() } })
+  }
+
+  function toggleAktif(id) {
+    const item = lowongan.find(x => x.id === id)
+    if (!item) return
+    askConfirm({ title: item.aktif ? 'Nonaktifkan Lowongan' : 'Aktifkan Lowongan', message: item.aktif ? 'Lowongan ini tidak akan tampil ke publik setelah dinonaktifkan. Lanjutkan?' : 'Lowongan ini akan ditampilkan ke publik. Pastikan data sudah lengkap dan benar.', confirmLabel: 'Ya, Lanjutkan', variant: 'warning', onConfirm: () => { setLowongan(l => l.map(x => x.id === id ? { ...x, aktif: !x.aktif } : x)); closeConfirm() } })
+  }
+
+  const aktifCount = lowongan.filter(l => l.aktif).length
+
+  return (
+    <div className="flex min-h-screen" style={{ backgroundColor: '#F1F5F9' }}>
+      <AdminSidebar active="karir" />
+
+      <div className="flex-1 flex flex-col min-w-0">
+        <header className="bg-white border-b border-gray-100 px-6 py-3.5 flex items-center justify-between sticky top-0 z-20">
+          <div className="relative w-52">
+            <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-gray-400" />
+            <input
+              value={search}
+              onChange={e => setSearch(e.target.value)}
+              placeholder="Cari lowongan..."
+              className="w-full pl-9 pr-4 py-2 rounded-xl border border-gray-200 bg-gray-50 text-sm outline-none focus:border-green-400 focus:bg-white transition-all"
+            />
+          </div>
+          <div className="flex items-center gap-2">
+            <div className="w-7 h-7 rounded-full flex items-center justify-center" style={{ backgroundColor: '#F0A500' }}>
+              <Shield className="w-3.5 h-3.5" style={{ color: '#0A2415' }} />
+            </div>
+            <span className="font-bold text-gray-900 text-sm">Portal Alumni Daarul Mughni Admin</span>
+          </div>
+          <div className="flex items-center gap-3">
+            <button className="relative p-2 rounded-xl hover:bg-gray-50 transition-colors">
+              <Bell className="w-5 h-5 text-gray-500" />
+              <span className="absolute top-1.5 right-1.5 w-2 h-2 rounded-full bg-red-500" />
+            </button>
+            <div className="w-9 h-9 rounded-full flex items-center justify-center text-white text-sm font-bold" style={{ backgroundColor: '#0A2415' }}>A</div>
+          </div>
+        </header>
+
+        <div className="flex-1 p-6 space-y-5">
+          {/* Page title + actions */}
+          <div className="flex items-start justify-between flex-wrap gap-3">
+            <div>
+              <h1 className="text-2xl font-extrabold text-gray-900">Kelola Lowongan Karir</h1>
+              <p className="text-sm text-gray-500 mt-0.5">Lowongan pekerjaan dari unit-unit pesantren.</p>
+            </div>
+            <div className="flex items-center gap-2">
+              <button onClick={() => setBidangModal(true)} className="flex items-center gap-1.5 px-4 py-2 rounded-xl text-sm font-semibold border border-gray-200 bg-white text-gray-700 hover:bg-gray-50 transition-colors">
+                <Layers className="w-4 h-4" /> Kelola Bidang
+              </button>
+              <button onClick={() => setModal({})} className="flex items-center gap-1.5 px-4 py-2 rounded-xl text-sm font-bold text-white hover:opacity-90 transition-opacity" style={{ backgroundColor: '#1A5C38' }}>
+                <Plus className="w-4 h-4" /> Buat Lowongan
+              </button>
+            </div>
+          </div>
+
+          {/* Stats */}
+          <div className="grid grid-cols-3 gap-4">
+            {[
+              { label: 'Total Lowongan', value: lowongan.length, color: '#1A5C38' },
+              { label: 'Lowongan Aktif', value: aktifCount, color: '#059669' },
+              { label: 'Tidak Aktif', value: lowongan.length - aktifCount, color: '#D97706' },
+            ].map(s => (
+              <div key={s.label} className="bg-white rounded-2xl p-4 border border-gray-100">
+                <p className="text-2xl font-extrabold" style={{ color: s.color }}>{s.value}</p>
+                <p className="text-xs text-gray-500 mt-0.5">{s.label}</p>
+              </div>
+            ))}
+          </div>
+
+          {/* Filters */}
+          <div className="flex flex-wrap gap-3 items-center">
+            <select value={filterBidang} onChange={e => setFilterBidang(e.target.value)} className="px-3 py-2 rounded-xl border border-gray-200 bg-white text-sm outline-none focus:border-green-400">
+              <option value="semua">Semua Bidang</option>
+              {bidangs.map(b => <option key={b.value} value={b.value}>{b.label}</option>)}
+            </select>
+            <div className="flex gap-1.5">
+              {[{ value: 'semua', label: 'Semua' }, { value: 'aktif', label: 'Aktif' }, { value: 'nonaktif', label: 'Nonaktif' }].map(f => (
+                <button key={f.value} onClick={() => setFilterStatus(f.value)}
+                  className="px-3 py-1.5 rounded-full text-xs font-semibold border"
+                  style={filterStatus === f.value ? { backgroundColor: '#1A5C38', color: '#fff', borderColor: '#1A5C38' } : { backgroundColor: '#fff', color: '#6B7280', borderColor: '#E5E7EB' }}>
+                  {f.label}
+                </button>
+              ))}
+            </div>
+          </div>
+
+          {/* List */}
+          {filtered.length === 0 ? (
+            <div className="bg-white rounded-2xl border border-gray-100 p-12 text-center">
+              <Briefcase className="w-10 h-10 text-gray-300 mx-auto mb-3" />
+              <p className="text-sm text-gray-400">Tidak ada lowongan ditemukan</p>
+            </div>
+          ) : (
+            <div className="space-y-3">
+              {filtered.map(l => (
+                <DetailCard key={l.id} item={l} onEdit={setModal} onDelete={handleDelete} onToggle={toggleAktif} bidangs={bidangs} />
+              ))}
+            </div>
+          )}
+        </div>
+      </div>
+
+      {modal !== null && (
+        <LowonganModal item={modal?.id ? modal : null} onClose={() => setModal(null)} onSave={handleSave} bidangs={bidangs} />
+      )}
+
+      {bidangModal && (
+        <KelolaBidangModal
+          bidangs={bidangs}
+          onClose={() => setBidangModal(false)}
+          onAdd={b => setBidangs(prev => [...prev, b])}
+          onDelete={v => {
+            setBidangs(prev => prev.filter(b => b.value !== v))
+            if (filterBidang === v) setFilterBidang('semua')
+          }}
+        />
+      )}
+
+      <ConfirmDialog open={confirm.open} title={confirm.title} message={confirm.message} confirmLabel={confirm.confirmLabel} variant={confirm.variant} onConfirm={confirm.onConfirm} onCancel={closeConfirm} />
+    </div>
+  )
+}

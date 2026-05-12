@@ -146,8 +146,8 @@ function MiniCalendar({ selectedDate, onSelect, eventDates }) {
               onClick={() => handleCell(cell)}
               className={`relative h-8 w-full flex flex-col items-center justify-center text-xs rounded-lg transition-colors
                 ${cell.type !== 'current' ? 'text-gray-300' : 'text-gray-700 hover:bg-gray-100'}
-                ${today_ && !selected_ ? 'font-bold text-[#1A5C38]' : ''}
-                ${selected_ ? 'bg-[#1A5C38] !text-white font-bold hover:bg-[#1A5C38]' : ''}
+                ${today_ && !selected_ ? 'font-bold bg-green-100 text-[#1A5C38] hover:bg-green-200' : ''}
+                ${selected_ ? '!bg-[#1A5C38] !text-white font-bold hover:!bg-[#155230]' : ''}
               `}
             >
               {cell.day}

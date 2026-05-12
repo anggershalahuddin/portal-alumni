@@ -12,6 +12,8 @@ import heroImg from '@/assets/hero.jpg'
 import pimpinanImg from '@/assets/pimpinan.jpg'
 import { fadeUp, fadeLeft, fadeRight, stagger, viewport } from '@/lib/animations'
 import { initialAngkatan } from '@/data/angkatan'
+import { initialOrganisasi } from '@/data/organisasi'
+import { initialGaleri, kategoriGaleri } from '@/data/galeri'
 
 /* ─── Data ─── */
 const timeline = [
@@ -63,18 +65,18 @@ const fasilitas = [
   { icon: Users,         name: 'Aula Serbaguna',          desc: 'Aula kapasitas 1.000 orang untuk kegiatan besar dan wisuda' },
 ]
 
-const galeriKategori = ['Semua', 'Kegiatan', 'Fasilitas', 'Alumni', 'Wisuda']
+const galeriKategoriList = ['Semua', ...kategoriGaleri.map(k => k.label)]
 
-const galeri = [
-  { kategori: 'Kegiatan',  wide: true, src: 'https://images.unsplash.com/photo-1580582932707-520aed937b7b?auto=format&fit=crop&w=800&h=450&q=80', alt: 'Kegiatan belajar santri' },
-  { kategori: 'Fasilitas', wide: false, src: 'https://images.unsplash.com/photo-1481627834876-b7833e8f5570?auto=format&fit=crop&w=400&h=450&q=80', alt: 'Perpustakaan' },
-  { kategori: 'Wisuda',    wide: false, src: 'https://images.unsplash.com/photo-1523050854058-8df90110c9f1?auto=format&fit=crop&w=400&h=300&q=80', alt: 'Wisuda santri' },
-  { kategori: 'Alumni',    wide: false, src: 'https://images.unsplash.com/photo-1560250097-0b93528c311a?auto=format&fit=crop&w=400&h=300&q=80', alt: 'Alumni profesional' },
-  { kategori: 'Fasilitas', wide: false, src: 'https://images.unsplash.com/photo-1562774053-701939374585?auto=format&fit=crop&w=400&h=300&q=80', alt: 'Gedung pesantren' },
-  { kategori: 'Kegiatan',  wide: true, src: 'https://images.unsplash.com/photo-1571019614242-c5c5dee9f50b?auto=format&fit=crop&w=800&h=350&q=80', alt: 'Aktivitas santri bersama' },
-  { kategori: 'Alumni',    wide: false, src: 'https://images.unsplash.com/photo-1607990281513-2c110a25bd8c?auto=format&fit=crop&w=400&h=300&q=80', alt: 'Alumni berprestasi' },
-  { kategori: 'Wisuda',    wide: false, src: 'https://images.unsplash.com/photo-1531123897727-8f129e1688ce?auto=format&fit=crop&w=400&h=300&q=80', alt: 'Wisudawati terbaik' },
-]
+const galeriAktif = initialGaleri
+  .filter(g => g.aktif)
+  .map((g, i) => ({
+    kategori: kategoriGaleri.find(k => k.value === g.kategori)?.label ?? g.kategori,
+    wide: i % 3 === 0,
+    src: g.url,
+    alt: g.judul,
+    judul: g.judul,
+    id: g.id,
+  }))
 
 const stats = [
   { value: '6.200+', label: 'Alumni' },
@@ -95,7 +97,7 @@ export default function PesantrenPage() {
   const [form, setForm] = useState({ nama: '', email: '', judul: '', pesan: '' })
 
   const filteredGaleri =
-    activeGaleri === 'Semua' ? galeri : galeri.filter((g) => g.kategori === activeGaleri)
+    activeGaleri === 'Semua' ? galeriAktif : galeriAktif.filter((g) => g.kategori === activeGaleri)
 
   return (
     <div className="overflow-x-hidden">
@@ -442,6 +444,60 @@ export default function PesantrenPage() {
         </div>
       </section>
 
+      {/* ── Organisasi Alumni ── */}
+      <section className="py-20" style={{ backgroundColor: '#F8FAF9' }}>
+        <div className="max-w-7xl mx-auto px-6 lg:px-8">
+          <motion.div variants={fadeUp} initial="hidden" whileInView="show" viewport={viewport} className="text-center mb-12">
+            <p className="text-xs font-bold tracking-widest uppercase mb-3" style={{ color: '#F0A500' }}>Keluarga Besar</p>
+            <h2 className="text-3xl font-extrabold text-gray-900 mb-3">Organisasi &amp; Lembaga Alumni</h2>
+            <p className="text-gray-500 text-sm max-w-lg mx-auto">
+              Organisasi resmi yang menghimpun dan memberdayakan seluruh alumni Pondok Pesantren Modern Perpaduan Daarul Mughni Al Maaliki.
+            </p>
+          </motion.div>
+
+          <motion.div variants={stagger} initial="hidden" whileInView="show" viewport={viewport} className="grid md:grid-cols-3 gap-6">
+            {initialOrganisasi.filter(o => o.aktif).map((org) => (
+              <motion.div key={org.id} variants={fadeUp} className="bg-white rounded-2xl p-6 border border-gray-100 shadow-sm hover:shadow-md transition-shadow text-center group">
+                <div className="flex justify-center mb-4">
+                  {org.logo ? (
+                    <img src={org.logo} alt={org.nama}
+                      className="w-20 h-20 rounded-2xl object-cover border-2 border-gray-100 group-hover:border-[#1A5C38]/30 transition-all"
+                      onError={e => { e.target.onerror = null; e.target.style.display = 'none'; e.target.nextSibling.style.display = 'flex' }}
+                    />
+                  ) : null}
+                  <div className="w-20 h-20 rounded-2xl flex items-center justify-center text-white text-2xl font-black"
+                    style={{ backgroundColor: '#1A5C38', display: org.logo ? 'none' : 'flex' }}>
+                    {org.nama.charAt(0)}
+                  </div>
+                </div>
+                <div className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full text-xs font-bold mb-3"
+                  style={{ backgroundColor: '#F0FDF4', color: '#1A5C38' }}>
+                  <Shield className="w-3 h-3" /> Organisasi Resmi
+                </div>
+                <h3 className="text-lg font-extrabold text-gray-900 mb-1">{org.nama}</h3>
+                <p className="text-xs font-semibold text-gray-500 mb-3">{org.namaLengkap}</p>
+                <p className="text-sm text-gray-500 leading-relaxed mb-4">{org.deskripsi}</p>
+                <div className="flex flex-col gap-1.5 text-xs text-gray-400">
+                  {org.ketua && (
+                    <div className="flex items-center justify-center gap-1.5">
+                      <Users className="w-3 h-3" />
+                      <span>{org.ketua}</span>
+                    </div>
+                  )}
+                  {org.kontak && (
+                    <div className="flex items-center justify-center gap-1.5">
+                      <Mail className="w-3 h-3" />
+                      <a href={`mailto:${org.kontak}`} className="hover:text-[#1A5C38] transition-colors">{org.kontak}</a>
+                    </div>
+                  )}
+                  <div className="text-[10px] text-gray-300 mt-1">Berdiri sejak {org.tahunBerdiri}</div>
+                </div>
+              </motion.div>
+            ))}
+          </motion.div>
+        </div>
+      </section>
+
       {/* ── Galeri ── */}
       <section className="py-24 bg-white">
         <div className="max-w-7xl mx-auto px-6 lg:px-8">
@@ -455,7 +511,7 @@ export default function PesantrenPage() {
 
           {/* Filter tabs */}
           <div className="flex items-center justify-center gap-2 flex-wrap mb-8">
-            {galeriKategori.map((k) => (
+            {galeriKategoriList.map((k) => (
               <button
                 key={k}
                 onClick={() => setActiveGaleri(k)}

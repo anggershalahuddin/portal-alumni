@@ -176,13 +176,13 @@ export default function AlumniDirectoryPage() {
         expanded={expandAngkatan}
         onToggle={() => setExpandAngkatan((v) => !v)}
       >
-        {shownAngkatan.map(({ year, generasi }) => (
+        {shownAngkatan.map(({ year, angkatanKe }) => (
           <FilterCheckbox
             key={year}
             label={
               <span>
                 {year}{' '}
-                <span className="text-gray-400 text-xs">(Generasi ke-{generasi})</span>
+                <span className="text-gray-400 text-xs">(Angkatan ke-{angkatanKe})</span>
               </span>
             }
             checked={selectedAngkatan.includes(year)}

@@ -13,7 +13,7 @@ const navLinks = [
   { label: 'Karir', href: '/karir' },
 ]
 
-function NavLink({ label, href, onClick }) {
+function NavLink({ label, href, onClick, mobile }) {
   const location = useLocation()
   const isActive =
     href === '/berita'
@@ -32,28 +32,22 @@ function NavLink({ label, href, onClick }) {
 
   const isExternal = href.startsWith('/#')
 
+  const baseCls = mobile
+    ? `block text-center px-2 py-2 rounded-lg text-xs font-semibold transition-colors ${
+        isActive
+          ? 'bg-white/15 text-white'
+          : 'text-white/70 hover:text-white hover:bg-white/10'
+      }`
+    : `text-sm font-medium transition-colors ${
+        isActive ? 'text-white' : 'text-white/70 hover:text-white'
+      }`
+
   if (isExternal) {
-    return (
-      <a
-        href={href}
-        onClick={onClick}
-        className={`text-sm font-medium transition-colors ${
-          isActive ? 'text-white' : 'text-white/70 hover:text-white'
-        }`}
-      >
-        {label}
-      </a>
-    )
+    return <a href={href} onClick={onClick} className={baseCls}>{label}</a>
   }
 
   return (
-    <Link
-      to={href}
-      onClick={onClick}
-      className={`text-sm font-medium transition-colors ${
-        isActive ? 'text-white' : 'text-white/70 hover:text-white'
-      }`}
-    >
+    <Link to={href} onClick={onClick} className={baseCls}>
       {label}
     </Link>
   )
@@ -79,8 +73,11 @@ export default function Navbar() {
               <p className="text-[10px] text-white/50 uppercase tracking-widest leading-none mb-0.5">
                 Alumni Portal
               </p>
-              <p className="text-sm font-bold text-white leading-none">
-                Pondok Pesantren Daarul Mughni Al Maaliki
+              <p className="text-xs font-bold text-white leading-tight">
+                Pondok Pesantren Modern Perpaduan
+              </p>
+              <p className="text-xs font-bold text-[#F0A500] leading-tight">
+                Daarul Mughni Al Maaliki
               </p>
             </div>
           </Link>
@@ -127,13 +124,14 @@ export default function Navbar() {
             transition={{ duration: 0.25 }}
             className="lg:hidden py-4 border-t border-white/10 overflow-hidden"
           >
-            <div className="space-y-1 mb-4">
+            <div className="grid grid-cols-3 gap-1 mb-4">
               {navLinks.map(({ label, href }) => (
                 <NavLink
                   key={label}
                   label={label}
                   href={href}
                   onClick={() => setOpen(false)}
+                  mobile
                 />
               ))}
             </div>

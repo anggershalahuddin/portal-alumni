@@ -33,7 +33,7 @@ function TextInput({ value, onChange, placeholder, type = 'text' }) {
 }
 
 export default function DaftarPage() {
-  const [form, setForm] = useState({ nama: '', email: '', hp: '', angkatan: '', bidang: '', password: '', konfirmasi: '' })
+  const [form, setForm] = useState({ nama: '', email: '', hp: '', Tahun: '', bidang: '', password: '', konfirmasi: '' })
   const [showPass, setShowPass] = useState(false)
   const [showKonfirmasi, setShowKonfirmasi] = useState(false)
   const [submitted, setSubmitted] = useState(false)
@@ -139,7 +139,7 @@ export default function DaftarPage() {
               <Field label="No. HP / WhatsApp">
                 <TextInput value={form.hp} onChange={set('hp')} placeholder="08xxxxxxxxxx" type="tel" />
               </Field>
-              <Field label="Angkatan">
+              <Field label="Marhatal">
                 <div className="relative">
                   <select
                     value={form.angkatan}

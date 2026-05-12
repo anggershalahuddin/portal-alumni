@@ -1,16 +1,17 @@
 import { useState, useEffect } from 'react'
 import { Bell, Shield, Search, Plus, Pencil, Trash2, X, Download, Tag } from 'lucide-react'
 import AdminSidebar from '../../components/admin/AdminSidebar'
+import ConfirmDialog from '../../components/admin/ConfirmDialog'
 import ImageUploadBox from '../../components/admin/ImageUploadBox'
 import { PaginationBar, PerPageSelector } from '../../components/PaginationBar'
-import { categories as initialKategoriData } from '../../data/news'
+import { categories as initialKategoriData, news } from '../../data/news'
 
-const STATUS_LIST = ['Terbit', 'Draft', 'Arsip']
+const STATUS_LIST = ['Terbit', 'Menunggu Verifikasi Admin', 'Diarsipkan']
 
 const STATUS_STYLE = {
-  Terbit: { bg: '#F0FDF4', text: '#15803D' },
-  Draft:  { bg: '#F9FAFB', text: '#6B7280' },
-  Arsip:  { bg: '#F1F5F9', text: '#64748B' },
+  'Terbit':                   { bg: '#F0FDF4', text: '#15803D' },
+  'Menunggu Verifikasi Admin':{ bg: '#FFFBEB', text: '#D97706' },
+  'Diarsipkan':               { bg: '#FFF1F2', text: '#BE123C' },
 }
 
 // Preset color schemes for news category badges (light bg + dark text)
@@ -29,16 +30,18 @@ const seedKategoris = initialKategoriData
   .filter(c => c.value !== 'semua')
   .map(c => ({ id: c.value, label: c.label, bg: c.bg, text: c.text, border: c.border }))
 
-const initialBerita = [
-  { id: 1, judul: 'Persiapan Reuni Akbar 25 Tahun Daarul Mughni: Catat Tanggalnya!', kategori: 'kegiatan-alumni', status: 'Terbit', penulis: 'Admin', penulisSingkatan: 'AD', tanggal: '13 Okt 2023', excerpt: '', tags: ['Reuni', 'Alumni'], content: [] },
-  { id: 2, judul: 'Pondok Pesantren Resmikan Gedung Laboratorium Bahasa Baru', kategori: 'info-pondok', status: 'Terbit', penulis: 'Budi S.', penulisSingkatan: 'BS', tanggal: '12 Okt 2023', excerpt: '', tags: ['Info Pondok'], content: [] },
-  { id: 3, judul: 'Prestasi Santri: Juara Umum Musabaqah Antar Pondok Se-Bogor', kategori: 'info-pondok', status: 'Terbit', penulis: 'Admin', penulisSingkatan: 'AD', tanggal: '08 Okt 2023', excerpt: '', tags: ['Prestasi'], content: [] },
-  { id: 4, judul: 'Beasiswa Santri Berprestasi 2024 — Pendaftaran Dibuka', kategori: 'peluang-kerja', status: 'Draft', penulis: 'Admin', penulisSingkatan: 'AD', tanggal: '05 Okt 2023', excerpt: '', tags: ['Beasiswa'], content: [] },
-  { id: 5, judul: 'Pembangunan Masjid Baru: Progres dan Target Penyelesaian', kategori: 'info-pondok', status: 'Draft', penulis: 'Siti A.', penulisSingkatan: 'SA', tanggal: '01 Okt 2023', excerpt: '', tags: [], content: [] },
-  { id: 6, judul: 'Agenda Wisuda Santri Tahun 2024 — Informasi Lengkap', kategori: 'kegiatan-alumni', status: 'Terbit', penulis: 'Admin', penulisSingkatan: 'AD', tanggal: '28 Sep 2023', excerpt: '', tags: ['Wisuda'], content: [] },
-  { id: 7, judul: 'Penerimaan Santri Baru Angkatan 2024', kategori: 'info-pondok', status: 'Terbit', penulis: 'Admin', penulisSingkatan: 'AD', tanggal: '20 Sep 2023', excerpt: '', tags: ['Penerimaan'], content: [] },
-  { id: 8, judul: 'Kerjasama Pondok dengan Universitas Islam Indonesia', kategori: 'kegiatan-alumni', status: 'Draft', penulis: 'Admin', penulisSingkatan: 'AD', tanggal: '15 Sep 2023', excerpt: '', tags: [], content: [] },
-]
+const initialBerita = news.map((n, i) => ({
+  id: i + 1,
+  judul: n.title,
+  kategori: n.category,
+  status: 'Terbit',
+  penulis: n.author,
+  penulisSingkatan: n.authorInitials,
+  tanggal: n.date,
+  excerpt: n.excerpt,
+  tags: n.tags || [],
+  content: n.content || [],
+}))
 
 function SectionLabel({ children }) {
   return <p className="text-xs font-bold text-gray-400 uppercase tracking-wider">{children}</p>
@@ -163,6 +166,8 @@ function BeritaModal({ berita, kategoris, onClose, onSave }) {
         penulis: berita.penulis || '',
         penulisSingkatan: berita.penulisSingkatan || '',
         excerpt: berita.excerpt || '',
+        thumbnail: berita.thumbnail || '',
+        banner: berita.banner || '',
       }
     : {
         judul: '',
@@ -172,6 +177,8 @@ function BeritaModal({ berita, kategoris, onClose, onSave }) {
         penulis: '',
         penulisSingkatan: '',
         excerpt: '',
+        thumbnail: '',
+        banner: '',
       }
   )
   const [blocks, setBlocks] = useState(isEdit ? (berita.content || []) : [])
@@ -452,8 +459,8 @@ function BeritaModal({ berita, kategoris, onClose, onSave }) {
           <div className="space-y-3 pt-1 border-t border-gray-100">
             <SectionLabel>Gambar Berita</SectionLabel>
             <div className="grid grid-cols-2 gap-3">
-              <ImageUploadBox label="Thumbnail (Card List)" hint="Rasio 4:3 · JPG/PNG · maks. 2MB" />
-              <ImageUploadBox label="Banner (Halaman Detail)" hint="Rasio 16:9 · JPG/PNG · maks. 5MB" />
+              <ImageUploadBox label="Thumbnail (Card List)" hint="Rasio 4:3 · JPG/PNG · maks. 2MB" value={form.thumbnail} onChange={url => setForm(f => ({ ...f, thumbnail: url }))} />
+              <ImageUploadBox label="Banner (Halaman Detail)" hint="Rasio 16:9 · JPG/PNG · maks. 5MB" value={form.banner} onChange={url => setForm(f => ({ ...f, banner: url }))} />
             </div>
           </div>
 
@@ -485,6 +492,10 @@ export default function AdminBeritaPage() {
   const [filterStatus, setFilterStatus] = useState('')
   const [modal, setModal] = useState(null)        // null | 'tambah' | beritaObj
   const [kategoriModal, setKategoriModal] = useState(false)
+  const [confirm, setConfirm] = useState({ open: false })
+
+  function askConfirm(opts) { setConfirm({ open: true, ...opts }) }
+  function closeConfirm() { setConfirm({ open: false }) }
   const [page, setPage] = useState(1)
   const [perPage, setPerPage] = useState(10)
 
@@ -518,7 +529,7 @@ export default function AdminBeritaPage() {
   }
 
   function handleDelete(id) {
-    setBerita(prev => prev.filter(b => b.id !== id))
+    askConfirm({ title: 'Hapus Berita', message: 'Apakah Anda yakin ingin menghapus berita ini? Tindakan ini tidak dapat dibatalkan.', confirmLabel: 'Ya, Hapus', variant: 'danger', onConfirm: () => { setBerita(prev => prev.filter(b => b.id !== id)); closeConfirm() } })
   }
 
   return (
@@ -578,7 +589,7 @@ export default function AdminBeritaPage() {
 
           {/* Filter + PerPage */}
           <div className="flex items-center gap-2 flex-wrap">
-            {['', 'Terbit', 'Draft', 'Arsip'].map((s) => (
+            {['', 'Terbit', 'Menunggu Verifikasi Admin', 'Diarsipkan'].map((s) => (
               <button key={s} onClick={() => { setFilterStatus(s); setPage(1) }}
                 className="px-4 py-2 rounded-xl text-sm font-semibold border transition-all"
                 style={filterStatus === s
@@ -606,7 +617,7 @@ export default function AdminBeritaPage() {
               </thead>
               <tbody className="divide-y divide-gray-50">
                 {paged.map((b) => {
-                  const st = STATUS_STYLE[b.status] || STATUS_STYLE.Draft
+                  const st = STATUS_STYLE[b.status] ?? { bg: '#F9FAFB', text: '#6B7280' }
                   const kat = kategoris.find(k => k.id === b.kategori)
                   return (
                     <tr key={b.id} className="hover:bg-gray-50/50 transition-colors">
@@ -704,6 +715,8 @@ export default function AdminBeritaPage() {
           onSave={handleSave}
         />
       )}
+
+      <ConfirmDialog open={confirm.open} title={confirm.title} message={confirm.message} confirmLabel={confirm.confirmLabel} variant={confirm.variant} onConfirm={confirm.onConfirm} onCancel={closeConfirm} />
     </div>
   )
 }

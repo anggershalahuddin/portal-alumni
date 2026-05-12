@@ -1,6 +1,7 @@
 import { useState, useEffect } from 'react'
 import { Bell, Shield, Search, Plus, Pencil, Trash2, X, Download, MapPin, Calendar, Users, Tag } from 'lucide-react'
 import AdminSidebar from '../../components/admin/AdminSidebar'
+import ConfirmDialog from '../../components/admin/ConfirmDialog'
 import ImageUploadBox from '../../components/admin/ImageUploadBox'
 import { PaginationBar, PerPageSelector } from '../../components/PaginationBar'
 
@@ -280,6 +281,9 @@ function AgendaModal({ agenda, tags, onClose, onSave }) {
           statusPendaftaran: agenda.statusPendaftaran || '',
           hasSertifikat: agenda.hasSertifikat || false,
           publishedBy: agenda.publishedBy || '',
+          thumbnail: agenda.thumbnail || '',
+          imageHero: agenda.imageHero || '',
+          pamflet: agenda.pamflet || '',
         }
       : {
           nama: '',
@@ -296,6 +300,9 @@ function AgendaModal({ agenda, tags, onClose, onSave }) {
           statusPendaftaran: '',
           hasSertifikat: false,
           publishedBy: '',
+          thumbnail: '',
+          imageHero: '',
+          pamflet: '',
         }
   )
   const [pembicara, setPembicara] = useState(isEdit ? (agenda.pembicara || []) : [])
@@ -490,10 +497,10 @@ function AgendaModal({ agenda, tags, onClose, onSave }) {
           <div className="space-y-3 pt-1 border-t border-gray-100">
             <SectionLabel>Gambar Kegiatan</SectionLabel>
             <div className="grid grid-cols-2 gap-3">
-              <ImageUploadBox label="Thumbnail (Card List)" hint="Rasio 4:3 · maks. 2MB" />
-              <ImageUploadBox label="Banner (Header Detail)" hint="Rasio 16:9 · maks. 5MB" />
+              <ImageUploadBox label="Thumbnail (Card List)" hint="Rasio 4:3 · maks. 2MB" value={form.thumbnail} onChange={url => setForm(f => ({ ...f, thumbnail: url }))} />
+              <ImageUploadBox label="Banner (Header Detail)" hint="Rasio 16:9 · maks. 5MB" value={form.imageHero} onChange={url => setForm(f => ({ ...f, imageHero: url }))} />
             </div>
-            <ImageUploadBox label="Pamflet Acara (opsional)" hint="Tampil di detail acara, bisa dibuka penuh · maks. 5MB" />
+            <ImageUploadBox label="Pamflet Acara (opsional)" hint="Tampil di detail acara, bisa dibuka penuh · maks. 5MB" value={form.pamflet} onChange={url => setForm(f => ({ ...f, pamflet: url }))} />
           </div>
 
         </div>

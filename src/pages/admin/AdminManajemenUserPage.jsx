@@ -24,15 +24,18 @@ const ALL_PERMISSIONS = [
   { id: 'dashboard',  label: 'Dashboard Admin',     desc: 'Lihat statistik dan ringkasan portal' },
   { id: 'berita',     label: 'Kelola Berita',        desc: 'Buat, edit, arsip, dan hapus artikel berita' },
   { id: 'agenda',     label: 'Kelola Agenda',        desc: 'Tambah dan kelola jadwal acara & kegiatan' },
+  { id: 'galeri',     label: 'Kelola Galeri',        desc: 'Unggah dan kelola foto dokumentasi kegiatan' },
   { id: 'angkatan',   label: 'Kelola Angkatan',      desc: 'Tambah dan kelola data angkatan lulusan pondok' },
+  { id: 'organisasi', label: 'Kelola Organisasi',    desc: 'Kelola data organisasi dan lembaga alumni' },
+  { id: 'karir',      label: 'Kelola Lowongan',      desc: 'Buat dan kelola lowongan pekerjaan pesantren (Admin/SuperAdmin saja)' },
   { id: 'verifikasi', label: 'Verifikasi Alumni',    desc: 'Proses permohonan verifikasi alumni baru' },
   { id: 'users',      label: 'Manajemen User',       desc: 'Kelola akun, peran, dan hak akses pengguna' },
 ]
 
 const DEFAULT_PERMISSIONS = {
   'Super Admin': ALL_PERMISSIONS.map(p => p.id),
-  'Admin':       ['dashboard', 'berita', 'agenda', 'angkatan', 'verifikasi'],
-  'Editor':      ['dashboard', 'berita', 'agenda'],
+  'Admin':       ['dashboard', 'berita', 'agenda', 'galeri', 'angkatan', 'organisasi', 'karir', 'verifikasi'],
+  'Editor':      ['dashboard', 'berita', 'agenda', 'galeri'],
   'Alumni':      [],
 }
 
