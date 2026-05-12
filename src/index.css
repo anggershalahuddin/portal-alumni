@@ -140,3 +140,19 @@
     scrollbar-width: none;
   }
 }
+
+@keyframes marquee-left {
+  from { transform: translateX(0); }
+  to   { transform: translateX(-50%); }
+}
+@keyframes marquee-left-slow {
+  from { transform: translateX(-2%); }
+  to   { transform: translateX(-52%); }
+}
+
+.animate-marquee-left {
+  animation: marquee-left 45s linear infinite;
+}
+.animate-marquee-left-offset {
+  animation: marquee-left-slow 38s linear infinite;
+}

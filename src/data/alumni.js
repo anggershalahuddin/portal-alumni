@@ -1,0 +1,286 @@
+export const TOTAL_ALUMNI = 1240
+export const TOTAL_VERIFIED = 892
+
+export const angkatanList = Array.from({ length: 19 }, (_, i) => {
+  const year = 2024 - i
+  return { year, generasi: year - 1999 }
+})
+
+export const wilayahList = [
+  { value: 'bogor', label: 'Bogor' },
+  { value: 'jakarta', label: 'Jakarta' },
+  { value: 'bandung', label: 'Bandung' },
+  { value: 'luar-negeri', label: 'Luar Negeri' },
+  { value: 'lainnya', label: 'Kota Lainnya' },
+]
+
+export const bidangList = [
+  { value: 'teknologi', label: 'Teknologi & IT' },
+  { value: 'kesehatan', label: 'Kesehatan' },
+  { value: 'bisnis', label: 'Bisnis & Wirausaha' },
+  { value: 'keuangan', label: 'Keuangan & Perbankan' },
+  { value: 'hukum', label: 'Hukum' },
+  { value: 'teknik', label: 'Teknik & Konstruksi' },
+  { value: 'pendidikan', label: 'Pendidikan' },
+]
+
+export const alumniData = [
+  {
+    id: 1,
+    name: 'Dr. Ahmad Fauzi',
+    angkatan: 2010,
+    profesi: 'Spesialis Bedah Umum',
+    perusahaan: 'RSUD Bogor',
+    domisili: 'Bogor, Jawa Barat',
+    wilayah: 'bogor',
+    bidang: 'kesehatan',
+    keahlian: ['Medical Surgery', 'Healthcare Management'],
+    isVerified: true,
+    avatar: 'https://images.unsplash.com/photo-1627091908405-30bd51eec537?auto=format&fit=crop&w=150&h=150&q=80&crop=faces',
+  },
+  {
+    id: 2,
+    name: 'Siti Sarah, M.Kom',
+    angkatan: 2012,
+    profesi: 'Data Scientist',
+    perusahaan: 'Tokopedia',
+    domisili: 'Jakarta Selatan',
+    wilayah: 'jakarta',
+    bidang: 'teknologi',
+    keahlian: ['Machine Learning', 'Python', 'Data Analysis'],
+    isVerified: true,
+    avatar: 'https://images.unsplash.com/photo-1574297500578-afae55026ff3?auto=format&fit=crop&w=150&h=150&q=80&crop=faces',
+  },
+  {
+    id: 3,
+    name: 'Muhammad Rizky',
+    angkatan: 2015,
+    profesi: 'Software Engineer',
+    perusahaan: 'Gojek',
+    domisili: 'Tangerang',
+    wilayah: 'lainnya',
+    bidang: 'teknologi',
+    keahlian: ['React', 'TypeScript', 'Node.js'],
+    isVerified: true,
+    avatar: 'https://images.unsplash.com/photo-1623297990356-3a644b1b15d9?auto=format&fit=crop&w=150&h=150&q=80&crop=faces',
+  },
+  {
+    id: 4,
+    name: 'Fatimah Az-Zahra',
+    angkatan: 2018,
+    profesi: 'Founder & Creative Director',
+    perusahaan: 'Nusantara Kreasi',
+    domisili: 'Bandung, Jawa Barat',
+    wilayah: 'bandung',
+    bidang: 'bisnis',
+    keahlian: ['Fashion Design', 'E-commerce', 'Branding'],
+    isVerified: false,
+    avatar: 'https://images.unsplash.com/photo-1613447895817-e617a4093f50?auto=format&fit=crop&w=150&h=150&q=80&crop=faces',
+  },
+  {
+    id: 5,
+    name: 'Budi Setiawan',
+    angkatan: 2011,
+    profesi: 'Civil Engineer',
+    perusahaan: 'PT Waskita Karya',
+    domisili: 'Jakarta Pusat',
+    wilayah: 'jakarta',
+    bidang: 'teknik',
+    keahlian: ['Structural Design', 'Project Management'],
+    isVerified: true,
+    avatar: 'https://images.unsplash.com/photo-1561313021-9c964ccfc7e2?auto=format&fit=crop&w=150&h=150&q=80&crop=faces',
+  },
+  {
+    id: 6,
+    name: 'Nurul Hidayah',
+    angkatan: 2014,
+    profesi: 'Senior Auditor',
+    perusahaan: 'PwC Indonesia',
+    domisili: 'Jakarta Selatan',
+    wilayah: 'jakarta',
+    bidang: 'keuangan',
+    keahlian: ['Financial Auditing', 'Tax Compliance'],
+    isVerified: true,
+    avatar: 'https://images.unsplash.com/photo-1558027309-0844844295f7?auto=format&fit=crop&w=150&h=150&q=80&crop=faces',
+  },
+  {
+    id: 7,
+    name: 'Hendra Gunawan',
+    angkatan: 2007,
+    profesi: 'Tech Entrepreneur',
+    perusahaan: 'PasarBerkah.id',
+    domisili: 'Jakarta Barat',
+    wilayah: 'jakarta',
+    bidang: 'teknologi',
+    keahlian: ['Startup', 'Product Management', 'Fundraising'],
+    isVerified: true,
+    avatar: 'https://images.unsplash.com/photo-1651646781428-18b47ae1e17b?auto=format&fit=crop&w=150&h=150&q=80&crop=faces',
+  },
+  {
+    id: 8,
+    name: 'Aisha Rahmawati',
+    angkatan: 2016,
+    profesi: 'Dokter Gigi',
+    perusahaan: 'Klinik Medika Utama',
+    domisili: 'Bogor, Jawa Barat',
+    wilayah: 'bogor',
+    bidang: 'kesehatan',
+    keahlian: ['Dental Surgery', 'Orthodontics'],
+    isVerified: true,
+    avatar: 'https://images.unsplash.com/photo-1586682643135-060f061868b6?auto=format&fit=crop&w=150&h=150&q=80&crop=faces',
+  },
+  {
+    id: 9,
+    name: 'Fajar Ramdhani',
+    angkatan: 2012,
+    profesi: 'Notaris & PPAT',
+    perusahaan: 'Kantor Notaris Fajar & Rekan',
+    domisili: 'Bogor, Jawa Barat',
+    wilayah: 'bogor',
+    bidang: 'hukum',
+    keahlian: ['Hukum Perdata', 'Pertanahan', 'Corporate Law'],
+    isVerified: true,
+    avatar: 'https://images.unsplash.com/photo-1647535993927-bcf896be066b?auto=format&fit=crop&w=150&h=150&q=80&crop=faces',
+  },
+  {
+    id: 10,
+    name: 'Dewi Rahayu',
+    angkatan: 2019,
+    profesi: 'UI/UX Designer',
+    perusahaan: 'Ruangguru',
+    domisili: 'Jakarta Selatan',
+    wilayah: 'jakarta',
+    bidang: 'teknologi',
+    keahlian: ['Figma', 'User Research', 'Prototyping'],
+    isVerified: false,
+    avatar: 'https://images.unsplash.com/photo-1550546094-9835463f9f71?auto=format&fit=crop&w=150&h=150&q=80&crop=faces',
+  },
+  {
+    id: 11,
+    name: 'M. Yusuf Habibi, Ph.D',
+    angkatan: 2009,
+    profesi: 'Dosen & Peneliti',
+    perusahaan: 'Universitas Indonesia',
+    domisili: 'Depok, Jawa Barat',
+    wilayah: 'lainnya',
+    bidang: 'pendidikan',
+    keahlian: ['Islamic Economics', 'Research', 'Academic Writing'],
+    isVerified: true,
+    avatar: 'https://images.unsplash.com/photo-1677087776419-123ebe919c84?auto=format&fit=crop&w=150&h=150&q=80&crop=faces',
+  },
+  {
+    id: 12,
+    name: 'Laila Fitriani',
+    angkatan: 2020,
+    profesi: 'Marketing Specialist',
+    perusahaan: 'Shopee Indonesia',
+    domisili: 'Jakarta Utara',
+    wilayah: 'jakarta',
+    bidang: 'bisnis',
+    keahlian: ['Digital Marketing', 'SEO', 'Content Strategy'],
+    isVerified: false,
+    avatar: 'https://images.unsplash.com/photo-1661254601903-0edfe1cd736c?auto=format&fit=crop&w=150&h=150&q=80&crop=faces',
+  },
+  {
+    id: 13,
+    name: 'Rizal Hakim',
+    angkatan: 2013,
+    profesi: 'Arsitek',
+    perusahaan: 'PT Urbane Indonesia',
+    domisili: 'Bandung, Jawa Barat',
+    wilayah: 'bandung',
+    bidang: 'teknik',
+    keahlian: ['Architecture', 'AutoCAD', 'Sustainable Design'],
+    isVerified: true,
+    avatar: 'https://images.unsplash.com/photo-1656479871064-14314c93133d?auto=format&fit=crop&w=150&h=150&q=80&crop=faces',
+  },
+  {
+    id: 14,
+    name: 'Nadia Putri, CFA',
+    angkatan: 2014,
+    profesi: 'Investment Analyst',
+    perusahaan: 'Mandiri Sekuritas',
+    domisili: 'Jakarta Selatan',
+    wilayah: 'jakarta',
+    bidang: 'keuangan',
+    keahlian: ['Financial Modeling', 'Equity Research', 'Portfolio Management'],
+    isVerified: true,
+    avatar: 'https://images.unsplash.com/photo-1622651795594-aabc6cf90a54?auto=format&fit=crop&w=150&h=150&q=80&crop=faces',
+  },
+  {
+    id: 15,
+    name: 'Ilham Syahputra',
+    angkatan: 2017,
+    profesi: 'Corporate Lawyer',
+    perusahaan: 'Hadiputranto & Partners',
+    domisili: 'Jakarta Pusat',
+    wilayah: 'jakarta',
+    bidang: 'hukum',
+    keahlian: ['Corporate Law', 'Litigation', 'M&A'],
+    isVerified: true,
+    avatar: 'https://images.unsplash.com/photo-1636822506571-684102f16c43?auto=format&fit=crop&w=150&h=150&q=80&crop=faces',
+  },
+  {
+    id: 16,
+    name: 'Zahra Maulida',
+    angkatan: 2021,
+    profesi: 'Content Creator',
+    perusahaan: 'Self-employed',
+    domisili: 'Bandung, Jawa Barat',
+    wilayah: 'bandung',
+    bidang: 'bisnis',
+    keahlian: ['Content Writing', 'Social Media', 'Video Production'],
+    isVerified: false,
+    avatar: 'https://images.unsplash.com/photo-1547720435-4e8910fb1f0b?auto=format&fit=crop&w=150&h=150&q=80&crop=faces',
+  },
+  {
+    id: 17,
+    name: 'Fikri Maulana',
+    angkatan: 2008,
+    profesi: 'Management Consultant',
+    perusahaan: 'McKinsey & Company',
+    domisili: 'Singapura',
+    wilayah: 'luar-negeri',
+    bidang: 'bisnis',
+    keahlian: ['Strategy Consulting', 'Business Development', 'Change Management'],
+    isVerified: true,
+    avatar: 'https://images.unsplash.com/photo-1552061902-146c1b6a3e51?auto=format&fit=crop&w=150&h=150&q=80&crop=faces',
+  },
+  {
+    id: 18,
+    name: 'Rahma Zulfiani',
+    angkatan: 2022,
+    profesi: 'Apoteker Klinis',
+    perusahaan: 'Kimia Farma',
+    domisili: 'Bogor, Jawa Barat',
+    wilayah: 'bogor',
+    bidang: 'kesehatan',
+    keahlian: ['Pharmaceutical', 'Clinical Pharmacy'],
+    isVerified: false,
+    avatar: 'https://images.unsplash.com/photo-1545266241-3516e2a6e016?auto=format&fit=crop&w=150&h=150&q=80&crop=faces',
+  },
+]
+
+const avatarColors = [
+  '#1A5C38', '#2A7A4F', '#0F766E', '#1D4ED8',
+  '#7E22CE', '#C2410C', '#0369A1', '#B45309',
+]
+
+export function getAvatarColor(name) {
+  let hash = 0
+  for (let i = 0; i < name.length; i++) {
+    hash = name.charCodeAt(i) + ((hash << 5) - hash)
+  }
+  return avatarColors[Math.abs(hash) % avatarColors.length]
+}
+
+export function getInitials(name) {
+  return name
+    .replace(/[^a-zA-Z\s]/g, '')
+    .split(' ')
+    .filter(Boolean)
+    .slice(0, 2)
+    .map((w) => w[0])
+    .join('')
+    .toUpperCase()
+}

@@ -1,10 +1,21 @@
 export const categories = [
-  { value: 'semua', label: 'Semua' },
-  { value: 'kegiatan-alumni', label: 'Kegiatan Alumni' },
-  { value: 'info-pondok', label: 'Info Pondok' },
-  { value: 'peluang-kerja', label: 'Peluang Kerja' },
-  { value: 'kisah-sukses', label: 'Kisah Sukses' },
+  { value: 'semua',          label: 'Semua',            bg: null,       text: null,       border: null },
+  { value: 'kegiatan-alumni',label: 'Kegiatan Alumni',  bg: '#E8F5EE',  text: '#1A5C38',  border: 'rgba(26,92,56,0.15)' },
+  { value: 'info-pondok',    label: 'Info Pondok',       bg: '#FFFBEB',  text: '#92400E',  border: '#FDE68A' },
+  { value: 'peluang-kerja',  label: 'Peluang Kerja',     bg: '#EFF6FF',  text: '#1D4ED8',  border: '#DBEAFE' },
+  { value: 'kisah-sukses',   label: 'Kisah Sukses',      bg: '#FDF4FF',  text: '#7E22CE',  border: '#F3E8FF' },
 ]
+
+export function getCategoryStyle(value) {
+  const cat = categories.find(c => c.value === value)
+  if (!cat || !cat.bg) return { backgroundColor: '#F3F4F6', color: '#6B7280', border: '1px solid #E5E7EB' }
+  return { backgroundColor: cat.bg, color: cat.text, border: `1px solid ${cat.border}` }
+}
+
+export function getCategoryLabel(value) {
+  const cat = categories.find(c => c.value === value)
+  return cat?.label ?? value
+}
 
 export const popularTags = [
   'Beasiswa', 'Reuni', 'Karir', 'Pesantren', 'Teknologi',

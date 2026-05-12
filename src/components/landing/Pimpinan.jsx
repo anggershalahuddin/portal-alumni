@@ -86,7 +86,7 @@ export default function Pimpinan() {
             </p>
 
             <a
-              href="/pimpinan"
+              href="/pesantren"
               className="inline-flex items-center gap-1.5 text-[#1A5C38] hover:text-[#0A2415] font-bold text-sm transition-colors"
             >
               Baca Profil Lengkap Pesantren

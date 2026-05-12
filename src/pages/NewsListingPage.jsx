@@ -1,20 +1,12 @@
 import { useState } from 'react'
 import { Link } from 'react-router-dom'
 import { motion } from 'framer-motion'
-import { Search, Calendar, ArrowUpRight, ChevronLeft, ChevronRight, Bell, GraduationCap } from 'lucide-react'
-import { news, categories, popularTags } from '@/data/news'
+import { Search, Calendar, ArrowUpRight, Bell, GraduationCap } from 'lucide-react'
+import { news, categories, popularTags, getCategoryStyle } from '@/data/news'
+import { PaginationBar, PerPageSelector } from '@/components/PaginationBar'
 import { fadeUp, stagger, viewport } from '@/lib/animations'
 import Navbar from '@/components/landing/Navbar'
 import Footer from '@/components/landing/Footer'
-
-const ITEMS_PER_PAGE = 6
-
-const tagStyle = {
-  'kegiatan-alumni': 'bg-[#E8F5EE] text-[#1A5C38] border border-[#1A5C38]/15',
-  'info-pondok': 'bg-[#FFFBEB] text-[#92400E] border border-amber-200',
-  'peluang-kerja': 'bg-[#EFF6FF] text-[#1D4ED8] border border-blue-100',
-  'kisah-sukses': 'bg-[#FDF4FF] text-[#7E22CE] border border-purple-100',
-}
 
 const sidebarAgenda = [
   { day: '20', month: 'DES', title: 'Reuni Akbar Dasawarsa', location: 'Auditorium Utama Pondok' },
@@ -26,6 +18,7 @@ export default function NewsListingPage() {
   const [activeCategory, setActiveCategory] = useState('semua')
   const [search, setSearch] = useState('')
   const [page, setPage] = useState(1)
+  const [perPage, setPerPage] = useState(6)
   const [email, setEmail] = useState('')
 
   const filtered = news.filter((n) => {
@@ -37,8 +30,10 @@ export default function NewsListingPage() {
     return matchCat && matchSearch
   })
 
-  const totalPages = Math.ceil(filtered.length / ITEMS_PER_PAGE)
-  const paged = filtered.slice((page - 1) * ITEMS_PER_PAGE, page * ITEMS_PER_PAGE)
+  const totalPages = Math.ceil(filtered.length / perPage)
+  const paged = filtered.slice((page - 1) * perPage, page * perPage)
+  const startIdx = filtered.length === 0 ? 0 : (page - 1) * perPage + 1
+  const endIdx = Math.min(page * perPage, filtered.length)
 
   function handleCategoryChange(val) {
     setActiveCategory(val)
@@ -155,7 +150,8 @@ export default function NewsListingPage() {
                         <div className="absolute inset-0 bg-gradient-to-t from-black/50 via-transparent to-transparent" />
                         <div className="absolute top-3 left-3">
                           <span
-                            className={`text-xs font-bold px-2.5 py-1 rounded-full ${tagStyle[item.category] ?? 'bg-gray-100 text-gray-600'}`}
+                            className="text-xs font-bold px-2.5 py-1 rounded-full"
+                            style={getCategoryStyle(item.category)}
                           >
                             {item.categoryLabel}
                           </span>
@@ -184,35 +180,13 @@ export default function NewsListingPage() {
             )}
 
             {/* Pagination */}
-            {totalPages > 1 && (
-              <div className="flex items-center justify-center gap-2 mt-10">
-                <button
-                  onClick={() => setPage((p) => Math.max(1, p - 1))}
-                  disabled={page === 1}
-                  className="w-9 h-9 flex items-center justify-center rounded-lg border border-gray-200 text-gray-500 hover:border-[#1A5C38] hover:text-[#1A5C38] disabled:opacity-40 disabled:cursor-not-allowed transition-colors"
-                >
-                  <ChevronLeft className="w-4 h-4" />
-                </button>
-                {Array.from({ length: totalPages }, (_, i) => i + 1).map((p) => (
-                  <button
-                    key={p}
-                    onClick={() => setPage(p)}
-                    className={`w-9 h-9 rounded-lg text-sm font-medium transition-colors ${
-                      page === p
-                        ? 'bg-[#0A2415] text-white'
-                        : 'border border-gray-200 text-gray-600 hover:border-[#1A5C38] hover:text-[#1A5C38]'
-                    }`}
-                  >
-                    {p}
-                  </button>
-                ))}
-                <button
-                  onClick={() => setPage((p) => Math.min(totalPages, p + 1))}
-                  disabled={page === totalPages}
-                  className="w-9 h-9 flex items-center justify-center rounded-lg border border-gray-200 text-gray-500 hover:border-[#1A5C38] hover:text-[#1A5C38] disabled:opacity-40 disabled:cursor-not-allowed transition-colors"
-                >
-                  <ChevronRight className="w-4 h-4" />
-                </button>
+            {filtered.length > 0 && (
+              <div className="mt-10 flex flex-col items-center gap-3">
+                <div className="flex items-center gap-6">
+                  <PerPageSelector value={perPage} options={[6, 12, 18]} onChange={n => { setPerPage(n); setPage(1) }} />
+                  <span className="text-xs text-gray-400">{startIdx}–{endIdx} dari {filtered.length} artikel</span>
+                </div>
+                <PaginationBar page={page} totalPages={totalPages} onPage={setPage} />
               </div>
             )}
           </div>

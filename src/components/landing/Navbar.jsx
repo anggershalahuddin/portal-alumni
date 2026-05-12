@@ -1,14 +1,16 @@
 import { useState } from 'react'
 import { Link, useLocation } from 'react-router-dom'
 import { motion } from 'framer-motion'
-import { Menu, X, GraduationCap } from 'lucide-react'
+import { Menu, X } from 'lucide-react'
+import logoUrl from '@/assets/Logo DM Fix.jpg'
 
 const navLinks = [
   { label: 'Beranda', href: '/' },
-  { label: 'Alumni', href: '/#alumni' },
+  { label: 'Pesantren', href: '/pesantren' },
+  { label: 'Alumni', href: '/direktori' },
   { label: 'Berita', href: '/berita' },
-  { label: 'Agenda', href: '/#agenda' },
-  { label: 'Karir', href: '/#karir' },
+  { label: 'Agenda', href: '/agenda' },
+  { label: 'Karir', href: '/karir' },
 ]
 
 function NavLink({ label, href, onClick }) {
@@ -16,6 +18,14 @@ function NavLink({ label, href, onClick }) {
   const isActive =
     href === '/berita'
       ? location.pathname.startsWith('/berita')
+      : href === '/direktori'
+      ? location.pathname.startsWith('/direktori')
+      : href === '/agenda'
+      ? location.pathname.startsWith('/agenda')
+      : href === '/pesantren'
+      ? location.pathname.startsWith('/pesantren')
+      : href === '/karir'
+      ? location.pathname.startsWith('/karir')
       : href === '/'
       ? location.pathname === '/'
       : false
@@ -64,15 +74,13 @@ export default function Navbar() {
 
           {/* Logo */}
           <Link to="/" className="flex items-center gap-3">
-            <div className="w-9 h-9 rounded-full bg-[#F0A500] flex items-center justify-center flex-shrink-0">
-              <GraduationCap className="w-5 h-5 text-[#0A2415]" />
-            </div>
+            <img src={logoUrl} alt="Logo Daarul Mughni" className="w-10 h-10 object-contain rounded flex-shrink-0" />
             <div>
               <p className="text-[10px] text-white/50 uppercase tracking-widest leading-none mb-0.5">
                 Alumni Portal
               </p>
               <p className="text-sm font-bold text-white leading-none">
-                Pondok Pesantren Daarul Mughni
+                Pondok Pesantren Daarul Mughni Al Maaliki
               </p>
             </div>
           </Link>

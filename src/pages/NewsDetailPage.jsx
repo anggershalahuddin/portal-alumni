@@ -1,17 +1,10 @@
 import { useParams, Link, useNavigate } from 'react-router-dom'
 import { motion } from 'framer-motion'
 import { Calendar, Clock, Eye, MessageCircle, ArrowLeft, ArrowUpRight, Lock, Tag } from 'lucide-react'
-import { getNewsBySlug, getRelatedNews } from '@/data/news'
+import { getNewsBySlug, getRelatedNews, getCategoryStyle } from '@/data/news'
 import { fadeUp, viewport } from '@/lib/animations'
 import Navbar from '@/components/landing/Navbar'
 import Footer from '@/components/landing/Footer'
-
-const categoryTagStyle = {
-  'kegiatan-alumni': 'bg-[#E8F5EE] text-[#1A5C38] border border-[#1A5C38]/15',
-  'info-pondok': 'bg-[#FFFBEB] text-[#92400E] border border-amber-200',
-  'peluang-kerja': 'bg-[#EFF6FF] text-[#1D4ED8] border border-blue-100',
-  'kisah-sukses': 'bg-[#FDF4FF] text-[#7E22CE] border border-purple-100',
-}
 
 function ShareButton({ label, color, icon }) {
   return (
@@ -104,7 +97,8 @@ export default function NewsDetailPage() {
             </nav>
 
             <span
-              className={`inline-block text-xs font-bold px-3 py-1 rounded-full mb-3 ${categoryTagStyle[article.category] ?? 'bg-gray-100 text-gray-600'}`}
+              className="inline-block text-xs font-bold px-3 py-1 rounded-full mb-3"
+              style={getCategoryStyle(article.category)}
             >
               {article.categoryLabel}
             </span>
@@ -303,7 +297,8 @@ export default function NewsDetailPage() {
                 <div className="flex justify-between items-center">
                   <span className="text-gray-400">Kategori</span>
                   <span
-                    className={`px-2.5 py-0.5 rounded-full font-medium ${categoryTagStyle[article.category] ?? ''}`}
+                    className="px-2.5 py-0.5 rounded-full font-medium"
+                    style={getCategoryStyle(article.category)}
                   >
                     {article.categoryLabel}
                   </span>
@@ -354,7 +349,8 @@ export default function NewsDetailPage() {
                     <div className="absolute inset-0 bg-gradient-to-t from-black/40 via-transparent to-transparent" />
                     <div className="absolute top-3 left-3">
                       <span
-                        className={`text-xs font-bold px-2.5 py-1 rounded-full ${categoryTagStyle[item.category] ?? 'bg-gray-100 text-gray-600'}`}
+                        className="text-xs font-bold px-2.5 py-1 rounded-full"
+                        style={getCategoryStyle(item.category)}
                       >
                         {item.categoryLabel}
                       </span>

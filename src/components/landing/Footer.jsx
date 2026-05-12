@@ -1,7 +1,8 @@
-import { GraduationCap, Mail, Phone, MapPin } from 'lucide-react'
+import { Mail, Phone, MapPin } from 'lucide-react'
+import logoUrl from '@/assets/Logo DM Fix.jpg'
 
 const portalLinks = [
-  { label: 'Direktori Alumni', href: '/alumni' },
+  { label: 'Direktori Alumni', href: '/direktori' },
   { label: 'Berita Pondok', href: '/berita' },
   { label: 'Acara Mendatang', href: '/agenda' },
   { label: 'Bursa Kerja', href: '/karir' },
@@ -17,12 +18,12 @@ const bantuanLinks = [
 const socialLinks = [
   {
     label: 'Facebook',
-    href: '#',
+    href: 'https://www.facebook.com/daarulmughni.official',
     path: 'M18 2h-3a5 5 0 0 0-5 5v3H7v4h3v8h4v-8h3l1-4h-4V7a1 1 0 0 1 1-1h3z',
   },
   {
     label: 'Instagram',
-    href: '#',
+    href: 'https://www.instagram.com/daarulmughni.official/',
     path: 'M16 11.37A4 4 0 1 1 12.63 8 4 4 0 0 1 16 11.37zm1.5-4.87h.01M7.5 2h9A5.5 5.5 0 0 1 22 7.5v9A5.5 5.5 0 0 1 16.5 22h-9A5.5 5.5 0 0 1 2 16.5v-9A5.5 5.5 0 0 1 7.5 2z',
   },
   {
@@ -32,7 +33,7 @@ const socialLinks = [
   },
   {
     label: 'YouTube',
-    href: '#',
+    href: 'https://www.youtube.com/@DaarulMughniOfficial',
     path: 'M22.54 6.42a2.78 2.78 0 0 0-1.95-1.96C18.88 4 12 4 12 4s-6.88 0-8.59.46a2.78 2.78 0 0 0-1.95 1.96A29 29 0 0 0 1 12a29 29 0 0 0 .46 5.58A2.78 2.78 0 0 0 3.41 19.6C5.12 20 12 20 12 20s6.88 0 8.59-.46a2.78 2.78 0 0 0 1.95-1.95A29 29 0 0 0 23 12a29 29 0 0 0-.46-5.58zM9.75 15.02V8.98l5.75 3.02-5.75 3.02z',
   },
 ]
@@ -46,15 +47,16 @@ export default function Footer() {
           {/* Brand */}
           <div>
             <div className="flex items-center gap-3 mb-5">
-              <div className="w-9 h-9 rounded-full bg-[#F0A500] flex items-center justify-center flex-shrink-0">
-                <GraduationCap className="w-5 h-5 text-[#0A2415]" />
-              </div>
+              <img src={logoUrl} alt="Logo Daarul Mughni" className="w-12 h-12 object-contain rounded flex-shrink-0" />
               <div>
                 <p className="text-[10px] text-white/35 uppercase tracking-widest leading-none mb-0.5">
                   Alumni Portal
                 </p>
                 <p className="text-sm font-bold text-white leading-none">
-                  Pondok Pesantren Daarul Mughni
+                  Pondok Pesantren
+                </p>
+                <p className="text-sm font-bold text-white leading-none">
+                  Daarul Mughni Al Maaliki
                 </p>
               </div>
             </div>
@@ -125,16 +127,16 @@ export default function Footer() {
               <li className="flex items-start gap-2.5">
                 <MapPin className="w-3.5 h-3.5 mt-0.5 flex-shrink-0 text-[#F0A500]" />
                 <span className="text-white/40 text-xs leading-relaxed">
-                  Jl. Raya Daarul Mughni, Majaninggi, Bogor, Jawa Barat
+                  Jl. Klapanunggal Kp. Cibeber II Ds. Cikahuripan Kec. Klapanunggal Kabupaten Bogor Jawa Barat 16710
                 </span>
               </li>
               <li className="flex items-center gap-2.5">
                 <Mail className="w-3.5 h-3.5 flex-shrink-0 text-[#F0A500]" />
-                <span className="text-white/40 text-xs">info@daarulmughni.ac.id</span>
+                <span className="text-white/40 text-xs">ppdaaarulmughni@gmail.com</span>
               </li>
               <li className="flex items-center gap-2.5">
                 <Phone className="w-3.5 h-3.5 flex-shrink-0 text-[#F0A500]" />
-                <span className="text-white/40 text-xs">+62 21 1234 5678</span>
+                <span className="text-white/40 text-xs">(021) 2921 9666</span>
               </li>
             </ul>
           </div>
@@ -143,10 +145,10 @@ export default function Footer() {
         {/* Bottom bar */}
         <div className="pt-8 border-t border-white/[0.07] flex flex-col sm:flex-row items-center justify-between gap-3">
           <p className="text-white/25 text-xs">
-            © 2024 Alumni Portal – Pondok Pesantren Daarul Mughni. All rights reserved.
+            © 2026 Alumni Portal – Pondok Pesantren Daarul Mughni. All rights reserved.
           </p>
           <p className="text-white/25 text-xs">
-            Powered by Daarul Mughni · Vite 8.0
+            Powered by Daarul Mughni · 8.0
           </p>
         </div>
       </div>

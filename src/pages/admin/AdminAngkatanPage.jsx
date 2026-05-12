@@ -1,0 +1,375 @@
+import { useState, useRef } from 'react'
+import { Plus, Search, Pencil, Trash2, GraduationCap, Upload, X, ChevronUp, ChevronDown } from 'lucide-react'
+import AdminSidebar from '@/components/admin/AdminSidebar'
+import { PaginationBar, PerPageSelector } from '@/components/PaginationBar'
+import { initialAngkatan, getAngkatanKe } from '@/data/angkatan'
+
+const CURRENT_YEAR = new Date().getFullYear()
+
+function LogoBox({ value, onChange }) {
+  const inputRef = useRef()
+  return (
+    <div className="flex flex-col items-center gap-2">
+      <div
+        className="w-24 h-24 rounded-xl border-2 border-dashed border-gray-200 flex flex-col items-center justify-center cursor-pointer hover:border-[#1A5C38] transition-colors bg-gray-50 overflow-hidden"
+        onClick={() => inputRef.current?.click()}
+      >
+        {value ? (
+          <img src={value} alt="Logo angkatan" className="w-full h-full object-contain" />
+        ) : (
+          <>
+            <Upload className="w-5 h-5 text-gray-300 mb-1" />
+            <span className="text-[10px] text-gray-400">Unggah logo</span>
+          </>
+        )}
+      </div>
+      <input
+        ref={inputRef}
+        type="file"
+        accept="image/*"
+        className="hidden"
+        onChange={e => {
+          const file = e.target.files?.[0]
+          if (!file) return
+          onChange(URL.createObjectURL(file))
+        }}
+      />
+      {value && (
+        <button
+          type="button"
+          onClick={() => onChange(null)}
+          className="text-[10px] text-red-400 hover:text-red-600"
+        >
+          Hapus logo
+        </button>
+      )}
+    </div>
+  )
+}
+
+const EMPTY_FORM = { tahunLulusan: '', angkatanKe: '', nama: '', logo: null }
+
+function AngkatanModal({ data, onClose, onSave }) {
+  const isEdit = !!data
+  const [form, setForm] = useState(
+    isEdit
+      ? { tahunLulusan: String(data.tahunLulusan), angkatanKe: String(data.angkatanKe), nama: data.nama, logo: data.logo }
+      : { ...EMPTY_FORM }
+  )
+
+  function handleTahun(val) {
+    const ke = getAngkatanKe(val)
+    setForm(f => ({ ...f, tahunLulusan: val, angkatanKe: ke ? String(ke) : '' }))
+  }
+
+  function handleSubmit(e) {
+    e.preventDefault()
+    if (!form.tahunLulusan || !form.angkatanKe || !form.nama.trim()) return
+    onSave({
+      tahunLulusan: parseInt(form.tahunLulusan),
+      angkatanKe: parseInt(form.angkatanKe),
+      nama: form.nama.trim(),
+      logo: form.logo,
+    })
+  }
+
+  return (
+    <div className="fixed inset-0 z-50 flex items-center justify-center p-4" style={{ background: 'rgba(6,15,9,0.55)' }}>
+      <div className="bg-white rounded-2xl shadow-2xl w-full max-w-md">
+        <div className="flex items-center justify-between px-6 py-4 border-b border-gray-100">
+          <h2 className="text-base font-bold text-[#0A2415]">
+            {isEdit ? 'Edit Angkatan' : 'Tambah Angkatan'}
+          </h2>
+          <button onClick={onClose} className="text-gray-400 hover:text-gray-700">
+            <X className="w-5 h-5" />
+          </button>
+        </div>
+
+        <form onSubmit={handleSubmit}>
+          <div className="px-6 py-5 space-y-5">
+            <div className="flex gap-4 items-start">
+              <div className="flex-1 space-y-4">
+                {/* Tahun lulusan */}
+                <div>
+                  <label className="block text-xs font-semibold text-gray-600 mb-1.5">
+                    Tahun Lulusan <span className="text-red-400">*</span>
+                  </label>
+                  <input
+                    type="number"
+                    min="2000"
+                    max={CURRENT_YEAR + 5}
+                    value={form.tahunLulusan}
+                    onChange={e => handleTahun(e.target.value)}
+                    placeholder="contoh: 2010"
+                    className="w-full border border-gray-200 rounded-lg px-3 py-2 text-sm focus:outline-none focus:border-[#1A5C38]"
+                    required
+                  />
+                </div>
+
+                {/* Angkatan ke */}
+                <div>
+                  <label className="block text-xs font-semibold text-gray-600 mb-1.5">
+                    Angkatan Ke
+                    <span className="ml-1 text-[10px] font-normal text-gray-400">(otomatis terisi)</span>
+                  </label>
+                  <input
+                    type="number"
+                    value={form.angkatanKe}
+                    onChange={e => setForm(f => ({ ...f, angkatanKe: e.target.value }))}
+                    placeholder="—"
+                    className="w-full border border-gray-200 rounded-lg px-3 py-2 text-sm focus:outline-none focus:border-[#1A5C38] bg-gray-50"
+                  />
+                  <p className="text-[10px] text-gray-400 mt-1">Dihitung dari tahun lulusan pertama (2006 = Angkatan 1)</p>
+                </div>
+
+                {/* Nama angkatan */}
+                <div>
+                  <label className="block text-xs font-semibold text-gray-600 mb-1.5">
+                    Nama Angkatan <span className="text-red-400">*</span>
+                  </label>
+                  <input
+                    type="text"
+                    value={form.nama}
+                    onChange={e => setForm(f => ({ ...f, nama: e.target.value }))}
+                    placeholder="contoh: Angkatan Al-Fatih"
+                    className="w-full border border-gray-200 rounded-lg px-3 py-2 text-sm focus:outline-none focus:border-[#1A5C38]"
+                    required
+                  />
+                </div>
+              </div>
+
+              {/* Logo */}
+              <div>
+                <label className="block text-xs font-semibold text-gray-600 mb-1.5 text-center">Logo</label>
+                <LogoBox value={form.logo} onChange={v => setForm(f => ({ ...f, logo: v }))} />
+              </div>
+            </div>
+          </div>
+
+          <div className="px-6 py-4 border-t border-gray-100 flex justify-end gap-3">
+            <button
+              type="button"
+              onClick={onClose}
+              className="px-4 py-2 text-sm font-medium text-gray-600 hover:bg-gray-50 rounded-lg transition-colors"
+            >
+              Batal
+            </button>
+            <button
+              type="submit"
+              className="px-5 py-2 text-sm font-bold text-white rounded-lg transition-colors"
+              style={{ backgroundColor: '#1A5C38' }}
+            >
+              {isEdit ? 'Simpan Perubahan' : 'Tambah Angkatan'}
+            </button>
+          </div>
+        </form>
+      </div>
+    </div>
+  )
+}
+
+export default function AdminAngkatanPage() {
+  const [angkatan, setAngkatan] = useState(initialAngkatan)
+  const [search, setSearch] = useState('')
+  const [page, setPage] = useState(1)
+  const [perPage, setPerPage] = useState(10)
+  const [modal, setModal] = useState(null) // null | { type: 'tambah' } | { type: 'edit', data }
+  const [sortDir, setSortDir] = useState('asc') // sort by tahun lulusan
+
+  const filtered = angkatan
+    .filter(a => {
+      const q = search.toLowerCase()
+      return (
+        q === '' ||
+        a.nama.toLowerCase().includes(q) ||
+        String(a.tahunLulusan).includes(q) ||
+        String(a.angkatanKe).includes(q)
+      )
+    })
+    .sort((a, b) => sortDir === 'asc' ? a.tahunLulusan - b.tahunLulusan : b.tahunLulusan - a.tahunLulusan)
+
+  const totalPages = Math.ceil(filtered.length / perPage)
+  const paged = filtered.slice((page - 1) * perPage, page * perPage)
+  const startIdx = filtered.length === 0 ? 0 : (page - 1) * perPage + 1
+  const endIdx = Math.min(page * perPage, filtered.length)
+
+  function resetPage() { setPage(1) }
+
+  function handleSave(formData) {
+    if (modal?.type === 'edit') {
+      setAngkatan(prev => prev.map(a => a.id === modal.data.id ? { ...a, ...formData } : a))
+    } else {
+      const newId = Math.max(0, ...angkatan.map(a => a.id)) + 1
+      setAngkatan(prev => [...prev, { id: newId, ...formData }])
+    }
+    setModal(null)
+  }
+
+  function handleDelete(id) {
+    if (!window.confirm('Hapus data angkatan ini? Tindakan tidak dapat dibatalkan.')) return
+    setAngkatan(prev => prev.filter(a => a.id !== id))
+  }
+
+  function toggleSort() {
+    setSortDir(d => d === 'asc' ? 'desc' : 'asc')
+    resetPage()
+  }
+
+  return (
+    <div className="flex min-h-screen bg-[#F8FAF9]">
+      <AdminSidebar active="angkatan" />
+
+      <div className="flex-1 flex flex-col min-w-0">
+        {/* Header */}
+        <header className="sticky top-0 z-30 bg-white border-b border-gray-100 px-6 py-4 flex items-center justify-between gap-4">
+          <div>
+            <h1 className="text-lg font-bold text-[#0A2415]">Kelola Angkatan</h1>
+            <p className="text-xs text-gray-400 mt-0.5">Manajemen data angkatan lulusan pondok pesantren</p>
+          </div>
+          <button
+            onClick={() => setModal({ type: 'tambah' })}
+            className="flex items-center gap-2 px-4 py-2.5 rounded-xl text-sm font-bold text-white transition-colors"
+            style={{ backgroundColor: '#1A5C38' }}
+          >
+            <Plus className="w-4 h-4" />
+            Tambah Angkatan
+          </button>
+        </header>
+
+        <div className="flex-1 p-6">
+          {/* Stats */}
+          <div className="grid grid-cols-2 sm:grid-cols-4 gap-4 mb-6">
+            {[
+              { label: 'Total Angkatan', value: angkatan.length, color: '#1A5C38' },
+              { label: 'Angkatan Terbaru', value: `${Math.max(...angkatan.map(a => a.angkatanKe))}`, color: '#F0A500' },
+              { label: 'Tahun Pertama', value: Math.min(...angkatan.map(a => a.tahunLulusan)), color: '#0A2415' },
+              { label: 'Tahun Terakhir', value: Math.max(...angkatan.map(a => a.tahunLulusan)), color: '#2A7A4F' },
+            ].map(({ label, value, color }) => (
+              <div key={label} className="bg-white rounded-xl border border-gray-100 px-4 py-4">
+                <p className="text-xs text-gray-400 mb-1">{label}</p>
+                <p className="text-2xl font-bold" style={{ color }}>{value}</p>
+              </div>
+            ))}
+          </div>
+
+          {/* Filter bar */}
+          <div className="bg-white rounded-xl border border-gray-100 mb-4">
+            <div className="px-4 py-3 flex flex-wrap items-center gap-3">
+              <div className="relative flex-1 min-w-[180px] max-w-xs">
+                <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-3.5 h-3.5 text-gray-400" />
+                <input
+                  type="text"
+                  value={search}
+                  onChange={e => { setSearch(e.target.value); resetPage() }}
+                  placeholder="Cari nama, tahun, angkatan ke..."
+                  className="w-full pl-9 pr-4 py-2 text-sm border border-gray-200 rounded-lg focus:outline-none focus:border-[#1A5C38]"
+                />
+              </div>
+              <div className="ml-auto flex items-center gap-3">
+                <PerPageSelector value={perPage} options={[5, 10, 20]} onChange={n => { setPerPage(n); resetPage() }} />
+                <span className="text-xs text-gray-400">{startIdx}–{endIdx} dari {filtered.length}</span>
+              </div>
+            </div>
+          </div>
+
+          {/* Table */}
+          <div className="bg-white rounded-xl border border-gray-100 overflow-hidden">
+            <div className="overflow-x-auto">
+              <table className="w-full text-sm">
+                <thead>
+                  <tr className="border-b border-gray-100 bg-gray-50/60">
+                    <th className="text-left px-4 py-3 text-xs font-semibold text-gray-500 w-10">No</th>
+                    <th className="text-left px-4 py-3 text-xs font-semibold text-gray-500">Logo</th>
+                    <th className="px-4 py-3 text-xs font-semibold text-gray-500 text-center">
+                      <button
+                        className="inline-flex items-center gap-1 hover:text-[#1A5C38] transition-colors"
+                        onClick={toggleSort}
+                      >
+                        Angkatan Ke
+                        {sortDir === 'asc' ? <ChevronUp className="w-3 h-3" /> : <ChevronDown className="w-3 h-3" />}
+                      </button>
+                    </th>
+                    <th className="text-center px-4 py-3 text-xs font-semibold text-gray-500">Tahun Lulusan</th>
+                    <th className="text-left px-4 py-3 text-xs font-semibold text-gray-500">Nama Angkatan</th>
+                    <th className="text-center px-4 py-3 text-xs font-semibold text-gray-500">Aksi</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {paged.length === 0 ? (
+                    <tr>
+                      <td colSpan={6} className="text-center py-16 text-gray-400">
+                        <GraduationCap className="w-8 h-8 mx-auto mb-2 opacity-30" />
+                        <p className="text-sm">Tidak ada data angkatan ditemukan</p>
+                      </td>
+                    </tr>
+                  ) : paged.map((item, i) => (
+                    <tr key={item.id} className="border-b border-gray-50 hover:bg-gray-50/50 transition-colors">
+                      <td className="px-4 py-3 text-gray-400 text-xs">
+                        {(page - 1) * perPage + i + 1}
+                      </td>
+                      <td className="px-4 py-3">
+                        <div className="w-10 h-10 rounded-lg border border-gray-100 overflow-hidden flex items-center justify-center bg-gray-50">
+                          {item.logo ? (
+                            <img src={item.logo} alt={item.nama} className="w-full h-full object-contain" />
+                          ) : (
+                            <GraduationCap className="w-5 h-5 text-gray-300" />
+                          )}
+                        </div>
+                      </td>
+                      <td className="px-4 py-3 text-center">
+                        <span
+                          className="inline-flex items-center justify-center w-9 h-9 rounded-full text-sm font-bold"
+                          style={{ backgroundColor: '#E8F5EE', color: '#1A5C38' }}
+                        >
+                          {item.angkatanKe}
+                        </span>
+                      </td>
+                      <td className="px-4 py-3 text-center">
+                        <span className="font-mono font-bold text-[#0A2415]">{item.tahunLulusan}</span>
+                      </td>
+                      <td className="px-4 py-3">
+                        <p className="font-semibold text-[#0A2415] text-sm">{item.nama}</p>
+                      </td>
+                      <td className="px-4 py-3">
+                        <div className="flex items-center justify-center gap-1">
+                          <button
+                            onClick={() => setModal({ type: 'edit', data: item })}
+                            className="p-1.5 rounded-lg text-gray-400 hover:text-[#1A5C38] hover:bg-[#E8F5EE] transition-colors"
+                            title="Edit"
+                          >
+                            <Pencil className="w-4 h-4" />
+                          </button>
+                          <button
+                            onClick={() => handleDelete(item.id)}
+                            className="p-1.5 rounded-lg text-gray-400 hover:text-red-500 hover:bg-red-50 transition-colors"
+                            title="Hapus"
+                          >
+                            <Trash2 className="w-4 h-4" />
+                          </button>
+                        </div>
+                      </td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            </div>
+
+            {filtered.length > 0 && (
+              <div className="px-4 py-3 border-t border-gray-100 flex justify-center">
+                <PaginationBar page={page} totalPages={totalPages} onPage={setPage} />
+              </div>
+            )}
+          </div>
+        </div>
+      </div>
+
+      {modal && (
+        <AngkatanModal
+          data={modal.type === 'edit' ? modal.data : null}
+          onClose={() => setModal(null)}
+          onSave={handleSave}
+        />
+      )}
+    </div>
+  )
+}
