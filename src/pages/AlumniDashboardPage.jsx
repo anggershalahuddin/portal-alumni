@@ -55,6 +55,9 @@ const SEBAGAI_OPTIONS = [
   'Lainnya',
 ]
 
+const initKeahlian = ['React', 'Node.js', 'TypeScript', 'Machine Learning', 'Python']
+const initBahasa   = ['Indonesia (Native)', 'Arabic (Academic)', 'English (Professional)']
+
 const initUsaha = [
   {
     id: 1,
@@ -413,6 +416,82 @@ function UsahaModal({ item, onSave, onClose }) {
   )
 }
 
+// ── Keahlian & Bahasa Modal ────────────────────────────────────────────────────
+function KeahlianBahasaModal({ keahlian, bahasa, onSave, onClose }) {
+  const [listK, setListK] = useState([...keahlian])
+  const [listB, setListB] = useState([...bahasa])
+  const [inputK, setInputK] = useState('')
+  const [inputB, setInputB] = useState('')
+
+  function addK() {
+    const v = inputK.trim()
+    if (v && !listK.includes(v)) { setListK(p => [...p, v]); setInputK('') }
+  }
+  function addB() {
+    const v = inputB.trim()
+    if (v && !listB.includes(v)) { setListB(p => [...p, v]); setInputB('') }
+  }
+
+  return (
+    <ModalWrapper onClose={onClose}>
+      <div className="relative bg-white rounded-2xl shadow-2xl w-full max-w-md max-h-[90vh] flex flex-col">
+        <div className="flex items-center justify-between px-6 py-4 border-b border-gray-100">
+          <h2 className="text-base font-bold text-gray-900">Edit Keahlian & Bahasa</h2>
+          <button onClick={onClose}><X className="w-5 h-5 text-gray-400" /></button>
+        </div>
+        <div className="p-6 space-y-6 overflow-y-auto flex-1">
+
+          {/* Keahlian */}
+          <div>
+            <label className="block text-xs font-semibold text-gray-600 mb-2.5">Keahlian / Skills</label>
+            <div className="flex flex-wrap gap-2 mb-3 min-h-[32px]">
+              {listK.map(k => (
+                <span key={k} className="inline-flex items-center gap-1 text-xs text-[#1A5C38] border border-[#1A5C38]/30 bg-[#E8F5EE] px-2.5 py-1 rounded-full">
+                  {k}
+                  <button onClick={() => setListK(p => p.filter(x => x !== k))} className="hover:text-red-500 transition-colors"><X className="w-3 h-3" /></button>
+                </span>
+              ))}
+              {listK.length === 0 && <p className="text-xs text-gray-300">Belum ada keahlian</p>}
+            </div>
+            <div className="flex gap-2">
+              <input className={`${inp} flex-1`} placeholder="React, Python, Public Speaking..." value={inputK}
+                onChange={e => setInputK(e.target.value)}
+                onKeyDown={e => { if (e.key === 'Enter') { e.preventDefault(); addK() } }} />
+              <button onClick={addK} className="px-3 py-2 rounded-xl text-white text-sm font-bold shrink-0" style={{ backgroundColor: '#1A5C38' }}>Tambah</button>
+            </div>
+          </div>
+
+          {/* Bahasa */}
+          <div>
+            <label className="block text-xs font-semibold text-gray-600 mb-1.5">Bahasa</label>
+            <p className="text-[10px] text-gray-400 mb-2.5">Contoh: Indonesia (Native) · English (Professional) · Arabic (Academic)</p>
+            <div className="flex flex-wrap gap-2 mb-3 min-h-[32px]">
+              {listB.map(b => (
+                <span key={b} className="inline-flex items-center gap-1 text-xs text-gray-600 border border-gray-200 px-2.5 py-1 rounded-full">
+                  {b}
+                  <button onClick={() => setListB(p => p.filter(x => x !== b))} className="hover:text-red-500 transition-colors"><X className="w-3 h-3" /></button>
+                </span>
+              ))}
+              {listB.length === 0 && <p className="text-xs text-gray-300">Belum ada bahasa</p>}
+            </div>
+            <div className="flex gap-2">
+              <input className={`${inp} flex-1`} placeholder="English (Professional)" value={inputB}
+                onChange={e => setInputB(e.target.value)}
+                onKeyDown={e => { if (e.key === 'Enter') { e.preventDefault(); addB() } }} />
+              <button onClick={addB} className="px-3 py-2 rounded-xl text-white text-sm font-bold shrink-0" style={{ backgroundColor: '#1A5C38' }}>Tambah</button>
+            </div>
+          </div>
+        </div>
+        <div className="flex justify-end gap-3 px-6 py-4 border-t border-gray-100">
+          <button onClick={onClose} className="px-5 py-2.5 rounded-xl border border-gray-200 text-sm font-medium text-gray-700 hover:bg-gray-50">Batal</button>
+          <button onClick={() => { onSave(listK, listB); onClose() }}
+            className="px-5 py-2.5 rounded-xl text-sm font-bold text-white hover:opacity-90" style={{ backgroundColor: '#1A5C38' }}>Simpan</button>
+        </div>
+      </div>
+    </ModalWrapper>
+  )
+}
+
 // ── Kartu Alumni Modal ─────────────────────────────────────────────────────────
 function KartuAlumniModal({ user, profil, onClose }) {
   useScrollLock()
@@ -542,6 +621,8 @@ export default function AlumniDashboardPage() {
   const [sertifikasi, setSertifikasi] = useState(initSertifikasi)
   const [publikasi, setPublikasi] = useState(initPublikasi)
   const [usaha, setUsaha] = useState(initUsaha)
+  const [keahlian, setKeahlian] = useState(initKeahlian)
+  const [bahasa, setBahasa] = useState(initBahasa)
   const [notif, setNotif] = useState(initNotif)
 
   // UI states
@@ -566,13 +647,14 @@ export default function AlumniDashboardPage() {
     { label: 'Foto Profil', weight: 10, done: profil.foto },
     { label: 'Bio', weight: 10, done: !!profil.bio },
     { label: 'Bidang/Profesi', weight: 10, done: !!profil.bidang },
-    { label: 'Domisili', weight: 10, done: !!profil.domisili },
+    { label: 'Domisili', weight: 5, done: !!profil.domisili },
     { label: 'LinkedIn', weight: 10, done: !!profil.linkedin },
     { label: 'Riwayat Pendidikan', weight: 15, done: pendidikan.length > 0 },
     { label: 'Riwayat Pekerjaan', weight: 15, done: pekerjaan.length > 0 },
+    { label: 'Keahlian', weight: 10, done: keahlian.length > 0 },
     { label: 'Sertifikasi', weight: 5, done: sertifikasi.length > 0 },
     { label: 'Publikasi', weight: 5, done: publikasi.length > 0 },
-    { label: 'Lembaga/Badan Usaha', weight: 10, done: usaha.length > 0 },
+    { label: 'Lembaga/Badan Usaha', weight: 5, done: usaha.length > 0 },
   ]
   const profileCompletion = completionItems.reduce((a, i) => a + (i.done ? i.weight : 0), 0)
   const missing = completionItems.filter(i => !i.done)
@@ -918,6 +1000,46 @@ export default function AlumniDashboardPage() {
                 )}
               </section>
 
+              {/* Keahlian & Bahasa */}
+              <section className="bg-white rounded-2xl p-5 sm:p-6 border border-gray-100">
+                <div className="flex items-center justify-between mb-5">
+                  <div className="flex items-center gap-2">
+                    <Star className="w-4.5 h-4.5 text-[#1A5C38]" />
+                    <h2 className="text-sm font-bold text-[#0A2415]">Keahlian & Bahasa</h2>
+                  </div>
+                  <button onClick={() => setModal({ type: 'editKeahlianBahasa' })}
+                    className="flex items-center gap-1 text-xs font-semibold text-[#1A5C38] hover:text-[#0A2415] transition-colors">
+                    <Pencil className="w-3.5 h-3.5" /> Edit
+                  </button>
+                </div>
+                <div className="space-y-5">
+                  <div>
+                    <p className="text-[10px] font-bold text-gray-400 uppercase tracking-widest mb-2.5">Keahlian / Skills</p>
+                    {keahlian.length === 0 ? (
+                      <p className="text-sm text-gray-400">Belum ada keahlian. Klik Edit untuk menambahkan.</p>
+                    ) : (
+                      <div className="flex flex-wrap gap-2">
+                        {keahlian.map(k => (
+                          <span key={k} className="text-xs text-[#1A5C38] border border-[#1A5C38]/30 bg-[#E8F5EE] px-3 py-1 rounded-full">{k}</span>
+                        ))}
+                      </div>
+                    )}
+                  </div>
+                  <div>
+                    <p className="text-[10px] font-bold text-gray-400 uppercase tracking-widest mb-2.5">Bahasa</p>
+                    {bahasa.length === 0 ? (
+                      <p className="text-sm text-gray-400">Belum ada bahasa. Klik Edit untuk menambahkan.</p>
+                    ) : (
+                      <div className="flex flex-wrap gap-2">
+                        {bahasa.map(b => (
+                          <span key={b} className="text-xs text-gray-600 border border-gray-200 px-3 py-1 rounded-full">{b}</span>
+                        ))}
+                      </div>
+                    )}
+                  </div>
+                </div>
+              </section>
+
               {/* Publikasi */}
               <section className="bg-white rounded-2xl p-5 sm:p-6 border border-gray-100">
                 <div className="flex items-center justify-between mb-5">
@@ -1213,6 +1335,11 @@ export default function AlumniDashboardPage() {
       )}
       {modal?.type === 'addSertifikasi' && (
         <SertifikasiModal item={null} onSave={addSertifikasi} onClose={() => setModal(null)} />
+      )}
+      {modal?.type === 'editKeahlianBahasa' && (
+        <KeahlianBahasaModal keahlian={keahlian} bahasa={bahasa}
+          onSave={(k, b) => { setKeahlian(k); setBahasa(b) }}
+          onClose={() => setModal(null)} />
       )}
       {modal?.type === 'addPublikasi' && (
         <PublikasiModal item={null} onSave={addPublikasi} onClose={() => setModal(null)} />

@@ -3,7 +3,7 @@ import * as XLSX from 'xlsx'
 import {
   Search, Download, ChevronDown, X, BadgeCheck,
   GraduationCap, Briefcase, BookOpen, Mail, Globe,
-  Link2, Filter, Eye, FileSpreadsheet,
+  Link2, Filter, Eye, FileSpreadsheet, Building2, Handshake,
 } from 'lucide-react'
 import { motion } from 'framer-motion'
 import AdminSidebar from '@/components/admin/AdminSidebar'
@@ -28,12 +28,14 @@ function exportCSV(rows) {
     'Keahlian', 'Bahasa', 'Email Kontak', 'LinkedIn', 'Website',
     'Pengalaman Terbaru', 'Institusi Pengalaman', 'Periode Pengalaman',
     'Pendidikan Terakhir', 'Institusi Pendidikan', 'Tahun Pendidikan',
+    'Nama Lembaga', 'Jenis Lembaga', 'Sebagai di Lembaga', 'Buka Kerjasama',
     'Status Verifikasi',
   ]
 
   const csvRows = rows.map(({ alumni, detail, angkatanInfo }) => {
     const pengExp = detail?.pengalaman?.[0]
     const pengPend = detail?.pendidikan?.[0]
+    const lembaga0 = detail?.lembaga?.[0]
     return [
       alumni.name,
       alumni.angkatan,
@@ -54,6 +56,10 @@ function exportCSV(rows) {
       pengPend?.gelar ?? '',
       pengPend?.institusi ?? '',
       pengPend?.tahun ?? '',
+      lembaga0?.nama ?? '',
+      lembaga0?.jenis ?? '',
+      lembaga0?.sebagai ?? '',
+      lembaga0 ? (lembaga0.openKerjasama ? 'Ya' : 'Tidak') : '',
       alumni.isVerified ? 'Terverifikasi' : 'Belum Terverifikasi',
     ].map(escapeCSV).join(',')
   })
@@ -74,11 +80,13 @@ function exportXLSX(rows) {
     'Keahlian', 'Bahasa', 'Email Kontak', 'LinkedIn', 'Website',
     'Pengalaman Terbaru', 'Institusi Pengalaman', 'Periode Pengalaman',
     'Pendidikan Terakhir', 'Institusi Pendidikan', 'Tahun Pendidikan',
+    'Nama Lembaga', 'Jenis Lembaga', 'Sebagai di Lembaga', 'Buka Kerjasama',
     'Status Verifikasi',
   ]
   const data = rows.map(({ alumni, detail, angkatanInfo }) => {
     const pengExp = detail?.pengalaman?.[0]
     const pengPend = detail?.pendidikan?.[0]
+    const lembaga0 = detail?.lembaga?.[0]
     return [
       alumni.name, alumni.angkatan,
       angkatanInfo?.angkatanKe ?? '', angkatanInfo?.nama ?? '',
@@ -87,6 +95,8 @@ function exportXLSX(rows) {
       detail?.kontak?.email ?? '', detail?.kontak?.linkedin ?? '', detail?.kontak?.website ?? '',
       pengExp?.jabatan ?? '', pengExp?.institusi ?? '', pengExp?.periode ?? '',
       pengPend?.gelar ?? '', pengPend?.institusi ?? '', pengPend?.tahun ?? '',
+      lembaga0?.nama ?? '', lembaga0?.jenis ?? '', lembaga0?.sebagai ?? '',
+      lembaga0 ? (lembaga0.openKerjasama ? 'Ya' : 'Tidak') : '',
       alumni.isVerified ? 'Terverifikasi' : 'Belum Terverifikasi',
     ]
   })
@@ -145,11 +155,12 @@ function DetailModal({ alumni, detail, angkatanInfo, onClose }) {
         </div>
 
         {/* Tabs */}
-        <div className="flex border-b border-gray-100 px-6">
+        <div className="flex border-b border-gray-100 px-6 overflow-x-auto">
           {[
             { key: 'ringkasan', label: 'Ringkasan' },
             { key: 'pengalaman', label: 'Pengalaman' },
             { key: 'pendidikan', label: 'Pendidikan' },
+            { key: 'lembaga', label: 'Lembaga' },
             { key: 'kontak', label: 'Kontak' },
           ].map(t => (
             <button
@@ -259,6 +270,45 @@ function DetailModal({ alumni, detail, angkatanInfo, onClose }) {
                   </div>
                 </div>
               ))}
+            </div>
+          )}
+
+          {tab === 'lembaga' && (
+            <div className="space-y-4">
+              {detail?.lembaga?.length > 0 ? detail.lembaga.map((l, i) => (
+                <div key={i} className="flex gap-4 p-4 bg-gray-50 rounded-xl">
+                  <div className="w-9 h-9 bg-[#E8F5EE] rounded-lg flex items-center justify-center flex-shrink-0">
+                    <Building2 className="w-4 h-4 text-[#1A5C38]" />
+                  </div>
+                  <div className="flex-1 min-w-0">
+                    <div className="flex items-start justify-between gap-2 flex-wrap">
+                      <p className="font-semibold text-sm text-[#0A2415]">{l.nama}</p>
+                      <div className="flex items-center gap-1.5 flex-wrap">
+                        {l.sebagai && (
+                          <span className="text-[10px] font-bold px-2 py-0.5 rounded-full bg-[#0A2415]/10 text-[#0A2415]">{l.sebagai}</span>
+                        )}
+                        {l.openKerjasama && (
+                          <span className="inline-flex items-center gap-1 text-[10px] font-bold px-2 py-0.5 rounded-full bg-amber-50 text-amber-600">
+                            <Handshake className="w-2.5 h-2.5" /> Buka Kerjasama
+                          </span>
+                        )}
+                      </div>
+                    </div>
+                    <p className="text-xs text-[#1A5C38] font-medium mt-0.5">{l.jenis}</p>
+                    <div className="flex flex-wrap gap-x-4 gap-y-0.5 mt-1">
+                      {l.bidang && <p className="text-xs text-gray-500">{l.bidang}</p>}
+                      {l.lokasi && <p className="text-xs text-gray-400">{l.lokasi}</p>}
+                      {l.tahun && <p className="text-xs text-gray-400">Est. {l.tahun}</p>}
+                    </div>
+                    {l.deskripsi && <p className="text-xs text-gray-500 mt-1.5 leading-relaxed">{l.deskripsi}</p>}
+                    {l.website && (
+                      <p className="text-xs text-blue-500 mt-1">{l.website}</p>
+                    )}
+                  </div>
+                </div>
+              )) : (
+                <p className="text-sm text-gray-400 text-center py-8">Belum ada data lembaga / badan usaha.</p>
+              )}
             </div>
           )}
 
