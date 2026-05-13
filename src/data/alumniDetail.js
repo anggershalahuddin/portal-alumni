@@ -49,6 +49,9 @@ const details = {
     ],
   },
   4: {
+    lembaga: [
+      { nama: 'Nusantara Kreasi', jenis: 'Perusahaan (PT/CV/UD)', sebagai: 'Pendiri / Founder', bidang: 'Fashion & Modest Wear', lokasi: 'Bandung, Jawa Barat', tahun: 2020, website: 'nusantarakreasi.id', openKerjasama: true, deskripsi: 'Brand fashion modest wear yang melayani ribuan pelanggan di seluruh Indonesia.' },
+    ],
     bio: 'Founder dan creative director yang memadukan estetika modern dengan nilai-nilai Islami dalam setiap karya. Memulai bisnis fashion modest wear dari nol dan kini melayani ribuan pelanggan di seluruh Indonesia. Percaya bahwa kreativitas dan nilai pesantren bisa berjalan beriringan.',
     bahasa: ['Indonesia (Native)', 'English (Professional)', 'Arabic (Academic)'],
     kontak: { email: 'fatimah@nusantarakreasi.id', linkedin: 'linkedin.com/in/fatimahaz', website: 'nusantarakreasi.id' },
@@ -95,6 +98,9 @@ const details = {
     ],
   },
   7: {
+    lembaga: [
+      { nama: 'PasarBerkah.id', jenis: 'Perusahaan (PT/CV/UD)', sebagai: 'Direktur / CEO', bidang: 'Marketplace UMKM Syariah', lokasi: 'Jakarta, DKI Jakarta', tahun: 2015, website: 'pasarberkah.id', openKerjasama: true, deskripsi: 'Startup marketplace UMKM syariah yang melayani 500+ mitra di Jawa Barat.' },
+    ],
     bio: 'Tech entrepreneur yang telah membangun ekosistem UMKM berbasis digital sejak 2015. Perjalanan saya dimulai dari garasi rumah dengan modal seadanya, dengan bekal nilai-nilai keikhlasan dan kegigihan dari Daarul Mughni. Kini PasarBerkah.id melayani lebih dari 500 mitra UMKM di seluruh Jawa Barat.',
     bahasa: ['Indonesia (Native)', 'English (Professional)', 'Arabic (Academic)'],
     kontak: { email: 'hendra@pasarberkah.id', linkedin: 'linkedin.com/in/hendragunawan', website: 'pasarberkah.id' },
@@ -126,6 +132,9 @@ const details = {
     ],
   },
   9: {
+    lembaga: [
+      { nama: 'Kantor Notaris Fajar & Rekan', jenis: 'Lainnya', sebagai: 'Pendiri / Founder', bidang: 'Hukum & Kenotariatan', lokasi: 'Bogor, Jawa Barat', tahun: 2017, website: 'notarisfajar.co.id', openKerjasama: false, deskripsi: 'Kantor notaris & PPAT melayani akta jual beli, waris, dan pendirian perusahaan wilayah Bogor.' },
+    ],
     bio: 'Notaris dan PPAT berpengalaman yang telah menangani ribuan transaksi properti dan perusahaan. Integritas dan kejujuran yang saya pelajari di Daarul Mughni menjadi prinsip utama dalam setiap akta yang saya buat. Aktif sebagai pengurus Ikatan Notaris Indonesia cabang Bogor.',
     bahasa: ['Indonesia (Native)', 'Arabic (Academic)', 'Dutch (Passive)'],
     kontak: { email: 'notaris.fajar@gmail.com', linkedin: 'linkedin.com/in/fajarramdhani', website: 'notarisfajar.co.id' },
@@ -157,6 +166,9 @@ const details = {
     ],
   },
   11: {
+    lembaga: [
+      { nama: 'Pusat Studi Ekonomi Islam UI', jenis: 'Yayasan / Lembaga Sosial', sebagai: 'Ketua / Pengurus', bidang: 'Kajian Ekonomi Syariah', lokasi: 'Depok, Jawa Barat', tahun: 2018, website: 'yusufhabibi.academia.edu', openKerjasama: true, deskripsi: 'Lembaga riset dan kajian ekonomi Islam yang aktif menerbitkan jurnal dan menyelenggarakan seminar nasional.' },
+    ],
     bio: 'Dosen dan peneliti ekonomi Islam di Universitas Indonesia yang juga aktif sebagai konsultan kebijakan. Lebih dari 40 karya ilmiah telah dipublikasikan di jurnal internasional bereputasi. Fondasi keilmuan Islam yang kokoh dari Daarul Mughni menjadi keunggulan utama saya dalam mengintegrasikan nilai-nilai Islam dengan ilmu ekonomi modern.',
     bahasa: ['Indonesia (Native)', 'Arabic (Professional)', 'English (Professional)', 'French (Conversational)'],
     kontak: { email: 'yusuf.habibi@ui.ac.id', linkedin: 'linkedin.com/in/myusufhabibi', website: 'yusufhabibi.academia.edu' },

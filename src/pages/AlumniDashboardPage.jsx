@@ -45,11 +45,22 @@ const initPublikasi = [
   { id: 1, judul: 'Implementasi Machine Learning pada Sistem Rekomendasi Konten Digital', penerbit: 'Jurnal Informatika Indonesia', tahun: 2023, url: '' },
 ]
 
+const SEBAGAI_OPTIONS = [
+  'Pendiri / Founder',
+  'Direktur / CEO',
+  'Pengasuh',
+  'Ketua / Pengurus',
+  'Sekretaris / Bendahara',
+  'Anggota Aktif',
+  'Lainnya',
+]
+
 const initUsaha = [
   {
     id: 1,
     nama: 'TechNova Solutions',
     jenis: 'Perusahaan (PT/CV/UD)',
+    sebagai: 'Pendiri / Founder',
     bidang: 'Teknologi & Perangkat Lunak',
     lokasi: 'Jakarta Selatan',
     tahun: 2022,
@@ -308,6 +319,7 @@ function UsahaModal({ item, onSave, onClose }) {
   const [form, setForm] = useState({
     nama: item?.nama ?? '',
     jenis: item?.jenis ?? JENIS_USAHA[0].value,
+    sebagai: item?.sebagai ?? SEBAGAI_OPTIONS[0],
     bidang: item?.bidang ?? '',
     lokasi: item?.lokasi ?? '',
     tahun: item?.tahun ?? '',
@@ -341,6 +353,12 @@ function UsahaModal({ item, onSave, onClose }) {
               {JENIS_USAHA.map(j => (
                 <option key={j.value} value={j.value}>{j.value}</option>
               ))}
+            </select>
+          </MF>
+
+          <MF label="Sebagai *">
+            <select className={inp} value={form.sebagai} onChange={s('sebagai')}>
+              {SEBAGAI_OPTIONS.map(o => <option key={o} value={o}>{o}</option>)}
             </select>
           </MF>
 
@@ -975,7 +993,14 @@ export default function AlumniDashboardPage() {
                                     </span>
                                   )}
                                 </div>
-                                <p className="text-xs font-semibold mt-0.5" style={{ color: cfg.color }}>{u.jenis}</p>
+                                <div className="flex items-center gap-2 mt-0.5 flex-wrap">
+                                  <p className="text-xs font-semibold" style={{ color: cfg.color }}>{u.jenis}</p>
+                                  {u.sebagai && (
+                                    <span className="text-[10px] font-semibold px-2 py-0.5 rounded-full bg-gray-100 text-gray-600">
+                                      {u.sebagai}
+                                    </span>
+                                  )}
+                                </div>
                                 <div className="flex items-center gap-3 mt-1.5 text-[11px] text-gray-400 flex-wrap">
                                   {u.bidang && <span>{u.bidang}</span>}
                                   {u.lokasi && <span className="flex items-center gap-1"><MapPin className="w-3 h-3" />{u.lokasi}</span>}
