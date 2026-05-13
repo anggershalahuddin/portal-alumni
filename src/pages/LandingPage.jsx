@@ -10,7 +10,7 @@ import Footer from '../components/landing/Footer'
 
 export default function LandingPage() {
   return (
-    <div className="font-sans">
+    <div className="font-sans overflow-x-hidden">
       <Navbar />
       <main>
         <Hero />

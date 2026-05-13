@@ -10,7 +10,7 @@ const up = (delay = 0) => ({
 
 export default function Hero() {
   return (
-    <section className="relative min-h-screen flex items-center pt-16">
+    <section className="relative min-h-screen flex items-center pt-16 overflow-hidden">
       {/* Background photo */}
       <img
         src={heroImg}
@@ -49,7 +49,7 @@ export default function Hero() {
           {/* Heading */}
           <motion.h1
             {...up(0.25)}
-            className="text-5xl sm:text-6xl lg:text-[68px] font-bold text-white leading-[1.06] mb-6 tracking-tight"
+            className="text-4xl sm:text-6xl lg:text-[68px] font-bold text-white leading-[1.06] mb-6 tracking-tight"
           >
             Menjalin Ukhuwah,{' '}
             <span className="text-[#F0A500]">Membangun Masa Depan</span>
