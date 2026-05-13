@@ -1,6 +1,7 @@
 import { motion } from 'framer-motion'
 import { ArrowRight, ChevronRight } from 'lucide-react'
 import heroImg from '@/assets/hero.jpg'
+import { TOTAL_ALUMNI } from '@/data/alumni'
 
 const up = (delay = 0) => ({
   initial: { opacity: 0, y: 28 },
@@ -86,7 +87,7 @@ export default function Hero() {
             className="flex flex-wrap gap-10 mt-16 pt-8 border-t border-white/10"
           >
             {[
-              { value: '300+', label: 'Alumni Terdaftar' },
+              { value: TOTAL_ALUMNI.toLocaleString('id-ID') + '+', label: 'Alumni Terdaftar' },
               { value: '20+', label: 'Angkatan' },
               { value: '2006', label: 'Tahun Pertama Lulusan' },
             ].map(({ value, label }) => (

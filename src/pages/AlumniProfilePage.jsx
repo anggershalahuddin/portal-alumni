@@ -5,7 +5,8 @@ import {
   BadgeCheck, MapPin, GraduationCap, Mail, Phone, Globe,
   Link2, Download, Shield, MessageCircle, UserPlus,
   MoreHorizontal, Briefcase, BookOpen, Activity, ExternalLink,
-  ChevronRight, Heart,
+  ChevronRight, Heart, Building2, ShoppingBag, Users, Layers,
+  Handshake, Calendar,
 } from 'lucide-react'
 import Navbar from '@/components/landing/Navbar'
 import Footer from '@/components/landing/Footer'
@@ -300,6 +301,46 @@ export default function AlumniProfilePage() {
                       </div>
                     </div>
                   )}
+
+                  {/* Lembaga ringkas */}
+                  {detail.lembaga?.length > 0 && (
+                    <div className="bg-white rounded-xl border border-gray-100 p-6">
+                      <div className="flex items-center justify-between mb-4">
+                        <h2 className="flex items-center gap-2 font-bold text-[#0A2415]">
+                          <span className="w-1 h-5 bg-[#F0A500] rounded-full" />
+                          Lembaga & Badan Usaha
+                        </h2>
+                        <button
+                          onClick={() => setActiveTab('pengalaman')}
+                          className="text-xs text-[#1A5C38] font-semibold hover:underline flex items-center gap-1"
+                        >
+                          Lihat semua
+                          <ChevronRight className="w-3 h-3" />
+                        </button>
+                      </div>
+                      <div className="space-y-3">
+                        {detail.lembaga.slice(0, 1).map((l, i) => (
+                          <div key={i} className="flex gap-4 items-start">
+                            <div className="w-10 h-10 rounded-lg flex items-center justify-center flex-shrink-0 bg-[#EFF6FF]">
+                              <Building2 className="w-5 h-5 text-[#1D4ED8]" />
+                            </div>
+                            <div>
+                              <div className="flex items-center gap-2 flex-wrap">
+                                <p className="font-semibold text-sm text-[#0A2415]">{l.nama}</p>
+                                {l.sebagai && <span className="text-[10px] bg-gray-100 text-gray-600 px-2 py-0.5 rounded-full font-semibold">{l.sebagai}</span>}
+                              </div>
+                              <p className="text-xs text-gray-500 mt-0.5">{l.bidang}{l.lokasi ? ` · ${l.lokasi}` : ''}</p>
+                              {l.openKerjasama && (
+                                <span className="inline-flex items-center gap-1 text-[9px] font-bold px-1.5 py-0.5 rounded-full bg-blue-50 text-blue-600 mt-1">
+                                  <Handshake className="w-2.5 h-2.5" /> Terbuka untuk Kerjasama
+                                </span>
+                              )}
+                            </div>
+                          </div>
+                        ))}
+                      </div>
+                    </div>
+                  )}
                 </div>
               )}
 
@@ -373,6 +414,63 @@ export default function AlumniProfilePage() {
                       ))}
                     </div>
                   </div>
+
+                  {/* Lembaga & Badan Usaha */}
+                  {detail.lembaga?.length > 0 && (
+                    <div className="bg-white rounded-xl border border-gray-100 p-6">
+                      <h2 className="flex items-center gap-2 font-bold text-[#0A2415] mb-5">
+                        <Building2 className="w-4 h-4 text-[#1A5C38]" />
+                        Lembaga & Badan Usaha
+                      </h2>
+                      <div className="space-y-4">
+                        {detail.lembaga.map((l, i) => {
+                          const iconMap = {
+                            'Perusahaan (PT/CV/UD)': { icon: Building2, color: '#1D4ED8', bg: '#EFF6FF' },
+                            'Pesantren / Lembaga Pendidikan': { icon: BookOpen, color: '#1A5C38', bg: '#F0FDF4' },
+                            'Yayasan / Lembaga Sosial': { icon: Heart, color: '#DB2777', bg: '#FDF2F8' },
+                            'Toko / UMKM': { icon: ShoppingBag, color: '#D97706', bg: '#FFFBEB' },
+                            'Koperasi': { icon: Users, color: '#0E7490', bg: '#ECFEFF' },
+                            'Lainnya': { icon: Layers, color: '#6B7280', bg: '#F9FAFB' },
+                          }
+                          const cfg = iconMap[l.jenis] ?? iconMap['Lainnya']
+                          const Icon = cfg.icon
+                          return (
+                            <div key={i} className="flex gap-4">
+                              <div className="w-10 h-10 rounded-lg flex items-center justify-center flex-shrink-0" style={{ backgroundColor: cfg.bg }}>
+                                <Icon className="w-5 h-5" style={{ color: cfg.color }} />
+                              </div>
+                              <div className="flex-1">
+                                <div className="flex items-center gap-2 flex-wrap">
+                                  <p className="font-bold text-sm text-[#0A2415]">{l.nama}</p>
+                                  {l.openKerjasama && (
+                                    <span className="inline-flex items-center gap-1 text-[9px] font-bold px-1.5 py-0.5 rounded-full bg-blue-50 text-blue-600">
+                                      <Handshake className="w-2.5 h-2.5" /> Buka Kerjasama
+                                    </span>
+                                  )}
+                                </div>
+                                <div className="flex items-center gap-2 mt-0.5 flex-wrap">
+                                  <p className="text-xs font-semibold" style={{ color: cfg.color }}>{l.jenis}</p>
+                                  {l.sebagai && <span className="text-[10px] bg-gray-100 text-gray-600 px-2 py-0.5 rounded-full font-semibold">{l.sebagai}</span>}
+                                </div>
+                                <div className="flex items-center gap-3 mt-1 text-xs text-gray-400 flex-wrap">
+                                  {l.bidang && <span>{l.bidang}</span>}
+                                  {l.lokasi && <span className="flex items-center gap-1"><MapPin className="w-3 h-3" />{l.lokasi}</span>}
+                                  {l.tahun && <span className="flex items-center gap-1"><Calendar className="w-3 h-3" />Est. {l.tahun}</span>}
+                                </div>
+                                {l.deskripsi && <p className="text-xs text-gray-500 mt-1.5 leading-relaxed">{l.deskripsi}</p>}
+                                {l.website && (
+                                  <a href={`https://${l.website}`} target="_blank" rel="noreferrer"
+                                    className="text-[11px] text-[#1A5C38] font-semibold flex items-center gap-1 mt-1 hover:underline">
+                                    <Globe className="w-3 h-3" />{l.website}
+                                  </a>
+                                )}
+                              </div>
+                            </div>
+                          )
+                        })}
+                      </div>
+                    </div>
+                  )}
                 </div>
               )}
 
