@@ -19,6 +19,7 @@ import KontakPage from './pages/KontakPage'
 import PrivasiPage from './pages/PrivasiPage'
 import SyaratPage from './pages/SyaratPage'
 import VerifikasiStatusPage from './pages/VerifikasiStatusPage'
+import AuthCallbackPage from './pages/AuthCallbackPage'
 
 import AdminDashboardPage from './pages/admin/AdminDashboardPage'
 import AdminVerifikasiPage from './pages/admin/AdminVerifikasiPage'
@@ -58,6 +59,7 @@ function App() {
           <Route path="/privasi" element={<PrivasiPage />} />
           <Route path="/syarat" element={<SyaratPage />} />
           <Route path="/verifikasi-status" element={<VerifikasiStatusPage />} />
+          <Route path="/auth/callback" element={<AuthCallbackPage />} />
 
           {/* ── Admin routes (role-protected) ── */}
           <Route path="/admin" element={<Navigate to="/admin/dashboard" replace />} />

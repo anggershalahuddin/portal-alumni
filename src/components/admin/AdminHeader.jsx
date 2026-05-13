@@ -143,7 +143,7 @@ function ProfileDropdown({ user, onClose, onLogout }) {
 }
 
 export default function AdminHeader({ searchValue = '', onSearchChange, searchPlaceholder = 'Cari...' }) {
-  const { user, logout } = useAuth()
+  const { user, signOut } = useAuth()
   const navigate = useNavigate()
 
   const [notif, setNotif] = useState(initialNotif)
@@ -172,9 +172,9 @@ export default function AdminHeader({ searchValue = '', onSearchChange, searchPl
     setNotif((n) => n.map((x) => ({ ...x, dibaca: true })))
   }
 
-  function handleLogout() {
+  async function handleLogout() {
     setShowProfile(false)
-    logout()
+    await signOut()
     navigate('/masuk')
   }
 

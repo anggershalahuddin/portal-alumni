@@ -1,39 +1,45 @@
 import { useState } from 'react'
 import { Link, useNavigate } from 'react-router-dom'
-import { Mail, Lock, Eye, EyeOff, Shield, GraduationCap } from 'lucide-react'
+import { Mail, Lock, Eye, EyeOff, Shield, AlertCircle } from 'lucide-react'
 import heroImg from '@/assets/hero.jpg'
 import { useAuth } from '@/context/AuthContext'
 
-const DEMO_ACCOUNTS = [
-  { role: 'Super Admin', label: 'Super Admin', desc: 'Akses penuh', color: '#15803D', bg: '#F0FDF4', border: '#86EFAC' },
-  { role: 'Admin',       label: 'Admin',       desc: 'Tanpa Pengaturan & User', color: '#1D4ED8', bg: '#EFF6FF', border: '#93C5FD' },
-  { role: 'Editor',      label: 'Editor',      desc: 'Konten saja', color: '#7C3AED', bg: '#FAF5FF', border: '#C4B5FD' },
-]
+const ADMIN_ROLES = ['super_admin', 'admin', 'editor']
 
 export default function LoginPage() {
   const navigate = useNavigate()
-  const { login } = useAuth()
+  const { signIn, signInWithGoogle } = useAuth()
   const [email, setEmail] = useState('')
   const [password, setPassword] = useState('')
   const [showPassword, setShowPassword] = useState(false)
+  const [error, setError] = useState('')
+  const [loading, setLoading] = useState(false)
 
-  function handleSubmit(e) {
+  async function handleSubmit(e) {
     e.preventDefault()
-    // Demo: route based on email prefix
-    if (email.startsWith('superadmin')) {
-      login('Super Admin'); navigate('/admin/dashboard')
-    } else if (email.startsWith('admin')) {
-      login('Admin'); navigate('/admin/dashboard')
-    } else if (email.startsWith('editor')) {
-      login('Editor'); navigate('/admin/dashboard')
+    setError('')
+    setLoading(true)
+    const { data, error: err } = await signIn({ email, password })
+    setLoading(false)
+    if (err) {
+      setError(
+        err.message === 'Invalid login credentials'
+          ? 'Email atau kata sandi salah.'
+          : err.message
+      )
+      return
+    }
+    // Arahkan berdasarkan role dari profile
+    const role = data?.user?.user_metadata?.role ?? null
+    if (ADMIN_ROLES.includes(role)) {
+      navigate('/admin/dashboard')
     } else {
       navigate('/dashboard')
     }
   }
 
-  function handleDemoLogin(role) {
-    login(role)
-    navigate('/admin/dashboard')
+  async function handleGoogle() {
+    await signInWithGoogle()
   }
 
   return (
@@ -120,8 +126,8 @@ export default function LoginPage() {
           {/* Google Button */}
           <button
             type="button"
-            className="w-full flex items-center justify-center gap-3 py-3.5 rounded-xl font-bold text-sm transition-all hover:brightness-95 mb-5"
-            style={{ backgroundColor: '#F0A500', color: '#0A2415' }}
+            onClick={handleGoogle}
+            className="w-full flex items-center justify-center gap-3 py-3.5 rounded-xl font-bold text-sm transition-all hover:brightness-95 mb-5 border border-gray-200 bg-white text-gray-700"
           >
             <svg viewBox="0 0 24 24" className="w-5 h-5 flex-shrink-0" fill="none">
               <path d="M22.56 12.25c0-.78-.07-1.53-.2-2.25H12v4.26h5.92c-.26 1.37-1.04 2.53-2.21 3.31v2.77h3.57c2.08-1.92 3.28-4.74 3.28-8.09z" fill="#4285F4"/>
@@ -204,41 +210,25 @@ export default function LoginPage() {
               </div>
             </div>
 
+            {/* Error */}
+            {error && (
+              <div className="flex items-center gap-2 p-3 rounded-xl bg-red-50 border border-red-200">
+                <AlertCircle className="w-4 h-4 text-red-500 flex-shrink-0" />
+                <p className="text-xs text-red-600">{error}</p>
+              </div>
+            )}
+
             {/* Submit */}
             <button
               type="submit"
-              className="w-full py-3.5 rounded-xl font-bold text-sm text-white transition-all hover:brightness-110 mt-1"
+              disabled={loading}
+              className="w-full py-3.5 rounded-xl font-bold text-sm text-white transition-all hover:brightness-110 mt-1 disabled:opacity-60 disabled:cursor-not-allowed flex items-center justify-center gap-2"
               style={{ backgroundColor: '#1A5C38' }}
             >
-              Masuk Sekarang
+              {loading && <span className="w-4 h-4 border-2 border-white border-t-transparent rounded-full animate-spin" />}
+              {loading ? 'Memproses...' : 'Masuk Sekarang'}
             </button>
           </form>
-
-          {/* Demo accounts */}
-          <div className="mt-5 rounded-xl border border-dashed border-gray-300 p-4">
-            <p className="text-[10px] font-bold text-gray-400 uppercase tracking-widest mb-3">
-              Demo — Masuk sebagai
-            </p>
-            <div className="space-y-2">
-              {DEMO_ACCOUNTS.map(({ role, label, desc, color, bg, border }) => (
-                <button
-                  key={role}
-                  type="button"
-                  onClick={() => handleDemoLogin(role)}
-                  className="w-full flex items-center justify-between px-3 py-2.5 rounded-xl border text-left transition-all hover:shadow-sm"
-                  style={{ backgroundColor: bg, borderColor: border }}
-                >
-                  <div>
-                    <p className="text-xs font-bold" style={{ color }}>{label}</p>
-                    <p className="text-[10px] text-gray-500 mt-0.5">{desc}</p>
-                  </div>
-                  <span className="text-[10px] font-semibold px-2 py-1 rounded-lg" style={{ backgroundColor: color, color: '#fff' }}>
-                    Masuk
-                  </span>
-                </button>
-              ))}
-            </div>
-          </div>
 
           {/* Info box */}
           <div
