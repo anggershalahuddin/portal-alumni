@@ -7,7 +7,7 @@ import {
   Check, CheckCheck, ChevronRight, LogOut, Settings,
   FileText, Globe, Users, Clock, Newspaper, CalendarDays,
   Shield, AlertCircle, ExternalLink, Loader2, Star, Image as ImageIcon,
-  Phone, Mail,
+  Phone, Mail, Building2, ShoppingBag, Heart, Handshake, Layers,
 } from 'lucide-react'
 import Footer from '../components/landing/Footer'
 import { news } from '../data/news'
@@ -44,6 +44,34 @@ const initSertifikasi = [
 const initPublikasi = [
   { id: 1, judul: 'Implementasi Machine Learning pada Sistem Rekomendasi Konten Digital', penerbit: 'Jurnal Informatika Indonesia', tahun: 2023, url: '' },
 ]
+
+const initUsaha = [
+  {
+    id: 1,
+    nama: 'TechNova Solutions',
+    jenis: 'Perusahaan (PT/CV/UD)',
+    bidang: 'Teknologi & Perangkat Lunak',
+    lokasi: 'Jakarta Selatan',
+    tahun: 2022,
+    deskripsi: 'Perusahaan teknologi fokus pada pengembangan platform SaaS untuk UMKM.',
+    website: '',
+    openKerjasama: true,
+  },
+]
+
+// Konfigurasi visual per jenis usaha
+const JENIS_USAHA = [
+  { value: 'Perusahaan (PT/CV/UD)',        icon: Building2,    color: '#1D4ED8', bg: '#EFF6FF' },
+  { value: 'Pesantren / Lembaga Pendidikan', icon: BookOpen,    color: '#1A5C38', bg: '#F0FDF4' },
+  { value: 'Yayasan / Lembaga Sosial',      icon: Heart,        color: '#DB2777', bg: '#FDF2F8' },
+  { value: 'Toko / UMKM',                   icon: ShoppingBag,  color: '#D97706', bg: '#FFFBEB' },
+  { value: 'Koperasi',                       icon: Users,        color: '#0E7490', bg: '#ECFEFF' },
+  { value: 'Lainnya',                        icon: Layers,       color: '#6B7280', bg: '#F9FAFB' },
+]
+
+function jenisConfig(jenis) {
+  return JENIS_USAHA.find(j => j.value === jenis) ?? JENIS_USAHA[JENIS_USAHA.length - 1]
+}
 
 // ── Alumni notifications ───────────────────────────────────────────────────────
 const initNotif = [
@@ -275,6 +303,98 @@ function PublikasiModal({ item, onSave, onClose }) {
   )
 }
 
+// ── Usaha & Kepemilikan Modal ──────────────────────────────────────────────────
+function UsahaModal({ item, onSave, onClose }) {
+  const [form, setForm] = useState({
+    nama: item?.nama ?? '',
+    jenis: item?.jenis ?? JENIS_USAHA[0].value,
+    bidang: item?.bidang ?? '',
+    lokasi: item?.lokasi ?? '',
+    tahun: item?.tahun ?? '',
+    deskripsi: item?.deskripsi ?? '',
+    website: item?.website ?? '',
+    openKerjasama: item?.openKerjasama ?? false,
+  })
+  const s = k => e => setForm(p => ({ ...p, [k]: e.target.value }))
+  const cfg = jenisConfig(form.jenis)
+  const Icon = cfg.icon
+
+  return (
+    <ModalWrapper onClose={onClose}>
+      <div className="relative bg-white rounded-2xl shadow-2xl w-full max-w-md max-h-[90vh] flex flex-col">
+        <div className="flex items-center justify-between px-6 py-4 border-b border-gray-100">
+          <div className="flex items-center gap-2">
+            <div className="w-7 h-7 rounded-lg flex items-center justify-center" style={{ backgroundColor: cfg.bg }}>
+              <Icon className="w-4 h-4" style={{ color: cfg.color }} />
+            </div>
+            <h2 className="text-base font-bold text-gray-900">{item ? 'Edit' : 'Tambah'} Usaha / Kepemilikan</h2>
+          </div>
+          <button onClick={onClose}><X className="w-5 h-5 text-gray-400" /></button>
+        </div>
+        <div className="p-6 space-y-4 overflow-y-auto flex-1">
+          <MF label="Nama Usaha / Lembaga *">
+            <input className={inp} value={form.nama} onChange={s('nama')} placeholder="Nama perusahaan, pesantren, yayasan..." />
+          </MF>
+
+          <MF label="Jenis *">
+            <select className={inp} value={form.jenis} onChange={s('jenis')}>
+              {JENIS_USAHA.map(j => (
+                <option key={j.value} value={j.value}>{j.value}</option>
+              ))}
+            </select>
+          </MF>
+
+          <div className="grid grid-cols-2 gap-3">
+            <MF label="Bidang / Sektor">
+              <input className={inp} value={form.bidang} onChange={s('bidang')} placeholder="Teknologi, Kuliner..." />
+            </MF>
+            <MF label="Lokasi">
+              <input className={inp} value={form.lokasi} onChange={s('lokasi')} placeholder="Kota, Provinsi" />
+            </MF>
+          </div>
+
+          <MF label="Tahun Berdiri">
+            <input className={inp} type="number" value={form.tahun} onChange={s('tahun')} placeholder="2020" min="1900" max={new Date().getFullYear()} />
+          </MF>
+
+          <MF label="Deskripsi Singkat">
+            <textarea className={`${inp} resize-none`} rows={3} value={form.deskripsi} onChange={s('deskripsi')}
+              placeholder="Jelaskan kegiatan utama, produk, atau layanan..." />
+          </MF>
+
+          <MF label="Website / Media Sosial">
+            <input className={inp} type="url" value={form.website} onChange={s('website')} placeholder="https://..." />
+          </MF>
+
+          <label className="flex items-start gap-3 cursor-pointer p-3 rounded-xl border border-gray-100 hover:border-[#1A5C38]/30 transition-colors">
+            <input
+              type="checkbox"
+              checked={form.openKerjasama}
+              onChange={e => setForm(p => ({ ...p, openKerjasama: e.target.checked }))}
+              className="mt-0.5 w-4 h-4 accent-green-600 flex-shrink-0"
+            />
+            <div>
+              <p className="text-sm font-semibold text-gray-800">Terbuka untuk Kerjasama Alumni</p>
+              <p className="text-xs text-gray-400 mt-0.5">
+                Tandai jika usaha ini membuka peluang magang, rekrutmen, atau kerjasama dengan alumni lain
+              </p>
+            </div>
+          </label>
+        </div>
+        <div className="flex justify-end gap-3 px-6 py-4 border-t border-gray-100">
+          <button onClick={onClose} className="px-5 py-2.5 rounded-xl border border-gray-200 text-sm font-medium text-gray-700 hover:bg-gray-50">Batal</button>
+          <button
+            onClick={() => form.nama && onSave(form)}
+            disabled={!form.nama}
+            className="px-5 py-2.5 rounded-xl text-sm font-bold text-white hover:opacity-90 disabled:opacity-40"
+            style={{ backgroundColor: '#1A5C38' }}
+          >Simpan</button>
+        </div>
+      </div>
+    </ModalWrapper>
+  )
+}
+
 // ── Kartu Alumni Modal ─────────────────────────────────────────────────────────
 function KartuAlumniModal({ user, profil, onClose }) {
   useScrollLock()
@@ -403,6 +523,7 @@ export default function AlumniDashboardPage() {
   const [pekerjaan, setPekerjaan] = useState(initPekerjaan)
   const [sertifikasi, setSertifikasi] = useState(initSertifikasi)
   const [publikasi, setPublikasi] = useState(initPublikasi)
+  const [usaha, setUsaha] = useState(initUsaha)
   const [notif, setNotif] = useState(initNotif)
 
   // UI states
@@ -431,8 +552,9 @@ export default function AlumniDashboardPage() {
     { label: 'LinkedIn', weight: 10, done: !!profil.linkedin },
     { label: 'Riwayat Pendidikan', weight: 15, done: pendidikan.length > 0 },
     { label: 'Riwayat Pekerjaan', weight: 15, done: pekerjaan.length > 0 },
-    { label: 'Sertifikasi', weight: 10, done: sertifikasi.length > 0 },
-    { label: 'Publikasi', weight: 10, done: publikasi.length > 0 },
+    { label: 'Sertifikasi', weight: 5, done: sertifikasi.length > 0 },
+    { label: 'Publikasi', weight: 5, done: publikasi.length > 0 },
+    { label: 'Usaha/Kepemilikan', weight: 10, done: usaha.length > 0 },
   ]
   const profileCompletion = completionItems.reduce((a, i) => a + (i.done ? i.weight : 0), 0)
   const missing = completionItems.filter(i => !i.done)
@@ -457,6 +579,10 @@ export default function AlumniDashboardPage() {
 
   function addPublikasi(form) { setPublikasi(p => [...p, { ...form, id: Date.now() }]); setModal(null) }
   function delPublikasi(id) { setPublikasi(p => p.filter(x => x.id !== id)) }
+
+  function addUsaha(form) { setUsaha(p => [...p, { ...form, id: Date.now() }]); setModal(null) }
+  function editUsaha(id, form) { setUsaha(p => p.map(x => x.id === id ? { ...x, ...form } : x)); setModal(null) }
+  function delUsaha(id) { setUsaha(p => p.filter(x => x.id !== id)) }
 
   return (
     <div className="min-h-screen bg-[#F8FAF9] flex flex-col">
@@ -812,6 +938,76 @@ export default function AlumniDashboardPage() {
                 )}
               </section>
 
+              {/* Usaha & Kepemilikan */}
+              <section className="bg-white rounded-2xl p-5 sm:p-6 border border-gray-100">
+                <div className="flex items-center justify-between mb-5">
+                  <div className="flex items-center gap-2">
+                    <Building2 className="w-4.5 h-4.5 text-[#1A5C38]" />
+                    <h2 className="text-sm font-bold text-[#0A2415]">Usaha & Kepemilikan</h2>
+                  </div>
+                  <button onClick={() => setModal({ type: 'addUsaha' })}
+                    className="flex items-center gap-1 text-xs font-semibold text-[#1A5C38] hover:text-[#0A2415] transition-colors">
+                    <Plus className="w-3.5 h-3.5" /> Tambah
+                  </button>
+                </div>
+                {usaha.length === 0 ? (
+                  <p className="text-sm text-gray-400 text-center py-6">Belum ada usaha atau kepemilikan yang ditambahkan.</p>
+                ) : (
+                  <div className="space-y-3">
+                    {usaha.map((u, i) => {
+                      const cfg = jenisConfig(u.jenis)
+                      const Icon = cfg.icon
+                      return (
+                        <motion.div key={u.id} initial={{ opacity: 0, x: -8 }} animate={{ opacity: 1, x: 0 }} transition={{ delay: i * 0.05 }}
+                          className="flex items-start gap-3 p-4 rounded-xl border border-gray-100 group hover:border-[#1A5C38]/20 transition-colors">
+                          <div className="w-10 h-10 rounded-xl flex items-center justify-center flex-shrink-0" style={{ backgroundColor: cfg.bg }}>
+                            <Icon className="w-5 h-5" style={{ color: cfg.color }} />
+                          </div>
+                          <div className="flex-1 min-w-0">
+                            <div className="flex items-start justify-between gap-2">
+                              <div className="flex-1 min-w-0">
+                                <div className="flex items-center gap-2 flex-wrap">
+                                  <h3 className="text-sm font-bold text-[#0A2415]">{u.nama}</h3>
+                                  {u.openKerjasama && (
+                                    <span className="inline-flex items-center gap-1 text-[9px] font-bold px-1.5 py-0.5 rounded-full"
+                                      style={{ backgroundColor: '#EFF6FF', color: '#1D4ED8' }}>
+                                      <Handshake className="w-2.5 h-2.5" /> Buka Kerjasama
+                                    </span>
+                                  )}
+                                </div>
+                                <p className="text-xs font-semibold mt-0.5" style={{ color: cfg.color }}>{u.jenis}</p>
+                                <div className="flex items-center gap-3 mt-1.5 text-[11px] text-gray-400 flex-wrap">
+                                  {u.bidang && <span>{u.bidang}</span>}
+                                  {u.lokasi && <span className="flex items-center gap-1"><MapPin className="w-3 h-3" />{u.lokasi}</span>}
+                                  {u.tahun && <span className="flex items-center gap-1"><Calendar className="w-3 h-3" />Est. {u.tahun}</span>}
+                                </div>
+                                {u.deskripsi && <p className="text-xs text-gray-500 mt-1.5 leading-relaxed line-clamp-2">{u.deskripsi}</p>}
+                                {u.website && (
+                                  <a href={u.website} target="_blank" rel="noreferrer"
+                                    className="text-[10px] text-[#1A5C38] font-semibold flex items-center gap-1 mt-1 hover:underline">
+                                    <Globe className="w-3 h-3" />Website
+                                  </a>
+                                )}
+                              </div>
+                              <div className="flex items-center gap-1 shrink-0">
+                                <button onClick={() => setModal({ type: 'editUsaha', item: u })}
+                                  className="w-7 h-7 rounded-lg hover:bg-gray-100 flex items-center justify-center text-gray-300 hover:text-[#1A5C38] transition-colors">
+                                  <Pencil className="w-3.5 h-3.5" />
+                                </button>
+                                <button onClick={() => delUsaha(u.id)}
+                                  className="w-7 h-7 rounded-lg hover:bg-red-50 flex items-center justify-center text-gray-200 hover:text-red-400 transition-colors">
+                                  <Trash2 className="w-3.5 h-3.5" />
+                                </button>
+                              </div>
+                            </div>
+                          </div>
+                        </motion.div>
+                      )
+                    })}
+                  </div>
+                )}
+              </section>
+
               {/* Banner Penghargaan */}
               <div className="rounded-2xl p-5 sm:p-6 flex items-center gap-5" style={{ background: 'linear-gradient(135deg, #1A5C38 0%, #0A2415 100%)' }}>
                 <div className="flex-1">
@@ -840,6 +1036,7 @@ export default function AlumniDashboardPage() {
                     { label: 'Tambah Karir', icon: Briefcase, action: () => setModal({ type: 'addPekerjaan' }) },
                     { label: 'Sertifikasi', icon: Award, action: () => setModal({ type: 'addSertifikasi' }) },
                     { label: 'Publikasi', icon: BookOpen, action: () => setModal({ type: 'addPublikasi' }) },
+                    { label: 'Usaha', icon: Building2, action: () => setModal({ type: 'addUsaha' }) },
                     { label: 'Kartu Alumni', icon: FileText, action: () => setModal({ type: 'kartu' }) },
                     { label: 'Direktori', icon: Users, action: () => navigate('/direktori') },
                   ].map(({ label, icon: Icon, action }) => (
@@ -994,6 +1191,12 @@ export default function AlumniDashboardPage() {
       )}
       {modal?.type === 'addPublikasi' && (
         <PublikasiModal item={null} onSave={addPublikasi} onClose={() => setModal(null)} />
+      )}
+      {modal?.type === 'addUsaha' && (
+        <UsahaModal item={null} onSave={addUsaha} onClose={() => setModal(null)} />
+      )}
+      {modal?.type === 'editUsaha' && (
+        <UsahaModal item={modal.item} onSave={form => editUsaha(modal.item.id, form)} onClose={() => setModal(null)} />
       )}
       {modal?.type === 'kartu' && (
         <KartuAlumniModal user={mockUser} profil={profil} onClose={() => setModal(null)} />
