@@ -327,13 +327,13 @@ function UsahaModal({ item, onSave, onClose }) {
             <div className="w-7 h-7 rounded-lg flex items-center justify-center" style={{ backgroundColor: cfg.bg }}>
               <Icon className="w-4 h-4" style={{ color: cfg.color }} />
             </div>
-            <h2 className="text-base font-bold text-gray-900">{item ? 'Edit' : 'Tambah'} Usaha / Kepemilikan</h2>
+            <h2 className="text-base font-bold text-gray-900">{item ? 'Edit' : 'Tambah'} Lembaga / Badan Usaha</h2>
           </div>
           <button onClick={onClose}><X className="w-5 h-5 text-gray-400" /></button>
         </div>
         <div className="p-6 space-y-4 overflow-y-auto flex-1">
-          <MF label="Nama Usaha / Lembaga *">
-            <input className={inp} value={form.nama} onChange={s('nama')} placeholder="Nama perusahaan, pesantren, yayasan..." />
+          <MF label="Nama Lembaga / Badan Usaha *">
+            <input className={inp} value={form.nama} onChange={s('nama')} placeholder="Nama pesantren, yayasan, perusahaan..." />
           </MF>
 
           <MF label="Jenis *">
@@ -554,7 +554,7 @@ export default function AlumniDashboardPage() {
     { label: 'Riwayat Pekerjaan', weight: 15, done: pekerjaan.length > 0 },
     { label: 'Sertifikasi', weight: 5, done: sertifikasi.length > 0 },
     { label: 'Publikasi', weight: 5, done: publikasi.length > 0 },
-    { label: 'Usaha/Kepemilikan', weight: 10, done: usaha.length > 0 },
+    { label: 'Lembaga/Badan Usaha', weight: 10, done: usaha.length > 0 },
   ]
   const profileCompletion = completionItems.reduce((a, i) => a + (i.done ? i.weight : 0), 0)
   const missing = completionItems.filter(i => !i.done)
@@ -943,7 +943,7 @@ export default function AlumniDashboardPage() {
                 <div className="flex items-center justify-between mb-5">
                   <div className="flex items-center gap-2">
                     <Building2 className="w-4.5 h-4.5 text-[#1A5C38]" />
-                    <h2 className="text-sm font-bold text-[#0A2415]">Usaha & Kepemilikan</h2>
+                    <h2 className="text-sm font-bold text-[#0A2415]">Lembaga & Badan Usaha</h2>
                   </div>
                   <button onClick={() => setModal({ type: 'addUsaha' })}
                     className="flex items-center gap-1 text-xs font-semibold text-[#1A5C38] hover:text-[#0A2415] transition-colors">
@@ -951,7 +951,7 @@ export default function AlumniDashboardPage() {
                   </button>
                 </div>
                 {usaha.length === 0 ? (
-                  <p className="text-sm text-gray-400 text-center py-6">Belum ada usaha atau kepemilikan yang ditambahkan.</p>
+                  <p className="text-sm text-gray-400 text-center py-6">Belum ada lembaga atau badan usaha yang ditambahkan.</p>
                 ) : (
                   <div className="space-y-3">
                     {usaha.map((u, i) => {
@@ -1036,7 +1036,7 @@ export default function AlumniDashboardPage() {
                     { label: 'Tambah Karir', icon: Briefcase, action: () => setModal({ type: 'addPekerjaan' }) },
                     { label: 'Sertifikasi', icon: Award, action: () => setModal({ type: 'addSertifikasi' }) },
                     { label: 'Publikasi', icon: BookOpen, action: () => setModal({ type: 'addPublikasi' }) },
-                    { label: 'Usaha', icon: Building2, action: () => setModal({ type: 'addUsaha' }) },
+                    { label: 'Lembaga', icon: Building2, action: () => setModal({ type: 'addUsaha' }) },
                     { label: 'Kartu Alumni', icon: FileText, action: () => setModal({ type: 'kartu' }) },
                     { label: 'Direktori', icon: Users, action: () => navigate('/direktori') },
                   ].map(({ label, icon: Icon, action }) => (
