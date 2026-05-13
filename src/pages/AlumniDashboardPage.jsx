@@ -1181,6 +1181,7 @@ export default function AlumniDashboardPage() {
                   {[
                     { label: 'Edit Profil', icon: Pencil, action: () => setModal({ type: 'editProfil' }) },
                     { label: 'Tambah Karir', icon: Briefcase, action: () => setModal({ type: 'addPekerjaan' }) },
+                    { label: 'Keahlian & Bahasa', icon: Star, action: () => setModal({ type: 'editKeahlianBahasa' }) },
                     { label: 'Sertifikasi', icon: Award, action: () => setModal({ type: 'addSertifikasi' }) },
                     { label: 'Publikasi', icon: BookOpen, action: () => setModal({ type: 'addPublikasi' }) },
                     { label: 'Lembaga', icon: Building2, action: () => setModal({ type: 'addUsaha' }) },
