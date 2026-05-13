@@ -114,8 +114,13 @@ export default function DaftarPage() {
       </div>
 
       {/* Right panel */}
-      <div className="flex-1 flex flex-col justify-center px-8 md:px-12 lg:px-14 py-10 bg-white overflow-y-auto">
-        <div className="max-w-md w-full mx-auto">
+      <div className="flex-1 flex flex-col justify-center px-6 py-10 relative overflow-y-auto">
+        {/* Mobile background */}
+        <div className="lg:hidden absolute inset-0 -z-0">
+          <img src={heroImg} alt="" className="w-full h-full object-cover" />
+          <div className="absolute inset-0" style={{ background: 'linear-gradient(160deg, rgba(10,36,21,0.80) 0%, rgba(10,36,21,0.88) 100%)' }} />
+        </div>
+        <div className="max-w-md w-full mx-auto relative z-10 bg-white rounded-2xl p-7 shadow-2xl lg:shadow-none lg:rounded-none lg:p-0 lg:bg-transparent">
           <Link to="/" className="flex items-center gap-2.5 mb-8">
             <div className="w-8 h-8 rounded-full bg-[#F0A500] flex items-center justify-center">
               <GraduationCap className="w-4 h-4 text-[#0A2415]" />
@@ -139,7 +144,7 @@ export default function DaftarPage() {
               <Field label="No. HP / WhatsApp">
                 <TextInput value={form.hp} onChange={set('hp')} placeholder="08xxxxxxxxxx" type="tel" />
               </Field>
-              <Field label="Marhatal">
+              <Field label="Angkatan">
                 <div className="relative">
                   <select
                     value={form.angkatan}

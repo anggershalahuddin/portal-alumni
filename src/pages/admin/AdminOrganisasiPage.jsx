@@ -1,6 +1,8 @@
-import { useState } from 'react'
-import { Search, Plus, Trash2, Edit2, Building2, X, Check, Users, Mail, Calendar, Bell, Shield } from 'lucide-react'
+﻿import { useState } from 'react'
+import { Plus, Trash2, Edit2, Building2, X, Check, Users, Mail, Calendar } from 'lucide-react'
+import { motion } from 'framer-motion'
 import AdminSidebar from '../../components/admin/AdminSidebar'
+import AdminHeader from '../../components/admin/AdminHeader'
 import ImageUploadBox from '../../components/admin/ImageUploadBox'
 import ConfirmDialog from '../../components/admin/ConfirmDialog'
 import { initialOrganisasi } from '../../data/organisasi'
@@ -91,12 +93,24 @@ export default function AdminOrganisasiPage() {
   })
 
   function handleSave(form) {
-    if (form.id) {
-      setOrganisasi(o => o.map(x => x.id === form.id ? form : x))
-    } else {
-      setOrganisasi(o => [...o, { ...form, id: Date.now() }])
-    }
-    setModal(null)
+    const isEdit = !!form.id
+    askConfirm({
+      title: isEdit ? 'Simpan Perubahan Organisasi' : 'Tambah Organisasi Baru',
+      message: isEdit
+        ? 'Apakah Anda yakin ingin menyimpan perubahan pada organisasi ini?'
+        : 'Apakah Anda yakin ingin menambahkan organisasi baru ini?',
+      confirmLabel: 'Ya, Simpan',
+      variant: 'success',
+      onConfirm: () => {
+        if (isEdit) {
+          setOrganisasi(o => o.map(x => x.id === form.id ? form : x))
+        } else {
+          setOrganisasi(o => [...o, { ...form, id: Date.now() }])
+        }
+        setModal(null)
+        closeConfirm()
+      },
+    })
   }
 
   function handleDelete(id) {
@@ -114,32 +128,18 @@ export default function AdminOrganisasiPage() {
       <AdminSidebar active="organisasi" />
 
       <div className="flex-1 flex flex-col min-w-0">
-        <header className="bg-white border-b border-gray-100 px-6 py-3.5 flex items-center justify-between sticky top-0 z-20">
-          <div className="relative w-52">
-            <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-gray-400" />
-            <input
-              value={search}
-              onChange={e => setSearch(e.target.value)}
-              placeholder="Cari organisasi..."
-              className="w-full pl-9 pr-4 py-2 rounded-xl border border-gray-200 bg-gray-50 text-sm outline-none focus:border-green-400 focus:bg-white transition-all"
-            />
-          </div>
-          <div className="flex items-center gap-2">
-            <div className="w-7 h-7 rounded-full flex items-center justify-center" style={{ backgroundColor: '#F0A500' }}>
-              <Shield className="w-3.5 h-3.5" style={{ color: '#0A2415' }} />
-            </div>
-            <span className="font-bold text-gray-900 text-sm">Portal Alumni Daarul Mughni Admin</span>
-          </div>
-          <div className="flex items-center gap-3">
-            <button className="relative p-2 rounded-xl hover:bg-gray-50 transition-colors">
-              <Bell className="w-5 h-5 text-gray-500" />
-              <span className="absolute top-1.5 right-1.5 w-2 h-2 rounded-full bg-red-500" />
-            </button>
-            <div className="w-9 h-9 rounded-full flex items-center justify-center text-white text-sm font-bold" style={{ backgroundColor: '#0A2415' }}>A</div>
-          </div>
-        </header>
+        <AdminHeader
+          searchValue={search}
+          onSearchChange={setSearch}
+          searchPlaceholder="Cari organisasi..."
+        />
 
-        <div className="flex-1 p-6 space-y-5">
+        <motion.div
+          className="flex-1 p-6 space-y-5"
+          initial={{ opacity: 0, y: 20 }}
+          animate={{ opacity: 1, y: 0 }}
+          transition={{ duration: 0.35, ease: 'easeOut' }}
+        >
           {/* Page title + actions */}
           <div className="flex items-start justify-between flex-wrap gap-3">
             <div>
@@ -242,7 +242,7 @@ export default function AdminOrganisasiPage() {
               ))}
             </div>
           )}
-        </div>
+        </motion.div>
       </div>
 
       {modal !== null && (

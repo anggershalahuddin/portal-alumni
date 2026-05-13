@@ -1,6 +1,8 @@
-import { useState } from 'react'
-import { Search, Plus, Trash2, Edit2, Briefcase, X, Check, MapPin, Clock, ChevronDown, ChevronUp, Tag, Layers, Bell, Shield } from 'lucide-react'
+﻿import { useState } from 'react'
+import { Plus, Trash2, Edit2, Briefcase, X, Check, MapPin, Clock, ChevronDown, ChevronUp, Tag, Layers } from 'lucide-react'
+import { motion } from 'framer-motion'
 import AdminSidebar from '../../components/admin/AdminSidebar'
+import AdminHeader from '../../components/admin/AdminHeader'
 import ConfirmDialog from '../../components/admin/ConfirmDialog'
 import { initialLowongan, bidangLowongan as seedBidang, tipeLowongan } from '../../data/lowongan'
 
@@ -221,8 +223,11 @@ function DetailCard({ item, onEdit, onDelete, onToggle, bidangs }) {
         )}
         <div className="flex items-center gap-2 mt-4 pt-4 border-t border-gray-50">
           <button onClick={() => onToggle(item.id)}
-            className="flex-1 px-3 py-1.5 rounded-xl text-xs font-semibold border"
-            style={item.aktif ? { color: '#D97706', borderColor: '#FDE68A', backgroundColor: '#FFFBEB' } : { color: '#059669', borderColor: '#BBF7D0', backgroundColor: '#F0FDF4' }}>
+            className="flex-1 px-3 py-1.5 rounded-xl text-xs font-semibold border transition-colors"
+            style={item.aktif
+              ? { color: '#DC2626', borderColor: '#FCA5A5', backgroundColor: '#FEF2F2' }
+              : { color: '#16A34A', borderColor: '#BBF7D0', backgroundColor: '#F0FDF4' }
+            }>
             {item.aktif ? 'Nonaktifkan' : 'Aktifkan'}
           </button>
           <button onClick={() => onEdit(item)} className="px-3 py-1.5 rounded-xl text-xs font-semibold border border-gray-200 bg-white text-gray-600 flex items-center gap-1 hover:bg-gray-50">
@@ -258,12 +263,24 @@ export default function AdminKarirPage() {
   })
 
   function handleSave(form) {
-    if (form.id) {
-      setLowongan(l => l.map(x => x.id === form.id ? form : x))
-    } else {
-      setLowongan(l => [...l, { ...form, id: Date.now() }])
-    }
-    setModal(null)
+    const isEdit = !!form.id
+    askConfirm({
+      title: isEdit ? 'Simpan Perubahan Lowongan' : 'Tambah Lowongan Baru',
+      message: isEdit
+        ? 'Apakah Anda yakin ingin menyimpan perubahan pada lowongan ini?'
+        : 'Apakah Anda yakin ingin menambahkan lowongan baru ini?',
+      confirmLabel: 'Ya, Simpan',
+      variant: 'success',
+      onConfirm: () => {
+        if (isEdit) {
+          setLowongan(l => l.map(x => x.id === form.id ? form : x))
+        } else {
+          setLowongan(l => [...l, { ...form, id: Date.now() }])
+        }
+        setModal(null)
+        closeConfirm()
+      },
+    })
   }
 
   function handleDelete(id) {
@@ -273,7 +290,15 @@ export default function AdminKarirPage() {
   function toggleAktif(id) {
     const item = lowongan.find(x => x.id === id)
     if (!item) return
-    askConfirm({ title: item.aktif ? 'Nonaktifkan Lowongan' : 'Aktifkan Lowongan', message: item.aktif ? 'Lowongan ini tidak akan tampil ke publik setelah dinonaktifkan. Lanjutkan?' : 'Lowongan ini akan ditampilkan ke publik. Pastikan data sudah lengkap dan benar.', confirmLabel: 'Ya, Lanjutkan', variant: 'warning', onConfirm: () => { setLowongan(l => l.map(x => x.id === id ? { ...x, aktif: !x.aktif } : x)); closeConfirm() } })
+    askConfirm({
+      title: item.aktif ? 'Nonaktifkan Lowongan' : 'Aktifkan Lowongan',
+      message: item.aktif
+        ? 'Lowongan ini tidak akan tampil ke publik setelah dinonaktifkan. Apakah Anda yakin ingin melanjutkan?'
+        : 'Lowongan ini akan ditampilkan ke publik. Pastikan data sudah lengkap dan benar sebelum mengaktifkan.',
+      confirmLabel: item.aktif ? 'Ya, Nonaktifkan' : 'Ya, Aktifkan',
+      variant: item.aktif ? 'danger' : 'success',
+      onConfirm: () => { setLowongan(l => l.map(x => x.id === id ? { ...x, aktif: !x.aktif } : x)); closeConfirm() },
+    })
   }
 
   const aktifCount = lowongan.filter(l => l.aktif).length
@@ -283,32 +308,18 @@ export default function AdminKarirPage() {
       <AdminSidebar active="karir" />
 
       <div className="flex-1 flex flex-col min-w-0">
-        <header className="bg-white border-b border-gray-100 px-6 py-3.5 flex items-center justify-between sticky top-0 z-20">
-          <div className="relative w-52">
-            <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-gray-400" />
-            <input
-              value={search}
-              onChange={e => setSearch(e.target.value)}
-              placeholder="Cari lowongan..."
-              className="w-full pl-9 pr-4 py-2 rounded-xl border border-gray-200 bg-gray-50 text-sm outline-none focus:border-green-400 focus:bg-white transition-all"
-            />
-          </div>
-          <div className="flex items-center gap-2">
-            <div className="w-7 h-7 rounded-full flex items-center justify-center" style={{ backgroundColor: '#F0A500' }}>
-              <Shield className="w-3.5 h-3.5" style={{ color: '#0A2415' }} />
-            </div>
-            <span className="font-bold text-gray-900 text-sm">Portal Alumni Daarul Mughni Admin</span>
-          </div>
-          <div className="flex items-center gap-3">
-            <button className="relative p-2 rounded-xl hover:bg-gray-50 transition-colors">
-              <Bell className="w-5 h-5 text-gray-500" />
-              <span className="absolute top-1.5 right-1.5 w-2 h-2 rounded-full bg-red-500" />
-            </button>
-            <div className="w-9 h-9 rounded-full flex items-center justify-center text-white text-sm font-bold" style={{ backgroundColor: '#0A2415' }}>A</div>
-          </div>
-        </header>
+        <AdminHeader
+          searchValue={search}
+          onSearchChange={setSearch}
+          searchPlaceholder="Cari lowongan..."
+        />
 
-        <div className="flex-1 p-6 space-y-5">
+        <motion.div
+          className="flex-1 p-6 space-y-5"
+          initial={{ opacity: 0, y: 20 }}
+          animate={{ opacity: 1, y: 0 }}
+          transition={{ duration: 0.35, ease: 'easeOut' }}
+        >
           {/* Page title + actions */}
           <div className="flex items-start justify-between flex-wrap gap-3">
             <div>
@@ -369,7 +380,7 @@ export default function AdminKarirPage() {
               ))}
             </div>
           )}
-        </div>
+        </motion.div>
       </div>
 
       {modal !== null && (

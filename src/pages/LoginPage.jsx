@@ -82,8 +82,13 @@ export default function LoginPage() {
       </div>
 
       {/* ── Right Panel — Form ── */}
-      <div className="flex-1 flex items-center justify-center px-8 py-10 bg-white">
-        <div className="w-full max-w-[420px]">
+      <div className="flex-1 flex items-center justify-center px-6 py-10 relative">
+        {/* Mobile background (shown only on small screens) */}
+        <div className="lg:hidden absolute inset-0 -z-0">
+          <div className="absolute inset-0 bg-cover bg-center" style={{ backgroundImage: `url(${heroImg})` }} />
+          <div className="absolute inset-0" style={{ background: 'linear-gradient(160deg, rgba(10,36,21,0.80) 0%, rgba(10,36,21,0.88) 100%)' }} />
+        </div>
+        <div className="w-full max-w-[420px] relative z-10 bg-white rounded-2xl p-7 shadow-2xl lg:shadow-none lg:rounded-none lg:p-0 lg:bg-transparent">
           <h2 className="text-[1.9rem] font-extrabold text-gray-900 mb-1 leading-tight">
             Selamat Datang Kembali
           </h2>

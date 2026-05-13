@@ -1,6 +1,8 @@
-import { useState, useEffect } from 'react'
-import { Bell, Shield, Search, Plus, Pencil, Trash2, X, Download, Tag } from 'lucide-react'
+﻿import { useState, useEffect } from 'react'
+import { Plus, Pencil, Trash2, X, Download, Tag } from 'lucide-react'
+import { motion } from 'framer-motion'
 import AdminSidebar from '../../components/admin/AdminSidebar'
+import AdminHeader from '../../components/admin/AdminHeader'
 import ConfirmDialog from '../../components/admin/ConfirmDialog'
 import ImageUploadBox from '../../components/admin/ImageUploadBox'
 import { PaginationBar, PerPageSelector } from '../../components/PaginationBar'
@@ -512,20 +514,32 @@ export default function AdminBeritaPage() {
   const endIdx = Math.min(page * perPage, filtered.length)
 
   function handleSave(form) {
-    const now = new Date()
-    if (modal === 'tambah') {
-      setBerita(prev => [{
-        id: Date.now(),
-        ...form,
-        penulis: form.penulis || 'Admin',
-        tanggal: form.tanggal
-          ? new Date(form.tanggal).toLocaleDateString('id-ID', { day: '2-digit', month: 'short', year: 'numeric' })
-          : now.toLocaleDateString('id-ID', { day: '2-digit', month: 'short', year: 'numeric' }),
-      }, ...prev])
-    } else {
-      setBerita(prev => prev.map(b => b.id === modal.id ? { ...b, ...form } : b))
-    }
-    setModal(null)
+    const isEdit = modal && modal !== 'tambah'
+    askConfirm({
+      title: isEdit ? 'Simpan Perubahan Berita' : 'Tambah Berita Baru',
+      message: isEdit
+        ? 'Apakah Anda yakin ingin menyimpan perubahan pada berita ini?'
+        : 'Apakah Anda yakin ingin menambahkan berita baru ini?',
+      confirmLabel: 'Ya, Simpan',
+      variant: 'success',
+      onConfirm: () => {
+        const now = new Date()
+        if (!isEdit) {
+          setBerita(prev => [{
+            id: Date.now(),
+            ...form,
+            penulis: form.penulis || 'Admin',
+            tanggal: form.tanggal
+              ? new Date(form.tanggal).toLocaleDateString('id-ID', { day: '2-digit', month: 'short', year: 'numeric' })
+              : now.toLocaleDateString('id-ID', { day: '2-digit', month: 'short', year: 'numeric' }),
+          }, ...prev])
+        } else {
+          setBerita(prev => prev.map(b => b.id === modal.id ? { ...b, ...form } : b))
+        }
+        setModal(null)
+        closeConfirm()
+      },
+    })
   }
 
   function handleDelete(id) {
@@ -537,31 +551,19 @@ export default function AdminBeritaPage() {
       <AdminSidebar active="berita" />
 
       <div className="flex-1 flex flex-col min-w-0">
-        {/* Header */}
-        <header className="bg-white border-b border-gray-100 px-6 py-3.5 flex items-center justify-between sticky top-0 z-20">
-          <div className="relative w-52">
-            <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-gray-400" />
-            <input type="text" placeholder="Cari berita..." value={search}
-              onChange={(e) => { setSearch(e.target.value); setPage(1) }}
-              className="w-full pl-9 pr-4 py-2 rounded-xl border border-gray-200 bg-gray-50 text-sm outline-none focus:border-green-400 focus:bg-white transition-all" />
-          </div>
-          <div className="flex items-center gap-2">
-            <div className="w-7 h-7 rounded-full flex items-center justify-center" style={{ backgroundColor: '#F0A500' }}>
-              <Shield className="w-3.5 h-3.5" style={{ color: '#0A2415' }} />
-            </div>
-            <span className="font-bold text-gray-900 text-sm">Portal Alumni Daarul Mughni Admin</span>
-          </div>
-          <div className="flex items-center gap-3">
-            <button className="relative p-2 rounded-xl hover:bg-gray-50 transition-colors">
-              <Bell className="w-5 h-5 text-gray-500" />
-              <span className="absolute top-1.5 right-1.5 w-2 h-2 rounded-full bg-red-500" />
-            </button>
-            <div className="w-9 h-9 rounded-full flex items-center justify-center text-white text-sm font-bold" style={{ backgroundColor: '#0A2415' }}>A</div>
-          </div>
-        </header>
+        <AdminHeader
+          searchValue={search}
+          onSearchChange={(v) => { setSearch(v); setPage(1) }}
+          searchPlaceholder="Cari berita..."
+        />
 
         {/* Content */}
-        <div className="flex-1 p-6 space-y-5">
+        <motion.div
+          className="flex-1 p-6 space-y-5"
+          initial={{ opacity: 0, y: 20 }}
+          animate={{ opacity: 1, y: 0 }}
+          transition={{ duration: 0.35, ease: 'easeOut' }}
+        >
           <div className="flex items-start justify-between flex-wrap gap-3">
             <div>
               <h1 className="text-2xl font-extrabold text-gray-900">Kelola Berita</h1>
@@ -687,7 +689,7 @@ export default function AdminBeritaPage() {
               <PaginationBar page={page} totalPages={totalPages} onPage={setPage} />
             </div>
           )}
-        </div>
+        </motion.div>
 
         <div className="border-t border-gray-100 bg-white px-6 py-3 flex items-center justify-between">
           <div className="flex items-center gap-2">

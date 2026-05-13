@@ -1,6 +1,9 @@
-import { useState, useRef } from 'react'
-import { Plus, Search, Pencil, Trash2, GraduationCap, Upload, X, ChevronUp, ChevronDown } from 'lucide-react'
+﻿import { useState, useRef } from 'react'
+import { Plus, Pencil, Trash2, GraduationCap, Upload, X, ChevronUp, ChevronDown } from 'lucide-react'
+import { motion } from 'framer-motion'
 import AdminSidebar from '@/components/admin/AdminSidebar'
+import AdminHeader from '@/components/admin/AdminHeader'
+import ConfirmDialog from '@/components/admin/ConfirmDialog'
 import { PaginationBar, PerPageSelector } from '@/components/PaginationBar'
 import { initialAngkatan, getAngkatanKe } from '@/data/angkatan'
 
@@ -175,6 +178,9 @@ export default function AdminAngkatanPage() {
   const [perPage, setPerPage] = useState(10)
   const [modal, setModal] = useState(null) // null | { type: 'tambah' } | { type: 'edit', data }
   const [sortDir, setSortDir] = useState('asc') // sort by tahun lulusan
+  const [confirm, setConfirm] = useState({ open: false })
+  function askConfirm(opts) { setConfirm({ open: true, ...opts }) }
+  function closeConfirm() { setConfirm({ open: false }) }
 
   const filtered = angkatan
     .filter(a => {
@@ -196,18 +202,35 @@ export default function AdminAngkatanPage() {
   function resetPage() { setPage(1) }
 
   function handleSave(formData) {
-    if (modal?.type === 'edit') {
-      setAngkatan(prev => prev.map(a => a.id === modal.data.id ? { ...a, ...formData } : a))
-    } else {
-      const newId = Math.max(0, ...angkatan.map(a => a.id)) + 1
-      setAngkatan(prev => [...prev, { id: newId, ...formData }])
-    }
-    setModal(null)
+    const isEdit = modal?.type === 'edit'
+    askConfirm({
+      title: isEdit ? 'Simpan Perubahan Angkatan' : 'Tambah Angkatan Baru',
+      message: isEdit
+        ? 'Apakah Anda yakin ingin menyimpan perubahan data angkatan ini?'
+        : 'Apakah Anda yakin ingin menambahkan angkatan baru ini?',
+      confirmLabel: 'Ya, Simpan',
+      variant: 'success',
+      onConfirm: () => {
+        if (isEdit) {
+          setAngkatan(prev => prev.map(a => a.id === modal.data.id ? { ...a, ...formData } : a))
+        } else {
+          const newId = Math.max(0, ...angkatan.map(a => a.id)) + 1
+          setAngkatan(prev => [...prev, { id: newId, ...formData }])
+        }
+        setModal(null)
+        closeConfirm()
+      },
+    })
   }
 
   function handleDelete(id) {
-    if (!window.confirm('Hapus data angkatan ini? Tindakan tidak dapat dibatalkan.')) return
-    setAngkatan(prev => prev.filter(a => a.id !== id))
+    askConfirm({
+      title: 'Hapus Angkatan',
+      message: 'Apakah Anda yakin ingin menghapus data angkatan ini? Tindakan ini tidak dapat dibatalkan.',
+      confirmLabel: 'Ya, Hapus',
+      variant: 'danger',
+      onConfirm: () => { setAngkatan(prev => prev.filter(a => a.id !== id)); closeConfirm() },
+    })
   }
 
   function toggleSort() {
@@ -221,22 +244,34 @@ export default function AdminAngkatanPage() {
 
       <div className="flex-1 flex flex-col min-w-0">
         {/* Header */}
-        <header className="sticky top-0 z-30 bg-white border-b border-gray-100 px-6 py-4 flex items-center justify-between gap-4">
-          <div>
-            <h1 className="text-lg font-bold text-[#0A2415]">Kelola Angkatan</h1>
-            <p className="text-xs text-gray-400 mt-0.5">Manajemen data angkatan lulusan pondok pesantren</p>
-          </div>
-          <button
-            onClick={() => setModal({ type: 'tambah' })}
-            className="flex items-center gap-2 px-4 py-2.5 rounded-xl text-sm font-bold text-white transition-colors"
-            style={{ backgroundColor: '#1A5C38' }}
-          >
-            <Plus className="w-4 h-4" />
-            Tambah Angkatan
-          </button>
-        </header>
+        <AdminHeader
+          searchValue={search}
+          onSearchChange={(v) => { setSearch(v); resetPage() }}
+          searchPlaceholder="Cari angkatan..."
+        />
 
-        <div className="flex-1 p-6">
+        <motion.div
+          className="flex-1 p-6"
+          initial={{ opacity: 0, y: 20 }}
+          animate={{ opacity: 1, y: 0 }}
+          transition={{ duration: 0.35, ease: 'easeOut' }}
+        >
+          {/* Page title + action */}
+          <div className="flex items-start justify-between flex-wrap gap-3 mb-6">
+            <div>
+              <h1 className="text-2xl font-extrabold text-gray-900">Kelola Angkatan</h1>
+              <p className="text-sm text-gray-500 mt-0.5">Manajemen data angkatan lulusan pondok pesantren.</p>
+            </div>
+            <button
+              onClick={() => setModal({ type: 'tambah' })}
+              className="flex items-center gap-2 px-4 py-2.5 rounded-xl text-sm font-bold text-white transition-colors hover:opacity-90"
+              style={{ backgroundColor: '#1A5C38' }}
+            >
+              <Plus className="w-4 h-4" />
+              Tambah Angkatan
+            </button>
+          </div>
+
           {/* Stats */}
           <div className="grid grid-cols-2 sm:grid-cols-4 gap-4 mb-6">
             {[
@@ -255,16 +290,6 @@ export default function AdminAngkatanPage() {
           {/* Filter bar */}
           <div className="bg-white rounded-xl border border-gray-100 mb-4">
             <div className="px-4 py-3 flex flex-wrap items-center gap-3">
-              <div className="relative flex-1 min-w-[180px] max-w-xs">
-                <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-3.5 h-3.5 text-gray-400" />
-                <input
-                  type="text"
-                  value={search}
-                  onChange={e => { setSearch(e.target.value); resetPage() }}
-                  placeholder="Cari nama, tahun, angkatan ke..."
-                  className="w-full pl-9 pr-4 py-2 text-sm border border-gray-200 rounded-lg focus:outline-none focus:border-[#1A5C38]"
-                />
-              </div>
               <div className="ml-auto flex items-center gap-3">
                 <PerPageSelector value={perPage} options={[5, 10, 20]} onChange={n => { setPerPage(n); resetPage() }} />
                 <span className="text-xs text-gray-400">{startIdx}–{endIdx} dari {filtered.length}</span>
@@ -360,7 +385,7 @@ export default function AdminAngkatanPage() {
               </div>
             )}
           </div>
-        </div>
+        </motion.div>
       </div>
 
       {modal && (
@@ -370,6 +395,8 @@ export default function AdminAngkatanPage() {
           onSave={handleSave}
         />
       )}
+
+      <ConfirmDialog open={confirm.open} title={confirm.title} message={confirm.message} confirmLabel={confirm.confirmLabel} variant={confirm.variant} onConfirm={confirm.onConfirm} onCancel={closeConfirm} />
     </div>
   )
 }

@@ -1,13 +1,17 @@
 import { useState, useRef, useEffect } from 'react'
 import {
-  Search, Bell, Shield, CheckCircle, Users,
-  Download, ChevronDown, ChevronLeft, ChevronRight,
+  CheckCircle, Users, Shield, Search,
+  Download, ChevronDown,
   MoreHorizontal, UserPlus, X, Pencil, Trash2,
   Lock, Key, Eye, EyeOff,
 } from 'lucide-react'
+import { motion } from 'framer-motion'
 import AdminSidebar from '../../components/admin/AdminSidebar'
+import AdminHeader from '../../components/admin/AdminHeader'
+import ConfirmDialog from '../../components/admin/ConfirmDialog'
 import { PaginationBar, PerPageSelector } from '../../components/PaginationBar'
 import { initialAngkatan, getAngkatanKe } from '../../data/angkatan'
+import { ALL_PERMISSIONS, DEFAULT_PERMISSIONS } from '../../data/adminMenus'
 
 // ── Constants ────────────────────────────────────────────────────────────────
 
@@ -18,25 +22,6 @@ const PERAN_STYLE = {
   'Admin':       { bg: '#FFF7ED', text: '#C2410C', border: '#FED7AA' },
   'Editor':      { bg: '#FAF5FF', text: '#7C3AED', border: '#DDD6FE' },
   'Alumni':      { bg: '#F0FDFF', text: '#0E7490', border: '#BAE6FD' },
-}
-
-const ALL_PERMISSIONS = [
-  { id: 'dashboard',  label: 'Dashboard Admin',     desc: 'Lihat statistik dan ringkasan portal' },
-  { id: 'berita',     label: 'Kelola Berita',        desc: 'Buat, edit, arsip, dan hapus artikel berita' },
-  { id: 'agenda',     label: 'Kelola Agenda',        desc: 'Tambah dan kelola jadwal acara & kegiatan' },
-  { id: 'galeri',     label: 'Kelola Galeri',        desc: 'Unggah dan kelola foto dokumentasi kegiatan' },
-  { id: 'angkatan',   label: 'Kelola Angkatan',      desc: 'Tambah dan kelola data angkatan lulusan pondok' },
-  { id: 'organisasi', label: 'Kelola Organisasi',    desc: 'Kelola data organisasi dan lembaga alumni' },
-  { id: 'karir',      label: 'Kelola Lowongan',      desc: 'Buat dan kelola lowongan pekerjaan pesantren (Admin/SuperAdmin saja)' },
-  { id: 'verifikasi', label: 'Verifikasi Alumni',    desc: 'Proses permohonan verifikasi alumni baru' },
-  { id: 'users',      label: 'Manajemen User',       desc: 'Kelola akun, peran, dan hak akses pengguna' },
-]
-
-const DEFAULT_PERMISSIONS = {
-  'Super Admin': ALL_PERMISSIONS.map(p => p.id),
-  'Admin':       ['dashboard', 'berita', 'agenda', 'galeri', 'angkatan', 'organisasi', 'karir', 'verifikasi'],
-  'Editor':      ['dashboard', 'berita', 'agenda', 'galeri'],
-  'Alumni':      [],
 }
 
 // ── Mock Data ────────────────────────────────────────────────────────────────
@@ -294,8 +279,8 @@ function PermissionModal({ user, onClose, onSave }) {
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center p-4">
       <div className="absolute inset-0 bg-black/60" onClick={onClose} />
-      <div className="relative bg-white rounded-2xl shadow-2xl w-full max-w-md flex flex-col">
-        <div className="flex items-center justify-between px-6 py-4 border-b border-gray-100">
+      <div className="relative bg-white rounded-2xl shadow-2xl w-full max-w-md flex flex-col max-h-[90vh]">
+        <div className="flex items-center justify-between px-6 py-4 border-b border-gray-100 flex-shrink-0">
           <div>
             <h2 className="text-sm font-bold text-gray-900">Atur Hak Akses</h2>
             <p className="text-xs text-gray-400 mt-0.5">{user.name} · {user.peran}</p>
@@ -305,7 +290,7 @@ function PermissionModal({ user, onClose, onSave }) {
           </button>
         </div>
 
-        <div className="p-6 space-y-4">
+        <div className="p-6 space-y-4 overflow-y-auto flex-1">
           {isSuperAdmin && (
             <div className="flex items-start gap-3 bg-red-50 border border-red-100 rounded-xl p-4">
               <Lock className="w-4 h-4 text-red-400 mt-0.5 flex-shrink-0" />
@@ -362,7 +347,7 @@ function PermissionModal({ user, onClose, onSave }) {
           </div>
         </div>
 
-        <div className="flex items-center justify-end gap-3 px-6 py-4 border-t border-gray-100">
+        <div className="flex items-center justify-end gap-3 px-6 py-4 border-t border-gray-100 flex-shrink-0">
           <button onClick={onClose} className="px-5 py-2.5 rounded-xl border border-gray-200 text-sm font-medium text-gray-700 hover:bg-gray-50 transition-colors">
             Batal
           </button>
@@ -478,6 +463,9 @@ export default function AdminManajemenUserPage() {
   const [page, setPage] = useState(1)
   const [perPage, setPerPage] = useState(10)
   const [openMenuId, setOpenMenuId] = useState(null)
+  const [confirm, setConfirm] = useState({ open: false })
+  function askConfirm(opts) { setConfirm({ open: true, ...opts }) }
+  function closeConfirm() { setConfirm({ open: false }) }
 
   /* Filter */
   const filtered = users.filter(u => {
@@ -515,54 +503,123 @@ export default function AdminManajemenUserPage() {
 
   /* Actions */
   function toggleAktif(id) {
-    setUsers(prev => prev.map(u => u.id === id ? { ...u, aktif: !u.aktif } : u))
-    setOpenMenuId(null)
+    const u = users.find(x => x.id === id)
+    if (!u) return
+    askConfirm({
+      title: u.aktif ? 'Nonaktifkan Akun' : 'Aktifkan Akun',
+      message: u.aktif
+        ? `Akun ${u.name} akan dinonaktifkan dan tidak dapat login. Lanjutkan?`
+        : `Akun ${u.name} akan diaktifkan kembali. Lanjutkan?`,
+      confirmLabel: u.aktif ? 'Ya, Nonaktifkan' : 'Ya, Aktifkan',
+      variant: u.aktif ? 'danger' : 'success',
+      onConfirm: () => {
+        setUsers(prev => prev.map(x => x.id === id ? { ...x, aktif: !x.aktif } : x))
+        setOpenMenuId(null)
+        closeConfirm()
+      },
+    })
   }
 
   function deleteUser(id) {
-    setUsers(prev => prev.filter(u => u.id !== id))
-    setSelected(prev => prev.filter(i => i !== id))
-    setOpenMenuId(null)
+    const u = users.find(x => x.id === id)
+    askConfirm({
+      title: 'Hapus User',
+      message: `Apakah Anda yakin ingin menghapus akun ${u?.name ?? 'ini'}? Tindakan ini tidak dapat dibatalkan.`,
+      confirmLabel: 'Ya, Hapus',
+      variant: 'danger',
+      onConfirm: () => {
+        setUsers(prev => prev.filter(x => x.id !== id))
+        setSelected(prev => prev.filter(i => i !== id))
+        setOpenMenuId(null)
+        closeConfirm()
+      },
+    })
   }
 
   function saveEdit(id, form) {
-    setUsers(prev => prev.map(u => u.id === id ? { ...u, ...form, permissions: form.peran !== u.peran ? DEFAULT_PERMISSIONS[form.peran] : u.permissions } : u))
-    setModal(null)
+    askConfirm({
+      title: 'Simpan Perubahan User',
+      message: 'Apakah Anda yakin ingin menyimpan perubahan data user ini?',
+      confirmLabel: 'Ya, Simpan',
+      variant: 'success',
+      onConfirm: () => {
+        setUsers(prev => prev.map(u => u.id === id ? { ...u, ...form, permissions: form.peran !== u.peran ? DEFAULT_PERMISSIONS[form.peran] : u.permissions } : u))
+        setModal(null)
+        closeConfirm()
+      },
+    })
   }
 
   function savePermissions(id, perms) {
-    setUsers(prev => prev.map(u => u.id === id ? { ...u, permissions: perms } : u))
-    setModal(null)
+    askConfirm({
+      title: 'Simpan Izin Akses',
+      message: 'Apakah Anda yakin ingin menyimpan perubahan izin akses user ini?',
+      confirmLabel: 'Ya, Simpan',
+      variant: 'success',
+      onConfirm: () => {
+        setUsers(prev => prev.map(u => u.id === id ? { ...u, permissions: perms } : u))
+        setModal(null)
+        closeConfirm()
+      },
+    })
   }
 
   function addUser(form) {
-    setUsers(prev => [{
-      id: Date.now(),
-      name: form.name,
-      email: form.email,
-      phone: form.phone || '',
-      angkatan: Number(form.angkatan),
-      peran: form.peran,
-      aktif: true,
-      lastLogin: '—',
-      avatar: '',
-      profesi: form.profesi || '',
-      kota: form.kota || '',
-      permissions: DEFAULT_PERMISSIONS[form.peran] || [],
-    }, ...prev])
-    setModal(null)
+    askConfirm({
+      title: 'Tambah User Baru',
+      message: 'Apakah Anda yakin ingin menambahkan user baru ini ke dalam sistem?',
+      confirmLabel: 'Ya, Tambah',
+      variant: 'success',
+      onConfirm: () => {
+        setUsers(prev => [{
+          id: Date.now(),
+          name: form.name,
+          email: form.email,
+          phone: form.phone || '',
+          angkatan: Number(form.angkatan),
+          peran: form.peran,
+          aktif: true,
+          lastLogin: '—',
+          avatar: '',
+          profesi: form.profesi || '',
+          kota: form.kota || '',
+          permissions: DEFAULT_PERMISSIONS[form.peran] || [],
+        }, ...prev])
+        setModal(null)
+        closeConfirm()
+      },
+    })
   }
 
   /* Bulk Actions */
   function bulkSetAktif(val) {
-    setUsers(prev => prev.map(u => selected.includes(u.id) && u.peran !== 'Super Admin' ? { ...u, aktif: val } : u))
-    setSelected([])
+    askConfirm({
+      title: val ? 'Aktifkan Akun Terpilih' : 'Nonaktifkan Akun Terpilih',
+      message: val
+        ? `Aktifkan ${selected.length} akun yang dipilih? Semua akun akan dapat login kembali.`
+        : `Nonaktifkan ${selected.length} akun yang dipilih? Akun tidak dapat login hingga diaktifkan kembali.`,
+      confirmLabel: val ? 'Ya, Aktifkan' : 'Ya, Nonaktifkan',
+      variant: val ? 'success' : 'warning',
+      onConfirm: () => {
+        setUsers(prev => prev.map(u => selected.includes(u.id) && u.peran !== 'Super Admin' ? { ...u, aktif: val } : u))
+        setSelected([])
+        closeConfirm()
+      },
+    })
   }
 
   function bulkDelete() {
-    if (!window.confirm(`Hapus ${selected.length} user yang dipilih? Tindakan ini tidak dapat dibatalkan.`)) return
-    setUsers(prev => prev.filter(u => !selected.includes(u.id) || u.peran === 'Super Admin'))
-    setSelected([])
+    askConfirm({
+      title: `Hapus ${selected.length} User`,
+      message: `Apakah Anda yakin ingin menghapus ${selected.length} user yang dipilih? Tindakan ini tidak dapat dibatalkan.`,
+      confirmLabel: 'Ya, Hapus Semua',
+      variant: 'danger',
+      onConfirm: () => {
+        setUsers(prev => prev.filter(u => !selected.includes(u.id) || u.peran === 'Super Admin'))
+        setSelected([])
+        closeConfirm()
+      },
+    })
   }
 
   return (
@@ -571,37 +628,19 @@ export default function AdminManajemenUserPage() {
 
       <div className="flex-1 flex flex-col min-w-0">
 
-        {/* Header */}
-        <header className="bg-white border-b border-gray-100 px-6 py-3.5 flex items-center justify-between sticky top-0 z-20">
-          <div className="relative w-52">
-            <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-gray-400" />
-            <input type="text" placeholder="Cari user..." value={search}
-              onChange={e => { setSearch(e.target.value); setPage(1) }}
-              className="w-full pl-9 pr-4 py-2 rounded-xl border border-gray-200 bg-gray-50 text-sm outline-none focus:border-green-400 focus:bg-white transition-all" />
-          </div>
-          <div className="flex items-center gap-2">
-            <div className="w-7 h-7 rounded-full flex items-center justify-center flex-shrink-0" style={{ backgroundColor: '#F0A500' }}>
-              <Shield className="w-3.5 h-3.5" style={{ color: '#0A2415' }} />
-            </div>
-            <span className="font-bold text-gray-900 text-sm">Portal Alumni Daarul Mughni Admin</span>
-          </div>
-          <div className="flex items-center gap-3">
-            <button className="relative p-2 rounded-xl hover:bg-gray-50 transition-colors">
-              <Bell className="w-5 h-5 text-gray-500" />
-              <span className="absolute top-1.5 right-1.5 w-2 h-2 rounded-full bg-red-500" />
-            </button>
-            <div className="flex items-center gap-2">
-              <div className="text-right">
-                <p className="text-xs font-bold text-gray-900 leading-none mb-0.5">Admin Utama</p>
-                <p className="text-[10px] text-gray-400">Super Admin</p>
-              </div>
-              <div className="w-9 h-9 rounded-full flex items-center justify-center flex-shrink-0 text-white text-sm font-bold" style={{ backgroundColor: '#0A2415' }}>A</div>
-            </div>
-          </div>
-        </header>
+        <AdminHeader
+          searchValue={search}
+          onSearchChange={(v) => { setSearch(v); setPage(1) }}
+          searchPlaceholder="Cari user..."
+        />
 
         {/* Content */}
-        <div className="flex-1 p-6 space-y-5">
+        <motion.div
+          className="flex-1 p-6 space-y-5"
+          initial={{ opacity: 0, y: 20 }}
+          animate={{ opacity: 1, y: 0 }}
+          transition={{ duration: 0.35, ease: 'easeOut' }}
+        >
 
           {/* Title + Actions */}
           <div className="flex items-start justify-between flex-wrap gap-3">
@@ -844,7 +883,7 @@ export default function AdminManajemenUserPage() {
               <span>Sistem Online</span>
             </div>
           </div>
-        </div>
+        </motion.div>
       </div>
 
       {/* Modals */}
@@ -865,6 +904,8 @@ export default function AdminManajemenUserPage() {
           onSave={perms => savePermissions(modal.user.id, perms)}
         />
       )}
+
+      <ConfirmDialog open={confirm.open} title={confirm.title} message={confirm.message} confirmLabel={confirm.confirmLabel} variant={confirm.variant} onConfirm={confirm.onConfirm} onCancel={closeConfirm} />
     </div>
   )
 }

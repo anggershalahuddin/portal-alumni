@@ -1,6 +1,8 @@
-import { useState, useEffect } from 'react'
-import { Bell, Shield, Search, Plus, Pencil, Trash2, X, Download, MapPin, Calendar, Users, Tag } from 'lucide-react'
+﻿import { useState, useEffect } from 'react'
+import { Plus, Pencil, Trash2, X, Download, MapPin, Calendar, Users, Tag } from 'lucide-react'
+import { motion } from 'framer-motion'
 import AdminSidebar from '../../components/admin/AdminSidebar'
+import AdminHeader from '../../components/admin/AdminHeader'
 import ConfirmDialog from '../../components/admin/ConfirmDialog'
 import ImageUploadBox from '../../components/admin/ImageUploadBox'
 import { PaginationBar, PerPageSelector } from '../../components/PaginationBar'
@@ -533,6 +535,9 @@ export default function AdminAgendaPage() {
   const [tagModal, setTagModal] = useState(false)
   const [page, setPage] = useState(1)
   const [perPage, setPerPage] = useState(6)
+  const [confirm, setConfirm] = useState({ open: false })
+  function askConfirm(opts) { setConfirm({ open: true, ...opts }) }
+  function closeConfirm() { setConfirm({ open: false }) }
 
   const filtered = agenda.filter((a) => {
     const q = search.toLowerCase()
@@ -547,26 +552,44 @@ export default function AdminAgendaPage() {
   const endIdx = Math.min(page * perPage, filtered.length)
 
   function handleSave(form) {
-    if (modal === 'tambah') {
-      setAgenda((prev) => [{
-        id: Date.now(),
-        ...form,
-        kapasitas: Number(form.kapasitas) || 0,
-        terdaftar: 0,
-        tanggal: form.tanggal || 'TBD',
-      }, ...prev])
-    } else {
-      setAgenda((prev) => prev.map((a) =>
-        a.id === modal.id
-          ? { ...a, ...form, kapasitas: Number(form.kapasitas) || a.kapasitas }
-          : a
-      ))
-    }
-    setModal(null)
+    const isEdit = modal && modal !== 'tambah'
+    askConfirm({
+      title: isEdit ? 'Simpan Perubahan Agenda' : 'Tambah Agenda Baru',
+      message: isEdit
+        ? 'Apakah Anda yakin ingin menyimpan perubahan pada agenda ini?'
+        : 'Apakah Anda yakin ingin menambahkan agenda baru ini?',
+      confirmLabel: 'Ya, Simpan',
+      variant: 'success',
+      onConfirm: () => {
+        if (!isEdit) {
+          setAgenda((prev) => [{
+            id: Date.now(),
+            ...form,
+            kapasitas: Number(form.kapasitas) || 0,
+            terdaftar: 0,
+            tanggal: form.tanggal || 'TBD',
+          }, ...prev])
+        } else {
+          setAgenda((prev) => prev.map((a) =>
+            a.id === modal.id
+              ? { ...a, ...form, kapasitas: Number(form.kapasitas) || a.kapasitas }
+              : a
+          ))
+        }
+        setModal(null)
+        closeConfirm()
+      },
+    })
   }
 
   function handleDelete(id) {
-    setAgenda((prev) => prev.filter((a) => a.id !== id))
+    askConfirm({
+      title: 'Hapus Agenda',
+      message: 'Apakah Anda yakin ingin menghapus agenda ini? Tindakan ini tidak dapat dibatalkan.',
+      confirmLabel: 'Ya, Hapus',
+      variant: 'danger',
+      onConfirm: () => { setAgenda((prev) => prev.filter((a) => a.id !== id)); closeConfirm() },
+    })
   }
 
   function handleAddTag(tag) {
@@ -582,31 +605,19 @@ export default function AdminAgendaPage() {
       <AdminSidebar active="agenda" />
 
       <div className="flex-1 flex flex-col min-w-0">
-        {/* Header */}
-        <header className="bg-white border-b border-gray-100 px-6 py-3.5 flex items-center justify-between sticky top-0 z-20">
-          <div className="relative w-52">
-            <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-gray-400" />
-            <input type="text" placeholder="Cari agenda..." value={search}
-              onChange={(e) => { setSearch(e.target.value); setPage(1) }}
-              className="w-full pl-9 pr-4 py-2 rounded-xl border border-gray-200 bg-gray-50 text-sm outline-none focus:border-green-400 focus:bg-white transition-all" />
-          </div>
-          <div className="flex items-center gap-2">
-            <div className="w-7 h-7 rounded-full flex items-center justify-center" style={{ backgroundColor: '#F0A500' }}>
-              <Shield className="w-3.5 h-3.5" style={{ color: '#0A2415' }} />
-            </div>
-            <span className="font-bold text-gray-900 text-sm">Portal Alumni Daarul Mughni Admin</span>
-          </div>
-          <div className="flex items-center gap-3">
-            <button className="relative p-2 rounded-xl hover:bg-gray-50 transition-colors">
-              <Bell className="w-5 h-5 text-gray-500" />
-              <span className="absolute top-1.5 right-1.5 w-2 h-2 rounded-full bg-red-500" />
-            </button>
-            <div className="w-9 h-9 rounded-full flex items-center justify-center text-white text-sm font-bold" style={{ backgroundColor: '#0A2415' }}>A</div>
-          </div>
-        </header>
+        <AdminHeader
+          searchValue={search}
+          onSearchChange={(v) => { setSearch(v); setPage(1) }}
+          searchPlaceholder="Cari agenda..."
+        />
 
         {/* Content */}
-        <div className="flex-1 p-6 space-y-5">
+        <motion.div
+          className="flex-1 p-6 space-y-5"
+          initial={{ opacity: 0, y: 20 }}
+          animate={{ opacity: 1, y: 0 }}
+          transition={{ duration: 0.35, ease: 'easeOut' }}
+        >
           <div className="flex items-start justify-between flex-wrap gap-3">
             <div>
               <h1 className="text-2xl font-extrabold text-gray-900">Kelola Agenda</h1>
@@ -718,7 +729,7 @@ export default function AdminAgendaPage() {
               <PaginationBar page={page} totalPages={totalPages} onPage={setPage} />
             </div>
           )}
-        </div>
+        </motion.div>
 
         <div className="border-t border-gray-100 bg-white px-6 py-3 flex items-center justify-between">
           <div className="flex items-center gap-2">
@@ -746,6 +757,8 @@ export default function AdminAgendaPage() {
           onSave={handleSave}
         />
       )}
+
+      <ConfirmDialog open={confirm.open} title={confirm.title} message={confirm.message} confirmLabel={confirm.confirmLabel} variant={confirm.variant} onConfirm={confirm.onConfirm} onCancel={closeConfirm} />
     </div>
   )
 }

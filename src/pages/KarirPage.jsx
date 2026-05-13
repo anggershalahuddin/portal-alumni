@@ -1,6 +1,6 @@
 import { useState } from 'react'
 import { Link } from 'react-router-dom'
-import { Search, MapPin, Clock, Briefcase, ExternalLink } from 'lucide-react'
+import { Search, MapPin, Clock, Briefcase, ExternalLink, X, CheckCircle, ChevronRight } from 'lucide-react'
 import Navbar from '../components/landing/Navbar'
 import Footer from '../components/landing/Footer'
 import { initialLowongan, bidangLowongan, tipeLowongan } from '../data/lowongan'
@@ -8,8 +8,8 @@ import { initialLowongan, bidangLowongan, tipeLowongan } from '../data/lowongan'
 const TIPE_STYLE = {
   fulltime: { bg: '#F0FDF4', text: '#15803D' },
   parttime: { bg: '#EFF6FF', text: '#1D4ED8' },
-  kontrak: { bg: '#FFF7ED', text: '#C2410C' },
-  magang: { bg: '#FAF5FF', text: '#7C3AED' },
+  kontrak:  { bg: '#FFF7ED', text: '#C2410C' },
+  magang:   { bg: '#FAF5FF', text: '#7C3AED' },
 }
 
 function getRelativeDate(dateStr) {
@@ -26,11 +26,130 @@ function initials(name) {
   return name.split(' ').slice(0, 2).map(n => n[0]).join('').toUpperCase()
 }
 
+function JobDetailModal({ job, onClose }) {
+  const tipeStyle = TIPE_STYLE[job.tipe] ?? TIPE_STYLE.fulltime
+  const tipeLabel = tipeLowongan.find(t => t.value === job.tipe)?.label ?? job.tipe
+  const deadlinePast = job.deadline && new Date(job.deadline) < new Date()
+
+  return (
+    <div className="fixed inset-0 z-50 flex items-end sm:items-center justify-center p-0 sm:p-4">
+      <div className="absolute inset-0 bg-black/60 backdrop-blur-sm" onClick={onClose} />
+      <div className="relative bg-white w-full sm:max-w-lg sm:rounded-2xl shadow-2xl max-h-[92vh] overflow-y-auto">
+        {/* Header */}
+        <div className="sticky top-0 bg-white border-b border-gray-100 px-6 py-4 flex items-start justify-between gap-3 rounded-t-2xl">
+          <div className="flex items-start gap-3 min-w-0">
+            <div className="w-12 h-12 rounded-xl flex items-center justify-center text-sm font-bold text-white flex-shrink-0" style={{ backgroundColor: '#1A5C38' }}>
+              {initials(job.instansi)}
+            </div>
+            <div className="min-w-0">
+              <h2 className="text-base font-extrabold text-[#0A2415] leading-tight">{job.judul}</h2>
+              <p className="text-sm text-gray-500 mt-0.5">{job.instansi}</p>
+            </div>
+          </div>
+          <button onClick={onClose} className="p-1.5 rounded-xl hover:bg-gray-100 text-gray-400 hover:text-gray-600 transition-colors flex-shrink-0">
+            <X className="w-5 h-5" />
+          </button>
+        </div>
+
+        {/* Body */}
+        <div className="p-6 space-y-6">
+          {/* Tipe + Badge */}
+          <div className="flex flex-wrap gap-2">
+            <span className="text-xs font-semibold px-3 py-1 rounded-full" style={{ backgroundColor: tipeStyle.bg, color: tipeStyle.text }}>
+              {tipeLabel}
+            </span>
+            {deadlinePast && (
+              <span className="text-xs font-semibold px-3 py-1 rounded-full bg-red-50 text-red-600">Deadline Lewat</span>
+            )}
+            {job.tags?.map(t => (
+              <span key={t} className="text-xs font-medium px-2.5 py-1 rounded-full bg-gray-100 text-gray-500">{t}</span>
+            ))}
+          </div>
+
+          {/* Info rows - vertical */}
+          <div className="space-y-3">
+            <div className="flex items-start gap-3">
+              <MapPin className="w-4 h-4 text-[#1A5C38] mt-0.5 flex-shrink-0" />
+              <div>
+                <p className="text-[10px] font-bold text-gray-400 uppercase tracking-wider">Lokasi</p>
+                <p className="text-sm text-gray-700 font-medium">{job.lokasi}</p>
+              </div>
+            </div>
+            {job.gaji && (
+              <div className="flex items-start gap-3">
+                <Briefcase className="w-4 h-4 text-[#1A5C38] mt-0.5 flex-shrink-0" />
+                <div>
+                  <p className="text-[10px] font-bold text-gray-400 uppercase tracking-wider">Gaji</p>
+                  <p className="text-sm text-gray-700 font-medium">{job.gaji}</p>
+                </div>
+              </div>
+            )}
+            {job.deadline && (
+              <div className="flex items-start gap-3">
+                <Clock className={`w-4 h-4 mt-0.5 flex-shrink-0 ${deadlinePast ? 'text-red-500' : 'text-[#1A5C38]'}`} />
+                <div>
+                  <p className="text-[10px] font-bold text-gray-400 uppercase tracking-wider">Batas Pendaftaran</p>
+                  <p className={`text-sm font-medium ${deadlinePast ? 'text-red-600' : 'text-gray-700'}`}>
+                    {new Date(job.deadline).toLocaleDateString('id-ID', { weekday: 'long', day: 'numeric', month: 'long', year: 'numeric' })}
+                    {deadlinePast && ' (Sudah Lewat)'}
+                  </p>
+                </div>
+              </div>
+            )}
+          </div>
+
+          {/* Divider */}
+          <div className="border-t border-gray-100" />
+
+          {/* Deskripsi */}
+          {job.deskripsi && (
+            <div>
+              <h3 className="text-sm font-bold text-gray-900 mb-2">Deskripsi Pekerjaan</h3>
+              <p className="text-sm text-gray-600 leading-relaxed">{job.deskripsi}</p>
+            </div>
+          )}
+
+          {/* Persyaratan */}
+          {job.syarat?.length > 0 && (
+            <div>
+              <h3 className="text-sm font-bold text-gray-900 mb-3">Persyaratan</h3>
+              <ul className="space-y-2">
+                {job.syarat.map((s, i) => (
+                  <li key={i} className="flex items-start gap-2.5">
+                    <CheckCircle className="w-4 h-4 text-[#1A5C38] mt-0.5 flex-shrink-0" />
+                    <span className="text-sm text-gray-600">{s}</span>
+                  </li>
+                ))}
+              </ul>
+            </div>
+          )}
+
+          {/* Footer info */}
+          <div className="text-xs text-gray-400 pt-2 border-t border-gray-100">
+            Diposting {getRelativeDate(job.tanggalPosting)} · {job.instansi}
+          </div>
+        </div>
+
+        {/* CTA */}
+        <div className="sticky bottom-0 bg-white border-t border-gray-100 px-6 py-4">
+          <button
+            className="w-full flex items-center justify-center gap-2 py-3 rounded-xl text-sm font-bold text-white hover:opacity-90 transition-opacity"
+            style={{ backgroundColor: '#1A5C38' }}
+          >
+            Lamar Sekarang <ExternalLink className="w-4 h-4" />
+          </button>
+        </div>
+      </div>
+    </div>
+  )
+}
+
 const activeJobs = initialLowongan.filter(l => l.aktif)
 
 export default function KarirPage() {
   const [search, setSearch] = useState('')
   const [filterBidang, setFilterBidang] = useState('semua')
+  const [selectedJob, setSelectedJob] = useState(null)
 
   const filtered = activeJobs.filter((l) => {
     const q = search.toLowerCase()
@@ -112,10 +231,11 @@ export default function KarirPage() {
               return (
                 <div
                   key={job.id}
-                  className="bg-white rounded-2xl p-5 border border-gray-100 hover:border-[#1A5C38]/25 hover:shadow-md transition-all group"
+                  onClick={() => setSelectedJob(job)}
+                  className="bg-white rounded-2xl p-5 border border-gray-100 hover:border-[#1A5C38]/25 hover:shadow-md transition-all group cursor-pointer"
                 >
                   {/* Header */}
-                  <div className="flex items-start justify-between gap-3 mb-3">
+                  <div className="flex items-start justify-between gap-3 mb-4">
                     <div className="flex items-center gap-3">
                       <div
                         className="w-11 h-11 rounded-xl flex items-center justify-center text-sm font-bold text-white flex-shrink-0"
@@ -138,14 +258,23 @@ export default function KarirPage() {
                     </span>
                   </div>
 
-                  {/* Info */}
-                  <div className="flex flex-wrap items-center gap-x-3 gap-y-1 text-[11px] text-gray-400 mb-3">
-                    <span className="flex items-center gap-1"><MapPin className="w-3 h-3" />{job.lokasi}</span>
-                    {job.gaji && <span className="flex items-center gap-1"><Briefcase className="w-3 h-3" />{job.gaji}</span>}
+                  {/* Info — vertical layout */}
+                  <div className="space-y-1.5 mb-3">
+                    <div className="flex items-center gap-2 text-xs text-gray-500">
+                      <MapPin className="w-3.5 h-3.5 text-gray-400 flex-shrink-0" />
+                      <span>{job.lokasi}</span>
+                    </div>
+                    {job.gaji && (
+                      <div className="flex items-center gap-2 text-xs text-gray-500">
+                        <Briefcase className="w-3.5 h-3.5 text-gray-400 flex-shrink-0" />
+                        <span>{job.gaji}</span>
+                      </div>
+                    )}
                     {job.deadline && (
-                      <span className={`flex items-center gap-1 ${deadlinePast ? 'text-orange-500' : ''}`}>
-                        <Clock className="w-3 h-3" />Deadline: {new Date(job.deadline).toLocaleDateString('id-ID', { day: 'numeric', month: 'short', year: 'numeric' })}
-                      </span>
+                      <div className={`flex items-center gap-2 text-xs ${deadlinePast ? 'text-red-500' : 'text-gray-500'}`}>
+                        <Clock className="w-3.5 h-3.5 flex-shrink-0" />
+                        <span>Deadline: {new Date(job.deadline).toLocaleDateString('id-ID', { day: 'numeric', month: 'short', year: 'numeric' })}</span>
+                      </div>
                     )}
                   </div>
 
@@ -163,12 +292,9 @@ export default function KarirPage() {
                   {/* Footer */}
                   <div className="flex items-center justify-between pt-3 border-t border-gray-100">
                     <p className="text-[10px] text-gray-400">Diposting {getRelativeDate(job.tanggalPosting)}</p>
-                    <button
-                      className="flex items-center gap-1 text-xs font-bold px-3 py-1.5 rounded-lg transition-colors"
-                      style={{ backgroundColor: '#1A5C38', color: '#fff' }}
-                    >
-                      Lamar <ExternalLink className="w-3 h-3" />
-                    </button>
+                    <span className="flex items-center gap-1 text-xs font-semibold text-[#1A5C38] group-hover:gap-1.5 transition-all">
+                      Lihat Detail <ChevronRight className="w-3.5 h-3.5" />
+                    </span>
                   </div>
                 </div>
               )
@@ -193,6 +319,11 @@ export default function KarirPage() {
       </div>
 
       <Footer />
+
+      {/* Job Detail Modal */}
+      {selectedJob && (
+        <JobDetailModal job={selectedJob} onClose={() => setSelectedJob(null)} />
+      )}
     </div>
   )
 }

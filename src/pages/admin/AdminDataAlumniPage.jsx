@@ -5,7 +5,9 @@ import {
   GraduationCap, Briefcase, BookOpen, Mail, Globe,
   Link2, Filter, Eye, FileSpreadsheet,
 } from 'lucide-react'
+import { motion } from 'framer-motion'
 import AdminSidebar from '@/components/admin/AdminSidebar'
+import AdminHeader from '@/components/admin/AdminHeader'
 import { PaginationBar, PerPageSelector } from '@/components/PaginationBar'
 import { alumniData, getAvatarColor, getInitials, bidangList } from '@/data/alumni'
 import { getAlumniDetail } from '@/data/alumniDetail'
@@ -339,30 +341,36 @@ export default function AdminDataAlumniPage() {
       <AdminSidebar active="alumni-data" />
 
       <div className="flex-1 flex flex-col min-w-0">
-        {/* Header */}
-        <header className="sticky top-0 z-30 bg-white border-b border-gray-100 px-6 py-4 flex items-center justify-between gap-4">
-          <div>
-            <h1 className="text-lg font-bold text-[#0A2415]">Data Alumni</h1>
-            <p className="text-xs text-gray-400 mt-0.5">Seluruh data biodata, pendidikan, dan pekerjaan alumni terdaftar</p>
-          </div>
-          <div className="flex items-center gap-2">
-            <button
-              onClick={() => exportCSV(filtered)}
-              className="flex items-center gap-1.5 px-3 py-2 rounded-xl text-sm font-semibold border border-gray-200 bg-white text-gray-700 hover:bg-gray-50"
-            >
-              <Download className="w-4 h-4" /> CSV
-            </button>
-            <button
-              onClick={() => exportXLSX(filtered)}
-              className="flex items-center gap-1.5 px-3 py-2 rounded-xl text-sm font-bold text-white"
-              style={{ backgroundColor: '#1A5C38' }}
-            >
-              <FileSpreadsheet className="w-4 h-4" /> Excel ({filtered.length})
-            </button>
-          </div>
-        </header>
+        <AdminHeader searchPlaceholder="Cari data alumni..." />
 
-        <div className="flex-1 p-6">
+        <motion.div
+          className="flex-1 p-6"
+          initial={{ opacity: 0, y: 20 }}
+          animate={{ opacity: 1, y: 0 }}
+          transition={{ duration: 0.35, ease: 'easeOut' }}
+        >
+          {/* Sub-header with export */}
+          <div className="flex items-center justify-between mb-6">
+            <div>
+              <h1 className="text-2xl font-extrabold text-gray-900">Data Alumni</h1>
+              <p className="text-xs text-gray-400 mt-0.5">Seluruh data biodata, pendidikan, dan pekerjaan alumni terdaftar</p>
+            </div>
+            <div className="flex items-center gap-2">
+              <button
+                onClick={() => exportCSV(filtered)}
+                className="flex items-center gap-1.5 px-3 py-2 rounded-xl text-sm font-semibold border border-gray-200 bg-white text-gray-700 hover:bg-gray-50"
+              >
+                <Download className="w-4 h-4" /> CSV
+              </button>
+              <button
+                onClick={() => exportXLSX(filtered)}
+                className="flex items-center gap-1.5 px-3 py-2 rounded-xl text-sm font-bold text-white"
+                style={{ backgroundColor: '#1A5C38' }}
+              >
+                <FileSpreadsheet className="w-4 h-4" /> Excel ({filtered.length})
+              </button>
+            </div>
+          </div>
           {/* Stats */}
           <div className="grid grid-cols-2 sm:grid-cols-4 gap-4 mb-6">
             {[
@@ -543,7 +551,7 @@ export default function AdminDataAlumniPage() {
               </div>
             )}
           </div>
-        </div>
+        </motion.div>
       </div>
 
       {detail && (

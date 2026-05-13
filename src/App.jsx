@@ -28,6 +28,8 @@ import AdminKarirPage from './pages/admin/AdminKarirPage'
 import AdminPengaturanPage from './pages/admin/AdminPengaturanPage'
 import AdminNotifikasiPage from './pages/admin/AdminNotifikasiPage'
 import AdminLogPage from './pages/admin/AdminLogPage'
+import AdminLandingPage from './pages/admin/AdminLandingPage'
+import VerifikasiStatusPage from './pages/VerifikasiStatusPage'
 
 function App() {
   return (
@@ -49,6 +51,7 @@ function App() {
         <Route path="/kontak" element={<KontakPage />} />
         <Route path="/privasi" element={<PrivasiPage />} />
         <Route path="/syarat" element={<SyaratPage />} />
+        <Route path="/verifikasi-status" element={<VerifikasiStatusPage />} />
         <Route path="/admin" element={<Navigate to="/admin/dashboard" replace />} />
         <Route path="/admin/dashboard" element={<AdminDashboardPage />} />
         <Route path="/admin/verifikasi" element={<AdminVerifikasiPage />} />
@@ -63,6 +66,7 @@ function App() {
         <Route path="/admin/pengaturan" element={<AdminPengaturanPage />} />
         <Route path="/admin/notifikasi" element={<AdminNotifikasiPage />} />
         <Route path="/admin/log" element={<AdminLogPage />} />
+        <Route path="/admin/landing" element={<AdminLandingPage />} />
       </Routes>
     </BrowserRouter>
   )

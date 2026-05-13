@@ -67,17 +67,19 @@ export default function Navbar() {
         <div className="flex items-center justify-between h-16">
 
           {/* Logo */}
-          <Link to="/" className="flex items-center gap-3">
-            <img src={logoUrl} alt="Logo Daarul Mughni" className="w-10 h-10 object-contain rounded flex-shrink-0" />
-            <div>
-              <p className="text-[10px] text-white/50 uppercase tracking-widest leading-none mb-0.5">
+          <Link to="/" className="flex items-center gap-2 sm:gap-3 min-w-0 flex-shrink">
+            <img src={logoUrl} alt="Logo Daarul Mughni" className="w-9 h-9 sm:w-10 sm:h-10 object-contain rounded flex-shrink-0" />
+            <div className="min-w-0">
+              <p className="text-[10px] text-white/50 uppercase tracking-widest leading-none mb-0.5 hidden sm:block">
                 Alumni Portal
               </p>
-              <p className="text-xs font-bold text-white leading-tight">
-                Pondok Pesantren Modern Perpaduan
+              <p className="text-xs font-bold text-white leading-tight whitespace-nowrap">
+                <span className="sm:hidden">Daarul Mughni</span>
+                <span className="hidden sm:inline">Pondok Pesantren Modern Perpaduan</span>
               </p>
-              <p className="text-xs font-bold text-[#F0A500] leading-tight">
-                Daarul Mughni Al Maaliki
+              <p className="text-xs font-bold text-[#F0A500] leading-tight whitespace-nowrap">
+                <span className="sm:hidden">Al Maaliki</span>
+                <span className="hidden sm:inline">Daarul Mughni Al Maaliki</span>
               </p>
             </div>
           </Link>

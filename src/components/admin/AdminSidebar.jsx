@@ -1,43 +1,7 @@
 import { Link, useLocation } from 'react-router-dom'
-import {
-  Shield, Users, LayoutDashboard, Newspaper, CalendarDays,
-  Settings, LogOut, GraduationCap, Database, Image,
-  Building2, Briefcase, Bell, Activity,
-} from 'lucide-react'
+import { Settings, LogOut, Bell, Activity } from 'lucide-react'
 import logoUrl from '@/assets/Logo DM Fix.jpg'
-
-const navGroups = [
-  {
-    label: 'Utama',
-    items: [
-      { label: 'Dashboard', href: '/admin/dashboard', key: 'dashboard', icon: LayoutDashboard },
-    ],
-  },
-  {
-    label: 'Data & Akun',
-    items: [
-      { label: 'Verifikasi Alumni', href: '/admin/verifikasi', key: 'verifikasi', icon: Shield },
-      { label: 'Manajemen User', href: '/admin/users', key: 'users', icon: Users },
-      { label: 'Data Alumni', href: '/admin/alumni-data', key: 'alumni-data', icon: Database },
-      { label: 'Kelola Angkatan', href: '/admin/angkatan', key: 'angkatan', icon: GraduationCap },
-      { label: 'Kelola Organisasi', href: '/admin/organisasi', key: 'organisasi', icon: Building2 },
-    ],
-  },
-  {
-    label: 'Konten',
-    items: [
-      { label: 'Kelola Berita', href: '/admin/berita', key: 'berita', icon: Newspaper },
-      { label: 'Kelola Agenda', href: '/admin/agenda', key: 'agenda', icon: CalendarDays },
-      { label: 'Kelola Galeri', href: '/admin/galeri', key: 'galeri', icon: Image },
-    ],
-  },
-  {
-    label: 'Operasional',
-    items: [
-      { label: 'Kelola Lowongan', href: '/admin/karir', key: 'karir', icon: Briefcase },
-    ],
-  },
-]
+import { NAV_GROUPS } from '@/data/adminMenus'
 
 export default function AdminSidebar({ active }) {
   return (
@@ -56,7 +20,7 @@ export default function AdminSidebar({ active }) {
 
       {/* Nav groups */}
       <div className="flex-1 px-3 py-3 space-y-4 overflow-y-auto">
-        {navGroups.map(group => (
+        {NAV_GROUPS.map(group => (
           <div key={group.label}>
             <p className="text-[9px] font-bold text-gray-400 uppercase tracking-widest px-2 mb-1">
               {group.label}

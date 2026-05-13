@@ -1,10 +1,10 @@
-import { useState } from 'react'
+import { useState, useRef } from 'react'
 import { Link } from 'react-router-dom'
 import { motion } from 'framer-motion'
 import {
   CheckCircle, MapPin, Phone, Mail, Send,
   BookOpen, Monitor, Home, GraduationCap, Heart,
-  Coffee, Activity, Users, ChevronRight, Shield,
+  Coffee, Activity, Users, ChevronRight, ChevronLeft, Shield,
 } from 'lucide-react'
 import Navbar from '@/components/landing/Navbar'
 import Footer from '@/components/landing/Footer'
@@ -14,6 +14,7 @@ import { fadeUp, fadeLeft, fadeRight, stagger, viewport } from '@/lib/animations
 import { initialAngkatan } from '@/data/angkatan'
 import { initialOrganisasi } from '@/data/organisasi'
 import { initialGaleri, kategoriGaleri } from '@/data/galeri'
+import { initialGuru, getGurPhotoSrc } from '@/data/guru'
 
 /* ─── Data ─── */
 const timeline = [
@@ -33,26 +34,6 @@ const misi = [
   'Berkontribusi aktif dalam pemberdayaan masyarakat dan dakwah Islam',
 ]
 
-const pengasuh = [
-  {
-    name: 'KH. Mustopa Mughni, MA.',
-    role: 'Pendiri & Pengasuh Utama',
-    desc: 'Ulama kharismatik lulusan Universitas Al-Azhar Kairo yang mendedikasikan hidupnya untuk membangun generasi Islam yang unggul.',
-    isPimpinan: true,
-  },
-  {
-    name: 'Dr. H. Ahmad Fauzi, M.Pd',
-    role: 'Direktur Pendidikan',
-    desc: 'Akademisi berpengalaman 20+ tahun di bidang kurikulum pendidikan Islam yang integratif dan inovatif.',
-    photo: 'https://images.unsplash.com/photo-1560250097-0b93528c311a?auto=format&fit=crop&w=400&h=480&q=80',
-  },
-  {
-    name: 'Ustd. Siti Maryam, M.Pd',
-    role: 'Koordinator Santri Putri',
-    desc: 'Pemimpin berdedikasi dalam pengembangan program khusus santri putri yang berdaya dan berkarakter islami.',
-    photo: 'https://images.unsplash.com/photo-1573496359142-b8d87734a5a2?auto=format&fit=crop&w=400&h=480&q=80',
-  },
-]
 
 const fasilitas = [
   { icon: Home,          name: 'Asrama Representatif',   desc: 'Gedung asrama putra & putri modern dengan kapasitas 500 santri' },
@@ -95,6 +76,11 @@ const kontakInfo = [
 export default function PesantrenPage() {
   const [activeGaleri, setActiveGaleri] = useState('Semua')
   const [form, setForm] = useState({ nama: '', email: '', judul: '', pesan: '' })
+  const pengasuhScrollRef = useRef(null)
+  const orgScrollRef = useRef(null)
+
+  function scrollPengasuh(dir) { pengasuhScrollRef.current?.scrollBy({ left: dir * 260, behavior: 'smooth' }) }
+  function scrollOrg(dir) { orgScrollRef.current?.scrollBy({ left: dir * 320, behavior: 'smooth' }) }
 
   const filteredGaleri =
     activeGaleri === 'Semua' ? galeriAktif : galeriAktif.filter((g) => g.kategori === activeGaleri)
@@ -269,42 +255,57 @@ export default function PesantrenPage() {
         </div>
       </section>
 
-      {/* ── Pengasuh ── */}
+      {/* ── Guru ── */}
       <section className="py-24 bg-white">
         <div className="max-w-7xl mx-auto px-6 lg:px-8">
-          <motion.div variants={fadeUp} initial="hidden" whileInView="show" viewport={viewport} className="text-center mb-12">
-            <p className="text-xs font-bold tracking-widest uppercase mb-3" style={{ color: '#F0A500' }}>Pimpinan &amp; Pengasuh</p>
-            <h2 className="text-3xl font-extrabold text-gray-900 mb-3">Mengenal Pengasuh Pesantren</h2>
-            <p className="text-gray-500 text-sm max-w-md mx-auto">
-              Dibimbing oleh para pimpinan dan ulama yang penuh dedikasi untuk mencetak generasi terbaik umat.
-            </p>
+          <motion.div variants={fadeUp} initial="hidden" whileInView="show" viewport={viewport} className="flex items-end justify-between mb-12">
+            <div className="text-center flex-1">
+              <p className="text-xs font-bold tracking-widest uppercase mb-3" style={{ color: '#F0A500' }}>Tenaga Pengajar</p>
+              <h2 className="text-3xl font-extrabold text-gray-900 mb-3">Mengenal Para Guru di Pesantren</h2>
+              <p className="text-gray-500 text-sm max-w-md mx-auto">
+                Dibimbing oleh para guru dan ulama yang penuh dedikasi untuk mencetak generasi terbaik umat.
+              </p>
+            </div>
+            <div className="flex gap-2 flex-shrink-0 ml-4 pb-1">
+              <button onClick={() => scrollPengasuh(-1)}
+                className="w-9 h-9 rounded-full border border-gray-200 flex items-center justify-center text-gray-500 hover:border-[#1A5C38] hover:text-[#1A5C38] transition-colors">
+                <ChevronLeft className="w-4 h-4" />
+              </button>
+              <button onClick={() => scrollPengasuh(1)}
+                className="w-9 h-9 rounded-full border border-gray-200 flex items-center justify-center text-gray-500 hover:border-[#1A5C38] hover:text-[#1A5C38] transition-colors">
+                <ChevronRight className="w-4 h-4" />
+              </button>
+            </div>
           </motion.div>
 
-          <motion.div
-            variants={stagger} initial="hidden" whileInView="show" viewport={viewport}
-            className="grid md:grid-cols-3 gap-8"
+          <div
+            ref={pengasuhScrollRef}
+            className="flex gap-8 overflow-x-auto pb-4 snap-x snap-mandatory scroll-smooth justify-center"
+            style={{ scrollbarWidth: 'none', msOverflowStyle: 'none' }}
           >
-            {pengasuh.map((p, i) => (
-              <motion.div key={i} variants={fadeUp} className="text-center group">
-                <div className="relative mb-5 mx-auto w-48 h-56 rounded-2xl overflow-hidden shadow-md">
-                  <img
-                    src={p.isPimpinan ? pimpinanImg : p.photo}
-                    alt={p.name}
-                    className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-500"
-                  />
-                  {i === 0 && (
-                    <div className="absolute bottom-0 inset-x-0 py-1.5 text-xs font-bold text-center"
-                      style={{ backgroundColor: '#F0A500', color: '#0A2415' }}>
-                      Pendiri Utama
-                    </div>
-                  )}
+            {initialGuru.filter(g => g.aktif).map((g) => {
+              const fotoSrc = getGurPhotoSrc(g)
+              return (
+                <div key={g.id} className="min-w-[200px] max-w-[220px] flex-shrink-0 snap-start text-center group">
+                  <div className="relative mb-5 mx-auto w-48 h-56 rounded-2xl overflow-hidden shadow-md">
+                    {fotoSrc
+                      ? <img src={fotoSrc} alt={g.nama} className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-500" />
+                      : <div className="w-full h-full flex items-center justify-center text-white text-3xl font-bold" style={{ backgroundColor: '#1A5C38' }}>{g.nama[0]}</div>
+                    }
+                    {g.isPengasuh && (
+                      <div className="absolute bottom-0 inset-x-0 py-1.5 text-xs font-bold text-center"
+                        style={{ backgroundColor: '#F0A500', color: '#0A2415' }}>
+                        Pengasuh / Pendiri Pesantren
+                      </div>
+                    )}
+                  </div>
+                  <h3 className="font-extrabold text-gray-900 text-base mb-0.5">{g.nama}</h3>
+                  <p className="text-xs font-semibold mb-2" style={{ color: '#1A5C38' }}>{g.jabatan}</p>
+                  <p className="text-gray-500 text-xs leading-relaxed max-w-xs mx-auto">{g.deskripsi}</p>
                 </div>
-                <h3 className="font-extrabold text-gray-900 text-base mb-0.5">{p.name}</h3>
-                <p className="text-xs font-semibold mb-2" style={{ color: '#1A5C38' }}>{p.role}</p>
-                <p className="text-gray-500 text-xs leading-relaxed max-w-xs mx-auto">{p.desc}</p>
-              </motion.div>
-            ))}
-          </motion.div>
+              )
+            })}
+          </div>
         </div>
       </section>
 
@@ -447,17 +448,33 @@ export default function PesantrenPage() {
       {/* ── Organisasi Alumni ── */}
       <section className="py-20" style={{ backgroundColor: '#F8FAF9' }}>
         <div className="max-w-7xl mx-auto px-6 lg:px-8">
-          <motion.div variants={fadeUp} initial="hidden" whileInView="show" viewport={viewport} className="text-center mb-12">
-            <p className="text-xs font-bold tracking-widest uppercase mb-3" style={{ color: '#F0A500' }}>Keluarga Besar</p>
-            <h2 className="text-3xl font-extrabold text-gray-900 mb-3">Organisasi &amp; Lembaga Alumni</h2>
-            <p className="text-gray-500 text-sm max-w-lg mx-auto">
-              Organisasi resmi yang menghimpun dan memberdayakan seluruh alumni Pondok Pesantren Modern Perpaduan Daarul Mughni Al Maaliki.
-            </p>
+          <motion.div variants={fadeUp} initial="hidden" whileInView="show" viewport={viewport} className="flex items-end justify-between mb-12">
+            <div className="text-center flex-1">
+              <p className="text-xs font-bold tracking-widest uppercase mb-3" style={{ color: '#F0A500' }}>Keluarga Besar</p>
+              <h2 className="text-3xl font-extrabold text-gray-900 mb-3">Organisasi &amp; Lembaga Alumni</h2>
+              <p className="text-gray-500 text-sm max-w-lg mx-auto">
+                Organisasi resmi yang menghimpun dan memberdayakan seluruh alumni Pondok Pesantren Modern Perpaduan Daarul Mughni Al Maaliki.
+              </p>
+            </div>
+            <div className="flex gap-2 flex-shrink-0 ml-4 pb-1">
+              <button onClick={() => scrollOrg(-1)}
+                className="w-9 h-9 rounded-full border border-gray-200 flex items-center justify-center text-gray-500 hover:border-[#1A5C38] hover:text-[#1A5C38] transition-colors">
+                <ChevronLeft className="w-4 h-4" />
+              </button>
+              <button onClick={() => scrollOrg(1)}
+                className="w-9 h-9 rounded-full border border-gray-200 flex items-center justify-center text-gray-500 hover:border-[#1A5C38] hover:text-[#1A5C38] transition-colors">
+                <ChevronRight className="w-4 h-4" />
+              </button>
+            </div>
           </motion.div>
 
-          <motion.div variants={stagger} initial="hidden" whileInView="show" viewport={viewport} className="grid md:grid-cols-3 gap-6">
+          <div
+            ref={orgScrollRef}
+            className="flex gap-6 overflow-x-auto pb-4 snap-x snap-mandatory scroll-smooth"
+            style={{ scrollbarWidth: 'none', msOverflowStyle: 'none' }}
+          >
             {initialOrganisasi.filter(o => o.aktif).map((org) => (
-              <motion.div key={org.id} variants={fadeUp} className="bg-white rounded-2xl p-6 border border-gray-100 shadow-sm hover:shadow-md transition-shadow text-center group">
+              <div key={org.id} className="min-w-[280px] max-w-[320px] flex-shrink-0 snap-start bg-white rounded-2xl p-6 border border-gray-100 shadow-sm hover:shadow-md transition-shadow text-center group">
                 <div className="flex justify-center mb-4">
                   {org.logo ? (
                     <img src={org.logo} alt={org.nama}
@@ -492,9 +509,9 @@ export default function PesantrenPage() {
                   )}
                   <div className="text-[10px] text-gray-300 mt-1">Berdiri sejak {org.tahunBerdiri}</div>
                 </div>
-              </motion.div>
+              </div>
             ))}
-          </motion.div>
+          </div>
         </div>
       </section>
 

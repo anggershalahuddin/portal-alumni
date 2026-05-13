@@ -1,30 +1,23 @@
 import { useState } from 'react'
-import { Bell, Check, CheckCheck, Trash2, Filter, Shield, Newspaper, CalendarDays, Users, AlertCircle, Search } from 'lucide-react'
+import { Bell, Check, CheckCheck, Trash2, Shield, Newspaper, CalendarDays, Users, AlertCircle } from 'lucide-react'
+import { motion } from 'framer-motion'
 import AdminSidebar from '../../components/admin/AdminSidebar'
+import AdminHeader from '../../components/admin/AdminHeader'
 import ConfirmDialog from '../../components/admin/ConfirmDialog'
-
-const initialNotif = [
-  { id: 1, tipe: 'verifikasi', judul: 'Permintaan Verifikasi Baru', pesan: 'Siti Maryam (angkatan 2018) mengajukan permintaan verifikasi akun alumni.', waktu: '5 menit lalu', dibaca: false },
-  { id: 2, tipe: 'verifikasi', judul: 'Permintaan Verifikasi Baru', pesan: 'Ahmad Fauzi (angkatan 2015) mengajukan permintaan verifikasi akun alumni.', waktu: '1 jam lalu', dibaca: false },
-  { id: 3, tipe: 'berita', judul: 'Berita Menunggu Persetujuan', pesan: 'Editor "Panitia Reuni" mengajukan berita "Reuni Akbar 25 Tahun" untuk disetujui.', waktu: '2 jam lalu', dibaca: false },
-  { id: 4, tipe: 'user', judul: 'Akun Baru Terdaftar', pesan: '3 akun alumni baru telah mendaftar hari ini dan menunggu verifikasi.', waktu: '3 jam lalu', dibaca: true },
-  { id: 5, tipe: 'sistem', judul: 'Backup Data Berhasil', pesan: 'Backup data otomatis portal alumni telah berhasil dilakukan pada pukul 03:00 WIB.', waktu: '8 jam lalu', dibaca: true },
-  { id: 6, tipe: 'agenda', judul: 'Agenda Akan Segera Berlangsung', pesan: 'Reuni Akbar Lintas Angkatan 2024 dijadwalkan 3 hari lagi. Ingatkan admin dan panitia.', waktu: '1 hari lalu', dibaca: true },
-  { id: 7, tipe: 'berita', judul: 'Berita Menunggu Persetujuan', pesan: 'Editor "Tim Redaksi" mengajukan berita "Santri Raih Juara Musabaqah" untuk disetujui.', waktu: '1 hari lalu', dibaca: true },
-  { id: 8, tipe: 'sistem', judul: 'Pembaruan Sistem', pesan: 'Sistem portal alumni telah berhasil diperbarui ke versi 2.1.0.', waktu: '3 hari lalu', dibaca: true },
-]
+import { initialNotif } from '../../data/notifikasi'
 
 const TIPE_CONFIG = {
-  verifikasi: { icon: Shield, color: '#1A5C38', bg: '#F0FDF4', label: 'Verifikasi' },
-  berita: { icon: Newspaper, color: '#7C3AED', bg: '#FAF5FF', label: 'Berita' },
-  agenda: { icon: CalendarDays, color: '#0E7490', bg: '#ECFEFF', label: 'Agenda' },
-  user: { icon: Users, color: '#D97706', bg: '#FFFBEB', label: 'Pengguna' },
-  sistem: { icon: AlertCircle, color: '#6B7280', bg: '#F9FAFB', label: 'Sistem' },
+  verifikasi: { icon: Shield,       color: '#1A5C38', bg: '#F0FDF4', label: 'Verifikasi' },
+  berita:     { icon: Newspaper,    color: '#7C3AED', bg: '#FAF5FF', label: 'Berita' },
+  agenda:     { icon: CalendarDays, color: '#0E7490', bg: '#ECFEFF', label: 'Agenda' },
+  user:       { icon: Users,        color: '#D97706', bg: '#FFFBEB', label: 'Pengguna' },
+  sistem:     { icon: AlertCircle,  color: '#6B7280', bg: '#F9FAFB', label: 'Sistem' },
 }
 
 export default function AdminNotifikasiPage() {
   const [notif, setNotif] = useState(initialNotif)
   const [filter, setFilter] = useState('semua')
+  const [filterTipe, setFilterTipe] = useState('semua')
   const [confirm, setConfirm] = useState({ open: false })
 
   function askConfirm(opts) { setConfirm({ open: true, ...opts }) }
@@ -33,9 +26,9 @@ export default function AdminNotifikasiPage() {
   const unread = notif.filter(n => !n.dibaca).length
 
   const filtered = notif.filter(n => {
-    if (filter === 'belum-dibaca') return !n.dibaca
-    if (filter === 'dibaca') return n.dibaca
-    return true
+    const matchStatus = filter === 'semua' || (filter === 'belum-dibaca' ? !n.dibaca : n.dibaca)
+    const matchTipe = filterTipe === 'semua' || n.tipe === filterTipe
+    return matchStatus && matchTipe
   })
 
   function markRead(id) {
@@ -55,27 +48,14 @@ export default function AdminNotifikasiPage() {
       <AdminSidebar active="notifikasi" />
 
       <div className="flex-1 flex flex-col min-w-0">
-        <header className="bg-white border-b border-gray-100 px-6 py-3.5 flex items-center justify-between sticky top-0 z-20">
-          <div className="relative w-52">
-            <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-gray-400" />
-            <input placeholder="Cari notifikasi..." className="w-full pl-9 pr-4 py-2 rounded-xl border border-gray-200 bg-gray-50 text-sm outline-none focus:border-green-400 focus:bg-white transition-all" />
-          </div>
-          <div className="flex items-center gap-2">
-            <div className="w-7 h-7 rounded-full flex items-center justify-center" style={{ backgroundColor: '#F0A500' }}>
-              <Shield className="w-3.5 h-3.5" style={{ color: '#0A2415' }} />
-            </div>
-            <span className="font-bold text-gray-900 text-sm">Portal Alumni Daarul Mughni Admin</span>
-          </div>
-          <div className="flex items-center gap-3">
-            <button className="relative p-2 rounded-xl hover:bg-gray-50 transition-colors">
-              <Bell className="w-5 h-5 text-gray-500" />
-              {unread > 0 && <span className="absolute top-1.5 right-1.5 w-2 h-2 rounded-full bg-red-500" />}
-            </button>
-            <div className="w-9 h-9 rounded-full flex items-center justify-center text-white text-sm font-bold" style={{ backgroundColor: '#0A2415' }}>A</div>
-          </div>
-        </header>
+        <AdminHeader searchPlaceholder="Cari notifikasi..." />
 
-        <div className="flex-1 p-6 space-y-4">
+        <motion.div
+          className="flex-1 p-6 space-y-4"
+          initial={{ opacity: 0, y: 20 }}
+          animate={{ opacity: 1, y: 0 }}
+          transition={{ duration: 0.35, ease: 'easeOut' }}
+        >
           {/* Page title */}
           <div className="flex items-center justify-between flex-wrap gap-3">
             <div className="flex items-center gap-3">
@@ -94,8 +74,8 @@ export default function AdminNotifikasiPage() {
             )}
           </div>
 
-          {/* Filter tabs */}
-          <div className="flex gap-1.5">
+          {/* Filter tabs — status */}
+          <div className="flex gap-1.5 flex-wrap">
             {[{ value: 'semua', label: 'Semua' }, { value: 'belum-dibaca', label: 'Belum Dibaca' }, { value: 'dibaca', label: 'Sudah Dibaca' }].map(f => (
               <button key={f.value} onClick={() => setFilter(f.value)}
                 className="px-4 py-2 rounded-xl text-sm font-semibold border transition-colors"
@@ -105,6 +85,35 @@ export default function AdminNotifikasiPage() {
             ))}
           </div>
 
+          {/* Filter chips — kategori */}
+          <div className="flex gap-2 flex-wrap">
+            <button
+              onClick={() => setFilterTipe('semua')}
+              className="flex items-center gap-1.5 px-3 py-1.5 rounded-full text-xs font-semibold border transition-colors"
+              style={filterTipe === 'semua' ? { backgroundColor: '#374151', color: '#fff', borderColor: '#374151' } : { backgroundColor: '#fff', color: '#6B7280', borderColor: '#E5E7EB' }}>
+              Semua Kategori
+              <span className="text-[10px] font-bold px-1.5 py-0.5 rounded-full" style={filterTipe === 'semua' ? { backgroundColor: 'rgba(255,255,255,0.25)', color: '#fff' } : { backgroundColor: '#F3F4F6', color: '#9CA3AF' }}>
+                {notif.length}
+              </span>
+            </button>
+            {Object.entries(TIPE_CONFIG).map(([key, cfg]) => {
+              const count = notif.filter(n => n.tipe === key).length
+              const Icon = cfg.icon
+              const active = filterTipe === key
+              return (
+                <button key={key} onClick={() => setFilterTipe(key)}
+                  className="flex items-center gap-1.5 px-3 py-1.5 rounded-full text-xs font-semibold border transition-colors"
+                  style={active ? { backgroundColor: cfg.color, color: '#fff', borderColor: cfg.color } : { backgroundColor: cfg.bg, color: cfg.color, borderColor: 'transparent' }}>
+                  <Icon className="w-3.5 h-3.5" />
+                  {cfg.label}
+                  <span className="text-[10px] font-bold px-1.5 py-0.5 rounded-full" style={active ? { backgroundColor: 'rgba(255,255,255,0.25)', color: '#fff' } : { backgroundColor: 'rgba(255,255,255,0.6)', color: cfg.color }}>
+                    {count}
+                  </span>
+                </button>
+              )
+            })}
+          </div>
+
           {/* List */}
           <div className="space-y-2">
             {filtered.length === 0 ? (
@@ -112,11 +121,17 @@ export default function AdminNotifikasiPage() {
                 <Bell className="w-10 h-10 text-gray-300 mx-auto mb-3" />
                 <p className="text-sm text-gray-400">Tidak ada notifikasi</p>
               </div>
-            ) : filtered.map(n => {
+            ) : filtered.map((n, i) => {
               const cfg = TIPE_CONFIG[n.tipe] ?? TIPE_CONFIG.sistem
               const Icon = cfg.icon
               return (
-                <div key={n.id} className={`bg-white rounded-2xl border p-4 flex items-start gap-4 ${!n.dibaca ? 'border-green-200' : 'border-gray-100'}`}>
+                <motion.div
+                  key={n.id}
+                  initial={{ opacity: 0, x: -12 }}
+                  animate={{ opacity: 1, x: 0 }}
+                  transition={{ delay: i * 0.05, duration: 0.28 }}
+                  className={`bg-white rounded-2xl border p-4 flex items-start gap-4 ${!n.dibaca ? 'border-green-200' : 'border-gray-100'}`}
+                >
                   <div className="w-10 h-10 rounded-xl flex items-center justify-center flex-shrink-0" style={{ backgroundColor: cfg.bg }}>
                     <Icon className="w-5 h-5" style={{ color: cfg.color }} />
                   </div>
@@ -139,11 +154,11 @@ export default function AdminNotifikasiPage() {
                       <Trash2 className="w-4 h-4 text-red-400" />
                     </button>
                   </div>
-                </div>
+                </motion.div>
               )
             })}
           </div>
-        </div>
+        </motion.div>
       </div>
 
       <ConfirmDialog

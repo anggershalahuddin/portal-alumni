@@ -1,39 +1,19 @@
+import { useRef } from 'react'
 import { motion } from 'framer-motion'
-import { fadeUp, stagger, viewport } from '@/lib/animations'
-
-const testimonials = [
-  {
-    name: 'Dr. Ahmad Fauzi',
-    batch: 'Angkatan 2001',
-    role: 'Dokter & Peneliti',
-    initials: 'AF',
-    color: '#1A5C38',
-    quote:
-      'Wadah silaturahmi ini bukan sekadar tempat berjumpa alumni, tapi juga menjadi tempat saya membangun karier yang bermakna. Kepribadian yang diajarkan pondok sungguh memberi warna luar biasa.',
-  },
-  {
-    name: 'Siti Maryam, S.T.',
-    batch: 'Angkatan 2010',
-    role: 'Insinyur & Peneliti',
-    initials: 'SM',
-    color: '#2A7A4F',
-    quote:
-      'Jejaring alumni di sini sangat suportif. Berkat portal ini, saya bisa berkolaborasi dengan sesama alumni untuk proyek lingkungan dan mendapat apresiasi tinggi dari berbagai instansi.',
-  },
-  {
-    name: 'Rizky Ramadhan',
-    batch: 'Angkatan 2012',
-    role: 'Entrepreneur',
-    initials: 'RR',
-    color: '#0A2415',
-    quote:
-      'Pesan pimpinan tentang Cahaya Masyarakat selalu terngiang. Sekarang saya fokus membangun bisnis yang memberdayakan masyarakat di sekitar pesantren.',
-  },
-]
+import { ChevronLeft, ChevronRight } from 'lucide-react'
+import { initialTestimonials } from '@/data/landingContent'
+import { fadeUp, viewport } from '@/lib/animations'
 
 export default function Testimonials() {
+  const scrollRef = useRef(null)
+  const active = initialTestimonials.filter(t => t.aktif)
+
+  function scroll(dir) {
+    scrollRef.current?.scrollBy({ left: dir * 320, behavior: 'smooth' })
+  }
+
   return (
-    <section className="bg-white py-24">
+    <section className="bg-white py-24 overflow-hidden">
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
 
         {/* Header */}
@@ -43,30 +23,44 @@ export default function Testimonials() {
           viewport={viewport}
           variants={fadeUp}
           transition={{ duration: 0.55, ease: 'easeOut' }}
-          className="text-center mb-14"
+          className="flex items-end justify-between mb-10"
         >
-          <h2 className="text-3xl font-bold text-[#0A2415] mb-3 tracking-tight">
-            Apa Kata Mereka?
-          </h2>
-          <p className="text-gray-500 text-sm">
-            Kisah inspiratif dari para alumni yang telah berkarya di berbagai bidang.
-          </p>
+          <div>
+            <h2 className="text-3xl font-bold text-[#0A2415] mb-3 tracking-tight">
+              Apa Kata Mereka?
+            </h2>
+            <p className="text-gray-500 text-sm">
+              Kisah inspiratif dari para alumni yang telah berkarya di berbagai bidang.
+            </p>
+          </div>
+          {active.length > 1 && (
+            <div className="flex gap-2 flex-shrink-0 ml-4">
+              <button
+                onClick={() => scroll(-1)}
+                className="w-9 h-9 rounded-full border border-gray-200 flex items-center justify-center text-gray-500 hover:border-[#1A5C38] hover:text-[#1A5C38] transition-colors"
+              >
+                <ChevronLeft className="w-4 h-4" />
+              </button>
+              <button
+                onClick={() => scroll(1)}
+                className="w-9 h-9 rounded-full border border-gray-200 flex items-center justify-center text-gray-500 hover:border-[#1A5C38] hover:text-[#1A5C38] transition-colors"
+              >
+                <ChevronRight className="w-4 h-4" />
+              </button>
+            </div>
+          )}
         </motion.div>
 
-        {/* Cards */}
-        <motion.div
-          initial="hidden"
-          whileInView="show"
-          viewport={viewport}
-          variants={stagger}
-          className="grid md:grid-cols-3 gap-6"
+        {/* Horizontal scroll */}
+        <div
+          ref={scrollRef}
+          className="flex gap-6 overflow-x-auto pb-4 snap-x snap-mandatory scroll-smooth"
+          style={{ scrollbarWidth: 'none', msOverflowStyle: 'none' }}
         >
-          {testimonials.map(({ name, batch, role, initials, color, quote }) => (
-            <motion.div
-              key={name}
-              variants={fadeUp}
-              transition={{ duration: 0.5, ease: 'easeOut' }}
-              className="bg-[#F8FAF9] border border-gray-100 rounded-xl p-6 flex flex-col hover:shadow-lg transition-shadow duration-300"
+          {active.map(({ id, name, batch, role, initials, color, foto, quote }) => (
+            <div
+              key={id}
+              className="min-w-[280px] max-w-[340px] flex-shrink-0 snap-start bg-[#F8FAF9] border border-gray-100 rounded-xl p-6 flex flex-col hover:shadow-lg transition-shadow duration-300"
             >
               <svg
                 className="w-8 h-8 mb-5 opacity-70"
@@ -82,11 +76,11 @@ export default function Testimonials() {
               </p>
 
               <div className="flex items-center gap-3 pt-5 border-t border-gray-100">
-                <div
-                  className="w-10 h-10 rounded-full flex items-center justify-center text-white text-sm font-bold flex-shrink-0"
-                  style={{ background: color }}
-                >
-                  {initials}
+                <div className="w-10 h-10 rounded-full flex-shrink-0 overflow-hidden">
+                  {foto
+                    ? <img src={foto} alt={name} className="w-full h-full object-cover" />
+                    : <div className="w-full h-full flex items-center justify-center text-white text-sm font-bold" style={{ background: color }}>{initials}</div>
+                  }
                 </div>
                 <div>
                   <div className="text-[#0A2415] font-bold text-sm">{name}</div>
@@ -95,9 +89,9 @@ export default function Testimonials() {
                   </div>
                 </div>
               </div>
-            </motion.div>
+            </div>
           ))}
-        </motion.div>
+        </div>
       </div>
     </section>
   )

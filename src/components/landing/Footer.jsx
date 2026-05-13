@@ -1,5 +1,6 @@
 import { Mail, Phone, MapPin } from 'lucide-react'
 import logoUrl from '@/assets/Logo DM Fix.jpg'
+import { siteConfig } from '@/data/siteConfig'
 
 const portalLinks = [
   { label: 'Direktori Alumni', href: '/direktori' },
@@ -126,17 +127,15 @@ export default function Footer() {
             <ul className="space-y-4">
               <li className="flex items-start gap-2.5">
                 <MapPin className="w-3.5 h-3.5 mt-0.5 flex-shrink-0 text-[#F0A500]" />
-                <span className="text-white/40 text-xs leading-relaxed">
-                  Jl. Klapanunggal Kp. Cibeber II Ds. Cikahuripan Kec. Klapanunggal Kabupaten Bogor Jawa Barat 16710
-                </span>
+                <span className="text-white/40 text-xs leading-relaxed">{siteConfig.alamat}</span>
               </li>
               <li className="flex items-center gap-2.5">
                 <Mail className="w-3.5 h-3.5 flex-shrink-0 text-[#F0A500]" />
-                <span className="text-white/40 text-xs">ppdaaarulmughni@gmail.com</span>
+                <span className="text-white/40 text-xs">{siteConfig.emailKontak}</span>
               </li>
               <li className="flex items-center gap-2.5">
                 <Phone className="w-3.5 h-3.5 flex-shrink-0 text-[#F0A500]" />
-                <span className="text-white/40 text-xs">(021) 2921 9666</span>
+                <span className="text-white/40 text-xs">{siteConfig.telepon}</span>
               </li>
             </ul>
           </div>

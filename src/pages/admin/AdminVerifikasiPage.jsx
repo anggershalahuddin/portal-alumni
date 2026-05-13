@@ -1,12 +1,15 @@
 import { useState, useEffect } from 'react'
 import { Link } from 'react-router-dom'
 import {
-  Search, Bell, Shield, CheckCircle, XCircle,
-  Users, Settings, LogOut, Download, ChevronDown,
+  CheckCircle, XCircle,
+  Users, Download, ChevronDown,
   ChevronLeft, ChevronRight, FileText, X, Clock,
-  AlertCircle, Filter,
+  AlertCircle, Filter, Trash2, Eye, ZoomIn,
 } from 'lucide-react'
+import { motion } from 'framer-motion'
 import AdminSidebar from '../../components/admin/AdminSidebar'
+import AdminHeader from '../../components/admin/AdminHeader'
+import ConfirmDialog from '../../components/admin/ConfirmDialog'
 
 /* ─── Helpers ─── */
 const getAngkatanKe = (year) => year - 2005
@@ -14,15 +17,139 @@ const TAHUN_LIST = Array.from({ length: 2026 - 2006 + 1 }, (_, i) => 2006 + i)
 const PER_PAGE = 5
 
 /* ─── Mock Data ─── */
-const initialAlumni = [
-  { id: 1, name: 'Ahmad Fauzi',     email: 'ahmad.fauzi@email.com',  angkatan: 2015, status: 'menunggu', tanggal: '12 Okt 2023', avatar: 'https://images.unsplash.com/photo-1607990281513-2c110a25bd8c?auto=format&fit=crop&w=48&h=48&q=80&crop=faces', rejectionMsg: '' },
-  { id: 2, name: 'Siti Maryam',     email: 'siti.m@email.com',        angkatan: 2018, status: 'menunggu', tanggal: '11 Okt 2023', avatar: 'https://images.unsplash.com/photo-1573496359142-b8d87734a5a2?auto=format&fit=crop&w=48&h=48&q=80&crop=faces', rejectionMsg: '' },
-  { id: 3, name: 'Rizky Ramadhan',  email: 'rizky.r@email.com',       angkatan: 2012, status: 'ditolak',  tanggal: '10 Okt 2023', avatar: 'https://images.unsplash.com/photo-1560250097-0b93528c311a?auto=format&fit=crop&w=48&h=48&q=80&crop=faces', rejectionMsg: 'Dokumen tidak lengkap — foto ijazah tidak terbaca dan data alamat tidak sesuai dengan KTP.' },
-  { id: 4, name: 'Nurul Hidayah',   email: 'nurul.hid@email.com',     angkatan: 2020, status: 'menunggu', tanggal: '10 Okt 2023', avatar: 'https://images.unsplash.com/photo-1531123897727-8f129e1688ce?auto=format&fit=crop&w=48&h=48&q=80&crop=faces', rejectionMsg: '' },
-  { id: 5, name: 'Budi Santoso',    email: 'budi.san@email.com',      angkatan: 2014, status: 'menunggu', tanggal: '09 Okt 2023', avatar: 'https://images.unsplash.com/photo-1507003211169-0a1dd7228f2d?auto=format&fit=crop&w=48&h=48&q=80&crop=faces', rejectionMsg: '' },
-  { id: 6, name: 'Fatimah Az-Zahra',email: 'fatimah.az@email.com',    angkatan: 2019, status: 'menunggu', tanggal: '08 Okt 2023', avatar: 'https://images.unsplash.com/photo-1589156229687-496a31ad1d1f?auto=format&fit=crop&w=48&h=48&q=80&crop=faces', rejectionMsg: '' },
-  { id: 7, name: 'Muhammad Ilham',  email: 'm.ilham@email.com',       angkatan: 2016, status: 'ditolak',  tanggal: '07 Okt 2023', avatar: 'https://images.unsplash.com/photo-1506794778202-cad84cf45f1d?auto=format&fit=crop&w=48&h=48&q=80&crop=faces', rejectionMsg: 'Data tidak sesuai — nama di KTP berbeda dengan data yang didaftarkan.' },
+const mkBerkas = (hasKTP, hasIjazah, hasSurat) => [
+  { label: 'Kartu Tanda Penduduk (KTP)',     key: 'ktp',    uploaded: hasKTP,    url: hasKTP    ? 'https://images.unsplash.com/photo-1586281380349-632531db7ed4?auto=format&fit=crop&w=600&h=400&q=80' : null },
+  { label: 'Ijazah Pondok Pesantren',         key: 'ijazah', uploaded: hasIjazah, url: hasIjazah ? 'https://images.unsplash.com/photo-1517842645767-c639042777db?auto=format&fit=crop&w=600&h=400&q=80' : null },
+  { label: 'Surat Keterangan Alumni',         key: 'surat',  uploaded: hasSurat,  url: hasSurat  ? 'https://images.unsplash.com/photo-1554224155-6726b3ff858f?auto=format&fit=crop&w=600&h=400&q=80' : null },
+  { label: 'Pas Foto 3×4',                   key: 'foto',   uploaded: true,      url: null },
 ]
+
+const initialAlumni = [
+  { id: 1, name: 'Ahmad Fauzi',     email: 'ahmad.fauzi@email.com',  angkatan: 2015, status: 'menunggu', tanggal: '12 Okt 2023', avatar: 'https://images.unsplash.com/photo-1607990281513-2c110a25bd8c?auto=format&fit=crop&w=48&h=48&q=80&crop=faces', rejectionMsg: '', berkas: mkBerkas(true, true, true) },
+  { id: 2, name: 'Siti Maryam',     email: 'siti.m@email.com',        angkatan: 2018, status: 'menunggu', tanggal: '11 Okt 2023', avatar: 'https://images.unsplash.com/photo-1573496359142-b8d87734a5a2?auto=format&fit=crop&w=48&h=48&q=80&crop=faces', rejectionMsg: '', berkas: mkBerkas(true, true, false) },
+  { id: 3, name: 'Rizky Ramadhan',  email: 'rizky.r@email.com',       angkatan: 2012, status: 'ditolak',  tanggal: '10 Okt 2023', avatar: 'https://images.unsplash.com/photo-1560250097-0b93528c311a?auto=format&fit=crop&w=48&h=48&q=80&crop=faces', rejectionMsg: 'Dokumen tidak lengkap — foto ijazah tidak terbaca dan data alamat tidak sesuai dengan KTP.', berkas: mkBerkas(true, false, false) },
+  { id: 4, name: 'Nurul Hidayah',   email: 'nurul.hid@email.com',     angkatan: 2020, status: 'menunggu', tanggal: '10 Okt 2023', avatar: 'https://images.unsplash.com/photo-1531123897727-8f129e1688ce?auto=format&fit=crop&w=48&h=48&q=80&crop=faces', rejectionMsg: '', berkas: mkBerkas(true, true, true) },
+  { id: 5, name: 'Budi Santoso',    email: 'budi.san@email.com',      angkatan: 2014, status: 'menunggu', tanggal: '09 Okt 2023', avatar: 'https://images.unsplash.com/photo-1507003211169-0a1dd7228f2d?auto=format&fit=crop&w=48&h=48&q=80&crop=faces', rejectionMsg: '', berkas: mkBerkas(true, false, true) },
+  { id: 6, name: 'Fatimah Az-Zahra',email: 'fatimah.az@email.com',    angkatan: 2019, status: 'menunggu', tanggal: '08 Okt 2023', avatar: 'https://images.unsplash.com/photo-1589156229687-496a31ad1d1f?auto=format&fit=crop&w=48&h=48&q=80&crop=faces', rejectionMsg: '', berkas: mkBerkas(true, true, true) },
+  { id: 7, name: 'Muhammad Ilham',  email: 'm.ilham@email.com',       angkatan: 2016, status: 'ditolak',  tanggal: '07 Okt 2023', avatar: 'https://images.unsplash.com/photo-1506794778202-cad84cf45f1d?auto=format&fit=crop&w=48&h=48&q=80&crop=faces', rejectionMsg: 'Data tidak sesuai — nama di KTP berbeda dengan data yang didaftarkan.', berkas: mkBerkas(true, true, false) },
+]
+
+/* ─── Modal: Lihat Berkas ─── */
+function BerkasModal({ alumni, onClose }) {
+  const [zoomed, setZoomed] = useState(null)
+
+  useEffect(() => {
+    document.body.style.overflow = 'hidden'
+    return () => { document.body.style.overflow = '' }
+  }, [])
+
+  const uploadedCount = alumni.berkas.filter((b) => b.uploaded && b.url).length
+
+  return (
+    <div className="fixed inset-0 z-50 flex items-center justify-center p-4">
+      <div className="absolute inset-0 bg-black/70" onClick={onClose} />
+      <div className="relative bg-white rounded-2xl shadow-2xl w-full max-w-2xl max-h-[90vh] flex flex-col">
+        {/* Header */}
+        <div className="flex items-center justify-between px-6 py-4 border-b border-gray-100 flex-shrink-0">
+          <div>
+            <h2 className="text-base font-bold text-gray-900">Berkas Dokumen</h2>
+            <p className="text-xs text-gray-400 mt-0.5">{alumni.name} · {uploadedCount} dari {alumni.berkas.length} dokumen diunggah</p>
+          </div>
+          <button onClick={onClose} className="text-gray-400 hover:text-gray-600 transition-colors">
+            <X className="w-5 h-5" />
+          </button>
+        </div>
+
+        {/* Body */}
+        <div className="overflow-y-auto flex-1 p-6">
+          <div className="grid grid-cols-2 gap-4">
+            {alumni.berkas.map((b) => (
+              <div key={b.key} className="border border-gray-200 rounded-xl overflow-hidden">
+                {/* Label bar */}
+                <div className="flex items-center justify-between px-3 py-2 bg-gray-50 border-b border-gray-100">
+                  <span className="text-xs font-semibold text-gray-700 truncate">{b.label}</span>
+                  {b.uploaded && b.url ? (
+                    <span className="text-[10px] font-bold text-green-600 bg-green-50 border border-green-200 px-2 py-0.5 rounded-full ml-2 flex-shrink-0">✓ Diunggah</span>
+                  ) : (
+                    <span className="text-[10px] font-bold text-gray-400 bg-gray-100 border border-gray-200 px-2 py-0.5 rounded-full ml-2 flex-shrink-0">Belum</span>
+                  )}
+                </div>
+
+                {/* Preview area */}
+                {b.uploaded && b.url ? (
+                  <div className="relative group bg-gray-100">
+                    <img
+                      src={b.url}
+                      alt={b.label}
+                      className="w-full h-36 object-cover"
+                    />
+                    {/* Hover overlay */}
+                    <div className="absolute inset-0 bg-black/40 opacity-0 group-hover:opacity-100 transition-opacity flex items-center justify-center gap-3">
+                      <button
+                        onClick={() => setZoomed(b)}
+                        className="w-9 h-9 rounded-full bg-white/90 flex items-center justify-center text-gray-700 hover:bg-white transition-colors"
+                        title="Perbesar"
+                      >
+                        <ZoomIn className="w-4 h-4" />
+                      </button>
+                      <a
+                        href={b.url}
+                        download
+                        target="_blank"
+                        rel="noreferrer"
+                        className="w-9 h-9 rounded-full bg-white/90 flex items-center justify-center text-gray-700 hover:bg-white transition-colors"
+                        title="Unduh"
+                      >
+                        <Download className="w-4 h-4" />
+                      </a>
+                    </div>
+                  </div>
+                ) : (
+                  <div className="h-36 flex flex-col items-center justify-center bg-gray-50 gap-2">
+                    <FileText className="w-8 h-8 text-gray-300" />
+                    <p className="text-xs text-gray-400">Belum diunggah</p>
+                  </div>
+                )}
+              </div>
+            ))}
+          </div>
+        </div>
+
+        {/* Footer */}
+        <div className="flex items-center justify-end px-6 py-4 border-t border-gray-100 flex-shrink-0">
+          <button
+            onClick={onClose}
+            className="px-5 py-2.5 rounded-xl border border-gray-200 text-sm font-medium text-gray-700 hover:bg-gray-50 transition-colors"
+          >
+            Tutup
+          </button>
+        </div>
+      </div>
+
+      {/* Zoom overlay */}
+      {zoomed && (
+        <div
+          className="fixed inset-0 z-60 flex items-center justify-center bg-black/90 p-6"
+          onClick={() => setZoomed(null)}
+        >
+          <button
+            className="absolute top-4 right-4 text-white/70 hover:text-white transition-colors"
+            onClick={() => setZoomed(null)}
+          >
+            <X className="w-6 h-6" />
+          </button>
+          <img
+            src={zoomed.url}
+            alt={zoomed.label}
+            className="max-w-full max-h-full object-contain rounded-xl shadow-2xl"
+            onClick={(e) => e.stopPropagation()}
+          />
+          <p className="absolute bottom-6 left-1/2 -translate-x-1/2 text-white/70 text-sm font-medium">{zoomed.label}</p>
+        </div>
+      )}
+    </div>
+  )
+}
 
 /* ─── Modal: Form Penolakan ─── */
 function RejectModal({ alumni, onClose, onSubmit }) {
@@ -239,8 +366,12 @@ export default function AdminVerifikasiPage() {
 
   // Modal states
   const [rejectTarget, setRejectTarget] = useState(null)
+  const [berkasTarget, setBerkasTarget] = useState(null)
   const [showSuccess, setShowSuccess] = useState(false)
   const [showRejectedConfirm, setShowRejectedConfirm] = useState(false)
+  const [confirm, setConfirm] = useState({ open: false })
+  function askConfirm(opts) { setConfirm({ open: true, ...opts }) }
+  function closeConfirm() { setConfirm({ open: false }) }
 
   /* Filter */
   const filtered = alumni.filter((a) => {
@@ -258,9 +389,19 @@ export default function AdminVerifikasiPage() {
 
   /* Actions */
   function handleApprove(id) {
-    setAlumni((prev) => prev.filter((a) => a.id !== id))
-    setSelected((prev) => prev.filter((i) => i !== id))
-    setShowSuccess(true)
+    const a = alumni.find(x => x.id === id)
+    askConfirm({
+      title: 'Verifikasi Alumni',
+      message: `Apakah Anda yakin ingin memverifikasi ${a?.name ?? 'alumni ini'}? Akun akan segera diaktifkan dan alumni dapat mengakses portal.`,
+      confirmLabel: 'Ya, Verifikasi',
+      variant: 'success',
+      onConfirm: () => {
+        setAlumni((prev) => prev.filter((x) => x.id !== id))
+        setSelected((prev) => prev.filter((i) => i !== id))
+        closeConfirm()
+        setShowSuccess(true)
+      },
+    })
   }
 
   function handleRejectSubmit(id, alasan) {
@@ -272,9 +413,34 @@ export default function AdminVerifikasiPage() {
   }
 
   function handleBulkVerify() {
-    setAlumni((prev) => prev.filter((a) => !selected.includes(a.id)))
-    setSelected([])
-    setShowSuccess(true)
+    if (selected.length === 0) return
+    askConfirm({
+      title: `Verifikasi ${selected.length} Alumni`,
+      message: `Apakah Anda yakin ingin memverifikasi ${selected.length} alumni sekaligus? Semua akun yang dipilih akan segera diaktifkan.`,
+      confirmLabel: 'Ya, Verifikasi Semua',
+      variant: 'success',
+      onConfirm: () => {
+        setAlumni((prev) => prev.filter((a) => !selected.includes(a.id)))
+        setSelected([])
+        closeConfirm()
+        setShowSuccess(true)
+      },
+    })
+  }
+
+  function handleDelete(id) {
+    const a = alumni.find(x => x.id === id)
+    askConfirm({
+      title: 'Hapus Data Pendaftaran',
+      message: `Apakah Anda yakin ingin menghapus data pendaftaran atas nama ${a?.name ?? 'alumni ini'}? Tindakan ini tidak dapat dibatalkan.`,
+      confirmLabel: 'Ya, Hapus Data',
+      variant: 'danger',
+      onConfirm: () => {
+        setAlumni((prev) => prev.filter((x) => x.id !== id))
+        setSelected((prev) => prev.filter((i) => i !== id))
+        closeConfirm()
+      },
+    })
   }
 
   function toggleSelect(id) {
@@ -303,50 +469,19 @@ export default function AdminVerifikasiPage() {
       {/* ── Main ── */}
       <div className="flex-1 flex flex-col min-w-0">
 
-        {/* Header */}
-        <header className="bg-white border-b border-gray-100 px-6 py-3.5 flex items-center justify-between sticky top-0 z-20">
-          {/* Search */}
-          <div className="relative w-52">
-            <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-gray-400" />
-            <input
-              type="text"
-              placeholder="Cari alumni..."
-              value={search}
-              onChange={(e) => { setSearch(e.target.value); setPage(1) }}
-              className="w-full pl-9 pr-4 py-2 rounded-xl border border-gray-200 bg-gray-50 text-sm outline-none focus:border-green-400 focus:bg-white transition-all"
-            />
-          </div>
-
-          {/* Title */}
-          <div className="flex items-center gap-2">
-            <div className="w-7 h-7 rounded-full flex items-center justify-center flex-shrink-0"
-              style={{ backgroundColor: '#F0A500' }}>
-              <Shield className="w-3.5 h-3.5" style={{ color: '#0A2415' }} />
-            </div>
-            <span className="font-bold text-gray-900 text-sm">Portal Alumni Daarul Mughni Admin</span>
-          </div>
-
-          {/* User */}
-          <div className="flex items-center gap-3">
-            <button className="relative p-2 rounded-xl hover:bg-gray-50 transition-colors">
-              <Bell className="w-5 h-5 text-gray-500" />
-              <span className="absolute top-1.5 right-1.5 w-2 h-2 rounded-full bg-red-500" />
-            </button>
-            <div className="flex items-center gap-2">
-              <div className="text-right">
-                <p className="text-xs font-bold text-gray-900 leading-none mb-0.5">Admin Utama</p>
-                <p className="text-[10px] text-gray-400">Super Admin</p>
-              </div>
-              <div className="w-9 h-9 rounded-full flex items-center justify-center flex-shrink-0 text-white text-sm font-bold"
-                style={{ backgroundColor: '#0A2415' }}>
-                A
-              </div>
-            </div>
-          </div>
-        </header>
+        <AdminHeader
+          searchValue={search}
+          onSearchChange={(v) => { setSearch(v); setPage(1) }}
+          searchPlaceholder="Cari alumni..."
+        />
 
         {/* Content */}
-        <div className="flex flex-1 gap-5 p-6 items-start">
+        <motion.div
+          className="flex flex-1 gap-5 p-6 items-start"
+          initial={{ opacity: 0, y: 20 }}
+          animate={{ opacity: 1, y: 0 }}
+          transition={{ duration: 0.35, ease: 'easeOut' }}
+        >
 
           {/* ── Table Area ── */}
           <div className="flex-1 min-w-0 space-y-4">
@@ -445,8 +580,14 @@ export default function AdminVerifikasiPage() {
                     </tr>
                   </thead>
                   <tbody className="divide-y divide-gray-50">
-                    {paged.map((a) => (
-                      <tr key={a.id} className="hover:bg-gray-50/50 transition-colors">
+                    {paged.map((a, i) => (
+                      <motion.tr
+                        key={a.id}
+                        initial={{ opacity: 0, x: -8 }}
+                        animate={{ opacity: 1, x: 0 }}
+                        transition={{ delay: 0.1 + i * 0.05, duration: 0.25 }}
+                        className="hover:bg-gray-50/50 transition-colors"
+                      >
                         {/* Checkbox */}
                         <td className="px-5 py-4">
                           <input
@@ -505,7 +646,10 @@ export default function AdminVerifikasiPage() {
 
                         {/* Dokumen */}
                         <td className="px-4 py-4">
-                          <button className="flex items-center gap-1 text-xs font-semibold text-blue-500 hover:text-blue-700 transition-colors whitespace-nowrap">
+                          <button
+                            onClick={() => setBerkasTarget(a)}
+                            className="flex items-center gap-1 text-xs font-semibold text-blue-500 hover:text-blue-700 transition-colors whitespace-nowrap"
+                          >
                             <FileText className="w-3.5 h-3.5" />
                             Lihat Berkas
                           </button>
@@ -518,7 +662,14 @@ export default function AdminVerifikasiPage() {
 
                         {/* Aksi */}
                         <td className="px-4 py-4">
-                          <div className="flex items-center gap-2">
+                          <div className="flex items-center gap-1.5">
+                            <button
+                              onClick={() => handleDelete(a.id)}
+                              title="Hapus Data"
+                              className="w-8 h-8 rounded-full flex items-center justify-center border border-gray-200 bg-gray-50 text-gray-400 hover:bg-red-50 hover:border-red-200 hover:text-red-500 transition-colors"
+                            >
+                              <Trash2 className="w-4 h-4" />
+                            </button>
                             <button
                               onClick={() => setRejectTarget(a)}
                               title="Tolak"
@@ -535,7 +686,7 @@ export default function AdminVerifikasiPage() {
                             </button>
                           </div>
                         </td>
-                      </tr>
+                      </motion.tr>
                     ))}
 
                     {paged.length === 0 && (
@@ -630,10 +781,11 @@ export default function AdminVerifikasiPage() {
               </div>
             </div>
           </div>
-        </div>
+        </motion.div>
       </div>
 
       {/* ── Modals ── */}
+      {berkasTarget && <BerkasModal alumni={berkasTarget} onClose={() => setBerkasTarget(null)} />}
       {rejectTarget && (
         <RejectModal
           alumni={rejectTarget}
@@ -643,6 +795,7 @@ export default function AdminVerifikasiPage() {
       )}
       {showSuccess && <SuccessModal onClose={() => setShowSuccess(false)} />}
       {showRejectedConfirm && <RejectedConfirmModal onClose={() => setShowRejectedConfirm(false)} />}
+      <ConfirmDialog open={confirm.open} title={confirm.title} message={confirm.message} confirmLabel={confirm.confirmLabel} variant={confirm.variant} onConfirm={confirm.onConfirm} onCancel={closeConfirm} />
     </div>
   )
 }
