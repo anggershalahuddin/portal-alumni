@@ -1,54 +1,177 @@
-import { useState } from 'react'
+import { useState, useRef } from 'react'
 import { Link } from 'react-router-dom'
-import { Eye, EyeOff, GraduationCap, CheckCircle, ChevronDown } from 'lucide-react'
+import {
+  Eye, EyeOff, GraduationCap, CheckCircle,
+  ChevronDown, Upload, X, Camera, CreditCard, Scroll, AlertCircle,
+} from 'lucide-react'
 import heroImg from '../assets/hero.jpg'
 
 const ANGKATAN_LIST = Array.from({ length: 2026 - 2006 + 1 }, (_, i) => 2006 + i)
 
-const inputStyle = {
-  base: 'w-full px-4 py-3 rounded-xl border border-gray-200 text-sm outline-none transition-all bg-white',
-}
+const inputCls = 'w-full px-4 py-3 rounded-xl border border-gray-200 text-sm outline-none transition-all bg-white'
+const focusStyle = { borderColor: '#1A5C38' }
+const blurStyle  = { borderColor: '#E5E7EB' }
 
-function Field({ label, children }) {
+function Field({ label, required, children }) {
   return (
     <div>
-      <label className="block text-[11px] font-bold text-gray-500 uppercase tracking-wider mb-1.5">{label}</label>
+      <label className="block text-[11px] font-bold text-gray-500 uppercase tracking-wider mb-1.5">
+        {label}{required && <span className="text-red-400 ml-1">*</span>}
+      </label>
       {children}
     </div>
   )
 }
 
-function TextInput({ value, onChange, placeholder, type = 'text' }) {
+function TextInput({ value, onChange, placeholder, type = 'text', required }) {
   return (
     <input
       type={type}
       value={value}
       onChange={onChange}
       placeholder={placeholder}
-      className={inputStyle.base}
-      onFocus={(e) => (e.target.style.borderColor = '#1A5C38')}
-      onBlur={(e) => (e.target.style.borderColor = '#E5E7EB')}
+      required={required}
+      className={inputCls}
+      onFocus={(e) => Object.assign(e.target.style, focusStyle)}
+      onBlur={(e)  => Object.assign(e.target.style, blurStyle)}
     />
   )
 }
 
+const DOC_SLOTS = [
+  {
+    key: 'foto',
+    icon: Camera,
+    label: 'Foto Diri Terbaru',
+    desc: 'Tampak depan, latar terang',
+    accept: 'image/jpeg,image/png,image/webp',
+    required: true,
+  },
+  {
+    key: 'ktp',
+    icon: CreditCard,
+    label: 'Scan / Foto KTP',
+    desc: 'KTP atau kartu identitas resmi',
+    accept: 'image/jpeg,image/png,image/webp,application/pdf',
+    required: true,
+  },
+  {
+    key: 'ijazah',
+    icon: Scroll,
+    label: 'Ijazah Pesantren',
+    desc: 'Ijazah atau surat keterangan lulus',
+    accept: 'image/jpeg,image/png,image/webp,application/pdf',
+    required: false,
+  },
+]
+
+function DocSlot({ slot, file, onSelect, onRemove }) {
+  const ref = useRef()
+  const Icon = slot.icon
+  const hasFile = !!file
+
+  return (
+    <div
+      className={`relative rounded-2xl border-2 transition-all ${
+        hasFile
+          ? 'border-green-400 bg-green-50'
+          : 'border-dashed border-gray-200 bg-gray-50 hover:border-[#1A5C38] hover:bg-green-50/30'
+      }`}
+    >
+      {/* Required badge */}
+      {slot.required && (
+        <span className="absolute -top-2 right-3 text-[9px] font-bold bg-red-500 text-white px-2 py-0.5 rounded-full uppercase tracking-wider">
+          Wajib
+        </span>
+      )}
+
+      <div className="p-4">
+        <div className="flex items-start gap-3">
+          {/* Icon */}
+          <div
+            className="w-10 h-10 rounded-xl flex items-center justify-center flex-shrink-0"
+            style={{ backgroundColor: hasFile ? '#D1FAE5' : '#F3F4F6' }}
+          >
+            {hasFile
+              ? <CheckCircle className="w-5 h-5 text-green-600" />
+              : <Icon className="w-5 h-5 text-gray-400" />
+            }
+          </div>
+
+          {/* Info */}
+          <div className="flex-1 min-w-0">
+            <p className="text-sm font-semibold text-gray-800">{slot.label}</p>
+            {hasFile ? (
+              <p className="text-xs text-green-700 font-medium truncate mt-0.5">{file.name}</p>
+            ) : (
+              <p className="text-xs text-gray-400 mt-0.5">{slot.desc}</p>
+            )}
+          </div>
+
+          {/* Action */}
+          {hasFile ? (
+            <button
+              type="button"
+              onClick={onRemove}
+              className="w-7 h-7 rounded-full bg-red-100 hover:bg-red-200 flex items-center justify-center transition-colors flex-shrink-0"
+            >
+              <X className="w-3.5 h-3.5 text-red-500" />
+            </button>
+          ) : (
+            <button
+              type="button"
+              onClick={() => ref.current.click()}
+              className="flex items-center gap-1.5 text-xs font-semibold px-3 py-1.5 rounded-lg border transition-colors flex-shrink-0"
+              style={{ borderColor: '#1A5C38', color: '#1A5C38' }}
+            >
+              <Upload className="w-3 h-3" /> Pilih
+            </button>
+          )}
+        </div>
+      </div>
+
+      <input
+        ref={ref}
+        type="file"
+        accept={slot.accept}
+        className="hidden"
+        onChange={(e) => {
+          const f = e.target.files?.[0]
+          if (f && f.size <= 5 * 1024 * 1024) onSelect(f)
+          else if (f) alert('Ukuran file maksimal 5 MB')
+          e.target.value = ''
+        }}
+      />
+    </div>
+  )
+}
+
 export default function DaftarPage() {
-  const [form, setForm] = useState({ nama: '', email: '', hp: '', Tahun: '', bidang: '', password: '', konfirmasi: '' })
+  const [form, setForm] = useState({
+    nama: '', email: '', hp: '', angkatan: '', domisili: '', bidang: '',
+    password: '', konfirmasi: '',
+  })
+  const [docs, setDocs] = useState({ foto: null, ktp: null, ijazah: null })
   const [showPass, setShowPass] = useState(false)
   const [showKonfirmasi, setShowKonfirmasi] = useState(false)
   const [submitted, setSubmitted] = useState(false)
 
   const set = (key) => (e) => setForm((prev) => ({ ...prev, [key]: e.target.value }))
 
+  const passwordOk  = form.password.length >= 8
+  const konfirmasiOk = form.password === form.konfirmasi
+  const docsOk      = !!docs.foto && !!docs.ktp
+
   const isValid =
-    form.nama && form.email && form.angkatan && form.bidang &&
-    form.password.length >= 8 && form.password === form.konfirmasi
+    form.nama && form.email && form.hp && form.angkatan && form.bidang &&
+    passwordOk && konfirmasiOk && docsOk
 
   function handleSubmit(e) {
     e.preventDefault()
     if (isValid) setSubmitted(true)
   }
 
+  // ── Success screen ─────────────────────────────────────────────────────
   if (submitted) {
     return (
       <div className="min-h-screen flex items-center justify-center bg-[#F8FAF9] px-4">
@@ -58,12 +181,15 @@ export default function DaftarPage() {
           </div>
           <h1 className="text-2xl font-extrabold text-[#0A2415] mb-2">Pendaftaran Berhasil!</h1>
           <p className="text-sm text-gray-500 leading-relaxed mb-5">
-            Data Anda telah terkirim. Tim admin akan memverifikasi akun dalam <strong>1–3 hari kerja</strong>. Notifikasi dikirim ke{' '}
+            Data dan dokumen Anda telah terkirim. Tim admin akan memverifikasi akun dalam{' '}
+            <strong>1–3 hari kerja</strong>. Notifikasi dikirim ke{' '}
             <span className="font-semibold text-[#1A5C38]">{form.email}</span>.
           </p>
-          <div className="bg-amber-50 border border-amber-200 rounded-xl p-4 mb-6 text-left">
-            <p className="text-xs font-bold text-amber-800 mb-0.5">Status: Menunggu Verifikasi</p>
-            <p className="text-xs text-amber-700 leading-relaxed">Akun Anda akan aktif setelah disetujui oleh admin portal.</p>
+          <div className="bg-amber-50 border border-amber-200 rounded-xl p-4 mb-6 text-left space-y-1">
+            <p className="text-xs font-bold text-amber-800">Status: Menunggu Verifikasi</p>
+            <p className="text-xs text-amber-700 leading-relaxed">
+              Akun Anda akan aktif setelah dokumen diverifikasi oleh admin portal.
+            </p>
           </div>
           <Link
             to="/masuk"
@@ -77,6 +203,7 @@ export default function DaftarPage() {
     )
   }
 
+  // ── Form ───────────────────────────────────────────────────────────────
   return (
     <div className="min-h-screen flex">
       {/* Left panel */}
@@ -94,123 +221,186 @@ export default function DaftarPage() {
             Gabung Komunitas<br />Alumni Daarul Mughni
           </h2>
           <p className="text-white/65 text-sm leading-relaxed mb-8">
-            Daftarkan diri dan terhubung dengan ribuan alumni dari seluruh Indonesia. Bangun jejaring, temukan peluang karir, dan tetap dekat dengan almamater.
+            Daftarkan diri dan terhubung dengan ribuan alumni dari seluruh Indonesia.
+            Bangun jejaring, temukan peluang karir, dan tetap dekat dengan almamater.
           </p>
-          <div className="flex items-center gap-3">
-            <div className="flex -space-x-2.5">
-              {['AZ', 'MR', 'SF', 'NI'].map((init) => (
-                <div
-                  key={init}
-                  className="w-8 h-8 rounded-full border-2 border-white flex items-center justify-center text-[10px] font-bold text-white"
-                  style={{ backgroundColor: '#2A7A4F' }}
-                >
-                  {init}
+          {/* Steps */}
+          <div className="space-y-3">
+            {[
+              { n: '1', t: 'Isi data diri lengkap' },
+              { n: '2', t: 'Unggah dokumen verifikasi' },
+              { n: '3', t: 'Tunggu konfirmasi admin (1–3 hari)' },
+              { n: '4', t: 'Akun aktif & siap digunakan' },
+            ].map(({ n, t }) => (
+              <div key={n} className="flex items-center gap-3">
+                <div className="w-6 h-6 rounded-full flex items-center justify-center flex-shrink-0 text-[11px] font-bold text-[#0A2415]" style={{ backgroundColor: '#F0A500' }}>
+                  {n}
                 </div>
-              ))}
-            </div>
-            <p className="text-white/60 text-xs">5.000+ alumni telah bergabung</p>
+                <p className="text-white/75 text-sm">{t}</p>
+              </div>
+            ))}
           </div>
         </div>
       </div>
 
       {/* Right panel */}
-      <div className="flex-1 flex flex-col justify-center px-6 py-10 relative overflow-y-auto">
+      <div className="flex-1 flex flex-col justify-start px-6 py-10 relative overflow-y-auto">
         {/* Mobile background */}
         <div className="lg:hidden absolute inset-0 -z-0">
           <img src={heroImg} alt="" className="w-full h-full object-cover" />
           <div className="absolute inset-0" style={{ background: 'linear-gradient(160deg, rgba(10,36,21,0.80) 0%, rgba(10,36,21,0.88) 100%)' }} />
         </div>
-        <div className="max-w-md w-full mx-auto relative z-10 bg-white rounded-2xl p-7 shadow-2xl lg:shadow-none lg:rounded-none lg:p-0 lg:bg-transparent">
-          <Link to="/" className="flex items-center gap-2.5 mb-8">
+
+        <div className="max-w-lg w-full mx-auto relative z-10 bg-white rounded-2xl p-7 shadow-2xl lg:shadow-none lg:rounded-none lg:p-0 lg:bg-transparent">
+          <Link to="/" className="flex items-center gap-2.5 mb-7">
             <div className="w-8 h-8 rounded-full bg-[#F0A500] flex items-center justify-center">
               <GraduationCap className="w-4 h-4 text-[#0A2415]" />
             </div>
             <span className="text-sm font-bold text-[#0A2415]">Portal Alumni Daarul Mughni</span>
           </Link>
 
-          <h1 className="text-2xl font-extrabold text-[#0A2415] mb-1">Buat Akun Baru</h1>
-          <p className="text-sm text-gray-400 mb-6">Lengkapi data diri Anda untuk mendaftar sebagai alumni.</p>
+          <h1 className="text-2xl font-extrabold text-[#0A2415] mb-1">Buat Akun Alumni</h1>
+          <p className="text-sm text-gray-400 mb-7">Lengkapi data diri dan unggah dokumen untuk mendaftar.</p>
 
-          <form onSubmit={handleSubmit} className="space-y-4">
-            <Field label="Nama Lengkap">
-              <TextInput value={form.nama} onChange={set('nama')} placeholder="Sesuai KTP" />
-            </Field>
+          <form onSubmit={handleSubmit} className="space-y-5">
 
-            <Field label="Email">
-              <TextInput value={form.email} onChange={set('email')} placeholder="email@contoh.com" type="email" />
-            </Field>
+            {/* ── Data Diri ── */}
+            <div>
+              <p className="text-xs font-bold text-gray-400 uppercase tracking-widest mb-3 flex items-center gap-2">
+                <span className="flex-1 h-px bg-gray-100" /> Data Diri <span className="flex-1 h-px bg-gray-100" />
+              </p>
+              <div className="space-y-4">
+                <Field label="Nama Lengkap" required>
+                  <TextInput value={form.nama} onChange={set('nama')} placeholder="Sesuai KTP" required />
+                </Field>
 
-            <div className="grid grid-cols-2 gap-3">
-              <Field label="No. HP / WhatsApp">
-                <TextInput value={form.hp} onChange={set('hp')} placeholder="08xxxxxxxxxx" type="tel" />
-              </Field>
-              <Field label="Angkatan">
-                <div className="relative">
-                  <select
-                    value={form.angkatan}
-                    onChange={set('angkatan')}
-                    className={inputStyle.base + ' appearance-none pr-8'}
-                    onFocus={(e) => (e.target.style.borderColor = '#1A5C38')}
-                    onBlur={(e) => (e.target.style.borderColor = '#E5E7EB')}
-                  >
-                    <option value="">Pilih tahun</option>
-                    {ANGKATAN_LIST.map((y) => (
-                      <option key={y} value={y}>{y} (Ke-{y - 2005})</option>
-                    ))}
-                  </select>
-                  <ChevronDown className="absolute right-3 top-1/2 -translate-y-1/2 w-4 h-4 text-gray-400 pointer-events-none" />
+                <Field label="Email" required>
+                  <TextInput value={form.email} onChange={set('email')} placeholder="email@contoh.com" type="email" required />
+                </Field>
+
+                <div className="grid grid-cols-2 gap-3">
+                  <Field label="No. HP / WhatsApp" required>
+                    <TextInput value={form.hp} onChange={set('hp')} placeholder="08xxxxxxxxxx" type="tel" required />
+                  </Field>
+                  <Field label="Angkatan" required>
+                    <div className="relative">
+                      <select
+                        value={form.angkatan}
+                        onChange={set('angkatan')}
+                        required
+                        className={inputCls + ' appearance-none pr-8'}
+                        onFocus={(e) => Object.assign(e.target.style, focusStyle)}
+                        onBlur={(e)  => Object.assign(e.target.style, blurStyle)}
+                      >
+                        <option value="">Pilih tahun</option>
+                        {ANGKATAN_LIST.map((y) => (
+                          <option key={y} value={y}>{y} (Ke-{y - 2005})</option>
+                        ))}
+                      </select>
+                      <ChevronDown className="absolute right-3 top-1/2 -translate-y-1/2 w-4 h-4 text-gray-400 pointer-events-none" />
+                    </div>
+                  </Field>
                 </div>
-              </Field>
+
+                <div className="grid grid-cols-2 gap-3">
+                  <Field label="Domisili Saat Ini">
+                    <TextInput value={form.domisili} onChange={set('domisili')} placeholder="Kota / Kabupaten" />
+                  </Field>
+                  <Field label="Bidang / Profesi" required>
+                    <TextInput value={form.bidang} onChange={set('bidang')} placeholder="Teknik, Kesehatan..." required />
+                  </Field>
+                </div>
+              </div>
             </div>
 
-            <Field label="Bidang / Profesi Saat Ini">
-              <TextInput value={form.bidang} onChange={set('bidang')} placeholder="contoh: Teknik Informatika, Kedokteran..." />
-            </Field>
+            {/* ── Kata Sandi ── */}
+            <div>
+              <p className="text-xs font-bold text-gray-400 uppercase tracking-widest mb-3 flex items-center gap-2">
+                <span className="flex-1 h-px bg-gray-100" /> Kata Sandi <span className="flex-1 h-px bg-gray-100" />
+              </p>
+              <div className="space-y-4">
+                <Field label="Kata Sandi" required>
+                  <div className="relative">
+                    <input
+                      type={showPass ? 'text' : 'password'}
+                      value={form.password}
+                      onChange={set('password')}
+                      placeholder="Min. 8 karakter"
+                      required
+                      className={inputCls + ' pr-11'}
+                      onFocus={(e) => Object.assign(e.target.style, focusStyle)}
+                      onBlur={(e)  => Object.assign(e.target.style, blurStyle)}
+                    />
+                    <button type="button" onClick={() => setShowPass(!showPass)} className="absolute right-3 top-1/2 -translate-y-1/2 text-gray-400 hover:text-gray-600">
+                      {showPass ? <EyeOff className="w-4 h-4" /> : <Eye className="w-4 h-4" />}
+                    </button>
+                  </div>
+                  {form.password && !passwordOk && (
+                    <p className="text-xs text-red-500 mt-1">Minimal 8 karakter</p>
+                  )}
+                </Field>
 
-            <Field label="Kata Sandi">
-              <div className="relative">
-                <input
-                  type={showPass ? 'text' : 'password'}
-                  value={form.password}
-                  onChange={set('password')}
-                  placeholder="Min. 8 karakter"
-                  className={inputStyle.base + ' pr-11'}
-                  onFocus={(e) => (e.target.style.borderColor = '#1A5C38')}
-                  onBlur={(e) => (e.target.style.borderColor = '#E5E7EB')}
-                />
-                <button type="button" onClick={() => setShowPass(!showPass)} className="absolute right-3 top-1/2 -translate-y-1/2 text-gray-400 hover:text-gray-600">
-                  {showPass ? <EyeOff className="w-4 h-4" /> : <Eye className="w-4 h-4" />}
-                </button>
+                <Field label="Konfirmasi Kata Sandi" required>
+                  <div className="relative">
+                    <input
+                      type={showKonfirmasi ? 'text' : 'password'}
+                      value={form.konfirmasi}
+                      onChange={set('konfirmasi')}
+                      placeholder="Ulangi kata sandi"
+                      required
+                      className={inputCls + ' pr-11'}
+                      onFocus={(e) => Object.assign(e.target.style, focusStyle)}
+                      onBlur={(e)  => Object.assign(e.target.style, blurStyle)}
+                    />
+                    <button type="button" onClick={() => setShowKonfirmasi(!showKonfirmasi)} className="absolute right-3 top-1/2 -translate-y-1/2 text-gray-400 hover:text-gray-600">
+                      {showKonfirmasi ? <EyeOff className="w-4 h-4" /> : <Eye className="w-4 h-4" />}
+                    </button>
+                  </div>
+                  {form.konfirmasi && !konfirmasiOk && (
+                    <p className="text-xs text-red-500 mt-1">Kata sandi tidak cocok</p>
+                  )}
+                </Field>
               </div>
-            </Field>
+            </div>
 
-            <Field label="Konfirmasi Kata Sandi">
-              <div className="relative">
-                <input
-                  type={showKonfirmasi ? 'text' : 'password'}
-                  value={form.konfirmasi}
-                  onChange={set('konfirmasi')}
-                  placeholder="Ulangi kata sandi"
-                  className={inputStyle.base + ' pr-11'}
-                  onFocus={(e) => (e.target.style.borderColor = '#1A5C38')}
-                  onBlur={(e) => (e.target.style.borderColor = '#E5E7EB')}
-                />
-                <button type="button" onClick={() => setShowKonfirmasi(!showKonfirmasi)} className="absolute right-3 top-1/2 -translate-y-1/2 text-gray-400 hover:text-gray-600">
-                  {showKonfirmasi ? <EyeOff className="w-4 h-4" /> : <Eye className="w-4 h-4" />}
-                </button>
+            {/* ── Dokumen Verifikasi ── */}
+            <div>
+              <p className="text-xs font-bold text-gray-400 uppercase tracking-widest mb-1 flex items-center gap-2">
+                <span className="flex-1 h-px bg-gray-100" /> Dokumen Verifikasi <span className="flex-1 h-px bg-gray-100" />
+              </p>
+              <p className="text-xs text-gray-400 mb-3">
+                Dokumen digunakan admin untuk memverifikasi status alumni. Format JPG/PNG/PDF, maks. 5 MB per file.
+              </p>
+              <div className="space-y-3">
+                {DOC_SLOTS.map((slot) => (
+                  <DocSlot
+                    key={slot.key}
+                    slot={slot}
+                    file={docs[slot.key]}
+                    onSelect={(f) => setDocs((d) => ({ ...d, [slot.key]: f }))}
+                    onRemove={() => setDocs((d) => ({ ...d, [slot.key]: null }))}
+                  />
+                ))}
               </div>
-              {form.konfirmasi && form.password !== form.konfirmasi && (
-                <p className="text-xs text-red-500 mt-1">Kata sandi tidak cocok</p>
+              {/* Reminder jika wajib belum diisi */}
+              {(!docs.foto || !docs.ktp) && (
+                <div className="flex items-start gap-2 mt-3 p-3 rounded-xl bg-amber-50 border border-amber-200">
+                  <AlertCircle className="w-4 h-4 text-amber-500 flex-shrink-0 mt-0.5" />
+                  <p className="text-xs text-amber-700">
+                    <span className="font-semibold">Foto diri</span> dan <span className="font-semibold">KTP</span> wajib diunggah untuk melanjutkan pendaftaran.
+                  </p>
+                </div>
               )}
-            </Field>
+            </div>
 
+            {/* ── Submit ── */}
             <button
               type="submit"
               disabled={!isValid}
-              className="w-full py-3.5 rounded-xl text-sm font-bold text-white hover:opacity-90 transition-opacity disabled:opacity-40 mt-2"
+              className="w-full py-3.5 rounded-xl text-sm font-bold text-white transition-all hover:opacity-90 disabled:opacity-40 disabled:cursor-not-allowed"
               style={{ backgroundColor: '#1A5C38' }}
             >
-              Daftar Sekarang
+              Kirim Pendaftaran
             </button>
           </form>
 
