@@ -2,17 +2,38 @@ import { useState } from 'react'
 import { Link, useNavigate } from 'react-router-dom'
 import { Mail, Lock, Eye, EyeOff, Shield, GraduationCap } from 'lucide-react'
 import heroImg from '@/assets/hero.jpg'
+import { useAuth } from '@/context/AuthContext'
+
+const DEMO_ACCOUNTS = [
+  { role: 'Super Admin', label: 'Super Admin', desc: 'Akses penuh', color: '#15803D', bg: '#F0FDF4', border: '#86EFAC' },
+  { role: 'Admin',       label: 'Admin',       desc: 'Tanpa Pengaturan & User', color: '#1D4ED8', bg: '#EFF6FF', border: '#93C5FD' },
+  { role: 'Editor',      label: 'Editor',      desc: 'Konten saja', color: '#7C3AED', bg: '#FAF5FF', border: '#C4B5FD' },
+]
 
 export default function LoginPage() {
   const navigate = useNavigate()
+  const { login } = useAuth()
   const [email, setEmail] = useState('')
   const [password, setPassword] = useState('')
   const [showPassword, setShowPassword] = useState(false)
 
   function handleSubmit(e) {
     e.preventDefault()
-    // TODO: Supabase auth
-    navigate('/')
+    // Demo: route based on email prefix
+    if (email.startsWith('superadmin')) {
+      login('Super Admin'); navigate('/admin/dashboard')
+    } else if (email.startsWith('admin')) {
+      login('Admin'); navigate('/admin/dashboard')
+    } else if (email.startsWith('editor')) {
+      login('Editor'); navigate('/admin/dashboard')
+    } else {
+      navigate('/dashboard')
+    }
+  }
+
+  function handleDemoLogin(role) {
+    login(role)
+    navigate('/admin/dashboard')
   }
 
   return (
@@ -193,9 +214,35 @@ export default function LoginPage() {
             </button>
           </form>
 
+          {/* Demo accounts */}
+          <div className="mt-5 rounded-xl border border-dashed border-gray-300 p-4">
+            <p className="text-[10px] font-bold text-gray-400 uppercase tracking-widest mb-3">
+              Demo — Masuk sebagai
+            </p>
+            <div className="space-y-2">
+              {DEMO_ACCOUNTS.map(({ role, label, desc, color, bg, border }) => (
+                <button
+                  key={role}
+                  type="button"
+                  onClick={() => handleDemoLogin(role)}
+                  className="w-full flex items-center justify-between px-3 py-2.5 rounded-xl border text-left transition-all hover:shadow-sm"
+                  style={{ backgroundColor: bg, borderColor: border }}
+                >
+                  <div>
+                    <p className="text-xs font-bold" style={{ color }}>{label}</p>
+                    <p className="text-[10px] text-gray-500 mt-0.5">{desc}</p>
+                  </div>
+                  <span className="text-[10px] font-semibold px-2 py-1 rounded-lg" style={{ backgroundColor: color, color: '#fff' }}>
+                    Masuk
+                  </span>
+                </button>
+              ))}
+            </div>
+          </div>
+
           {/* Info box */}
           <div
-            className="mt-5 flex gap-3 p-4 rounded-xl"
+            className="mt-4 flex gap-3 p-4 rounded-xl"
             style={{ backgroundColor: '#F8FAF9', border: '1px solid #d1e7da' }}
           >
             <Shield className="w-4 h-4 flex-shrink-0 mt-0.5" style={{ color: '#1A5C38' }} />

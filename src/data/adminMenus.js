@@ -1,25 +1,12 @@
 import {
   LayoutDashboard, Shield, Users, Database,
   GraduationCap, Building2, Newspaper, CalendarDays,
-  Image, Layers, Briefcase,
+  Image, Layers, Briefcase, Bell, Activity, Settings,
 } from 'lucide-react'
 
 /**
  * Single source of truth for all admin menu items.
- * Adding an entry here automatically registers it in:
- *   - AdminSidebar nav groups
- *   - PermissionModal checkbox list (hak akses)
- *   - DEFAULT_PERMISSIONS per role
- *
- * Fields:
- *   id          — unique key, used as permission ID
- *   label       — sidebar display text
- *   labelPerm   — label shown in permission modal (can differ from sidebar label)
- *   href        — route path
- *   icon        — lucide-react component
- *   group       — sidebar group heading
- *   desc        — description in permission modal
- *   defaultRoles — roles that get this permission by default
+ * group: '_bottom' items appear in the sidebar's bottom section (not in the main nav scroll).
  */
 export const ADMIN_MENUS = [
   {
@@ -132,25 +119,63 @@ export const ADMIN_MENUS = [
     desc: 'Buat dan kelola lowongan pekerjaan pesantren',
     defaultRoles: ['Super Admin', 'Admin'],
   },
+  // ── Bottom section ────────────────────────────────────────────────────────
+  {
+    id: 'notifikasi',
+    label: 'Notifikasi',
+    labelPerm: 'Notifikasi',
+    href: '/admin/notifikasi',
+    icon: Bell,
+    group: '_bottom',
+    desc: 'Lihat dan kelola notifikasi aktivitas portal',
+    defaultRoles: ['Super Admin', 'Admin', 'Editor'],
+  },
+  {
+    id: 'log',
+    label: 'Log Aktivitas',
+    labelPerm: 'Log Aktivitas',
+    href: '/admin/log',
+    icon: Activity,
+    group: '_bottom',
+    desc: 'Rekam jejak seluruh aktivitas di portal',
+    defaultRoles: ['Super Admin', 'Admin'],
+  },
+  {
+    id: 'pengaturan',
+    label: 'Pengaturan',
+    labelPerm: 'Pengaturan Sistem',
+    href: '/admin/pengaturan',
+    icon: Settings,
+    group: '_bottom',
+    desc: 'Konfigurasi situs, role, dan laporan pengguna — Super Admin only',
+    defaultRoles: ['Super Admin'],
+  },
 ]
 
-// Sidebar nav groups — derived automatically from ADMIN_MENUS
-export const NAV_GROUPS = ADMIN_MENUS.reduce((acc, item) => {
-  const existing = acc.find(g => g.label === item.group)
-  const navItem = { label: item.label, href: item.href, key: item.id, icon: item.icon }
-  if (existing) existing.items.push(navItem)
-  else acc.push({ label: item.group, items: [navItem] })
-  return acc
-}, [])
+// Main sidebar nav groups — excludes bottom items
+export const NAV_GROUPS = ADMIN_MENUS
+  .filter(item => item.group !== '_bottom')
+  .reduce((acc, item) => {
+    const existing = acc.find(g => g.label === item.group)
+    const navItem = { label: item.label, href: item.href, key: item.id, icon: item.icon }
+    if (existing) existing.items.push(navItem)
+    else acc.push({ label: item.group, items: [navItem] })
+    return acc
+  }, [])
 
-// Flat permission list for PermissionModal — derived automatically
+// Bottom sidebar items (Notifikasi, Log, Pengaturan)
+export const BOTTOM_NAV = ADMIN_MENUS
+  .filter(item => item.group === '_bottom')
+  .map(({ id, label, href, icon }) => ({ key: id, label, href, icon }))
+
+// Flat permission list for PermissionModal
 export const ALL_PERMISSIONS = ADMIN_MENUS.map(({ id, labelPerm, desc }) => ({
   id,
   label: labelPerm,
   desc,
 }))
 
-// Default permissions per role — derived automatically from defaultRoles
+// Default permissions per role — derived from defaultRoles
 export const DEFAULT_PERMISSIONS = {
   'Super Admin': ADMIN_MENUS.map(m => m.id),
   'Admin':       ADMIN_MENUS.filter(m => m.defaultRoles.includes('Admin')).map(m => m.id),

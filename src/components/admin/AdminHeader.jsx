@@ -7,6 +7,7 @@ import {
 } from 'lucide-react'
 import { motion, AnimatePresence } from 'framer-motion'
 import { initialNotif } from '../../data/notifikasi'
+import { useAuth } from '../../context/AuthContext'
 
 const TIPE_CONFIG = {
   verifikasi: { Icon: Shield,       color: '#1A5C38', bg: '#F0FDF4' },
@@ -88,13 +89,8 @@ function NotifDropdown({ notif, unread, onMarkRead, onMarkAllRead, onClose }) {
   )
 }
 
-function ProfileDropdown({ onClose }) {
-  const navigate = useNavigate()
-
-  function handleLogout() {
-    onClose()
-    navigate('/login')
-  }
+function ProfileDropdown({ user, onClose, onLogout }) {
+  const { hasPermission } = useAuth()
 
   return (
     <motion.div
@@ -106,10 +102,10 @@ function ProfileDropdown({ onClose }) {
           className="w-12 h-12 rounded-full flex items-center justify-center mx-auto mb-2 text-white text-base font-bold"
           style={{ backgroundColor: '#0A2415' }}
         >
-          A
+          {user?.initials ?? 'A'}
         </div>
-        <p className="text-sm font-bold text-gray-900">Admin Utama</p>
-        <p className="text-[10px] text-gray-400 mt-0.5">Super Admin</p>
+        <p className="text-sm font-bold text-gray-900">{user?.name ?? 'Admin'}</p>
+        <p className="text-[10px] text-gray-400 mt-0.5">{user?.role ?? '-'}</p>
       </div>
 
       <div className="py-1">
@@ -121,19 +117,21 @@ function ProfileDropdown({ onClose }) {
           <User className="w-4 h-4 text-gray-400" />
           Profil Saya
         </Link>
-        <Link
-          to="/admin/pengaturan"
-          onClick={onClose}
-          className="flex items-center gap-2.5 px-4 py-2.5 text-sm text-gray-700 hover:bg-gray-50 transition-colors"
-        >
-          <Settings className="w-4 h-4 text-gray-400" />
-          Pengaturan
-        </Link>
+        {hasPermission('pengaturan') && (
+          <Link
+            to="/admin/pengaturan"
+            onClick={onClose}
+            className="flex items-center gap-2.5 px-4 py-2.5 text-sm text-gray-700 hover:bg-gray-50 transition-colors"
+          >
+            <Settings className="w-4 h-4 text-gray-400" />
+            Pengaturan
+          </Link>
+        )}
       </div>
 
       <div className="border-t border-gray-100 py-1">
         <button
-          onClick={handleLogout}
+          onClick={onLogout}
           className="w-full flex items-center gap-2.5 px-4 py-2.5 text-sm text-red-600 hover:bg-red-50 transition-colors"
         >
           <LogOut className="w-4 h-4" />
@@ -145,6 +143,9 @@ function ProfileDropdown({ onClose }) {
 }
 
 export default function AdminHeader({ searchValue = '', onSearchChange, searchPlaceholder = 'Cari...' }) {
+  const { user, logout } = useAuth()
+  const navigate = useNavigate()
+
   const [notif, setNotif] = useState(initialNotif)
   const [showBell, setShowBell] = useState(false)
   const [showProfile, setShowProfile] = useState(false)
@@ -169,6 +170,12 @@ export default function AdminHeader({ searchValue = '', onSearchChange, searchPl
 
   function markAllRead() {
     setNotif((n) => n.map((x) => ({ ...x, dibaca: true })))
+  }
+
+  function handleLogout() {
+    setShowProfile(false)
+    logout()
+    navigate('/masuk')
   }
 
   return (
@@ -224,18 +231,24 @@ export default function AdminHeader({ searchValue = '', onSearchChange, searchPl
             className="flex items-center gap-2 px-2 py-1 rounded-xl hover:bg-gray-50 transition-colors"
           >
             <div className="text-right">
-              <p className="text-xs font-bold text-gray-900 leading-none mb-0.5">Admin Utama</p>
-              <p className="text-[10px] text-gray-400">Super Admin</p>
+              <p className="text-xs font-bold text-gray-900 leading-none mb-0.5">{user?.name ?? 'Admin'}</p>
+              <p className="text-[10px] text-gray-400">{user?.role ?? '-'}</p>
             </div>
             <div
               className="w-9 h-9 rounded-full flex items-center justify-center flex-shrink-0 text-white text-sm font-bold"
               style={{ backgroundColor: '#0A2415' }}
             >
-              A
+              {user?.initials ?? 'A'}
             </div>
           </button>
           <AnimatePresence>
-            {showProfile && <ProfileDropdown onClose={() => setShowProfile(false)} />}
+            {showProfile && (
+              <ProfileDropdown
+                user={user}
+                onClose={() => setShowProfile(false)}
+                onLogout={handleLogout}
+              />
+            )}
           </AnimatePresence>
         </div>
       </div>
