@@ -14,15 +14,18 @@ import { news } from '../data/news'
 import { agendaData, kategoriStyle } from '../data/agenda'
 import { initialLowongan } from '../data/lowongan'
 import { initialGaleri } from '../data/galeri'
-import { TOTAL_ALUMNI } from '../data/alumni'
+import { TOTAL_ALUMNI, alumniData } from '../data/alumni'
+import { getAlumniDetail } from '../data/alumniDetail'
 
-// ── Mock logged-in user ────────────────────────────────────────────────────────
+// ── Mock logged-in user (pakai data alumni ID 3 dari direktori) ────────────────
+const _mockAlumni  = alumniData.find(a => a.id === 3)
+const _mockDetail  = getAlumniDetail(3)
 const mockUser = {
-  name: 'Ahmad Zaki',
-  angkatan: 2018,
-  id: 'DM-2018-042',
-  email: 'ahmad.zaki@email.com',
-  phone: '0812-3456-7890',
+  name:     _mockAlumni.name,
+  angkatan: _mockAlumni.angkatan,
+  id:       `DM-${_mockAlumni.angkatan}-003`,
+  email:    _mockDetail?.kontak?.email ?? 'alumni@example.com',
+  phone:    '0812-3456-7890',
 }
 
 // ── Initial section data ───────────────────────────────────────────────────────
@@ -55,8 +58,8 @@ const SEBAGAI_OPTIONS = [
   'Lainnya',
 ]
 
-const initKeahlian = ['React', 'Node.js', 'TypeScript', 'Machine Learning', 'Python']
-const initBahasa   = ['Indonesia (Native)', 'Arabic (Academic)', 'English (Professional)']
+const initKeahlian = _mockAlumni?.keahlian ?? []
+const initBahasa   = _mockDetail?.bahasa   ?? []
 
 const initUsaha = [
   {
