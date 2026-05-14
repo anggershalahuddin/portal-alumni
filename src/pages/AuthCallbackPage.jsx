@@ -1,32 +1,34 @@
-import { useEffect } from 'react'
+import { useEffect, useRef } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { supabase } from '../lib/supabase'
 
-// Halaman ini menangani redirect setelah OAuth (Google login)
 export default function AuthCallbackPage() {
   const navigate = useNavigate()
+  const didNavigate = useRef(false)
 
   useEffect(() => {
-    supabase.auth.getSession().then(async ({ data: { session } }) => {
-      if (!session) {
-        navigate('/masuk')
-        return
-      }
+    function goToPilih() {
+      if (didNavigate.current) return
+      didNavigate.current = true
+      navigate('/dashboard', { replace: true })
+    }
 
-      // Ambil profile untuk cek role
-      const { data: profile } = await supabase
-        .from('profiles')
-        .select('role')
-        .eq('id', session.user.id)
-        .single()
+    // Tangkap SIGNED_IN dari OAuth redirect
+    const { data: { subscription } } = supabase.auth.onAuthStateChange((event, session) => {
+      if (event === 'SIGNED_IN' && session) goToPilih()
+    })
 
-      const adminRoles = ['super_admin', 'admin', 'editor']
-      if (profile && adminRoles.includes(profile.role)) {
-        navigate('/admin/dashboard')
-      } else {
-        navigate('/dashboard')
+    // Fallback: kalau session sudah ada (refresh halaman)
+    supabase.auth.getSession().then(({ data: { session } }) => {
+      if (session) goToPilih()
+      else if (!didNavigate.current) {
+        setTimeout(() => {
+          if (!didNavigate.current) navigate('/masuk', { replace: true })
+        }, 3000)
       }
     })
+
+    return () => subscription.unsubscribe()
   }, [navigate])
 
   return (

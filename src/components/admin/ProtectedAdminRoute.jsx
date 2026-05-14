@@ -1,17 +1,17 @@
 import { Navigate } from 'react-router-dom'
 import { useAuth } from '../../context/AuthContext'
-import AdminAksesDitolakPage from '../../pages/admin/AdminAksesDitolakPage'
 
 /**
- * Guards an admin route by role & permission.
+ * Guards an admin route by role.
  * - Loading → tampilkan spinner
- * - Not logged in as admin → redirect to /masuk
- * - Logged in but missing permission → show 403 page (keeps sidebar)
+ * - Not logged in → redirect to /masuk
+ * - Logged in but not admin role → redirect to /dashboard
  */
-export default function ProtectedAdminRoute({ children, requiredPerm }) {
-  const { user, isAdminUser, hasPermission, loading } = useAuth()
+export default function ProtectedAdminRoute({ children }) {
+  const { user, isAdminUser, loading, profileReady } = useAuth()
 
-  if (loading) {
+  // Tunggu sampai auth selesai DAN profile sudah di-fetch
+  if (loading || !profileReady) {
     return (
       <div className="min-h-screen flex items-center justify-center bg-gray-50">
         <div className="w-8 h-8 border-4 border-green-600 border-t-transparent rounded-full animate-spin" />
@@ -19,13 +19,8 @@ export default function ProtectedAdminRoute({ children, requiredPerm }) {
     )
   }
 
-  if (!user || !isAdminUser) {
-    return <Navigate to="/masuk" replace />
-  }
-
-  if (requiredPerm && !hasPermission(requiredPerm)) {
-    return <AdminAksesDitolakPage requiredPerm={requiredPerm} />
-  }
+  if (!user) return <Navigate to="/masuk" replace />
+  if (!isAdminUser) return <Navigate to="/dashboard" replace />
 
   return children
 }

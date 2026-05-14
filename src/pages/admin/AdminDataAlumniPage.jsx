@@ -4,7 +4,7 @@ import {
   Search, Download, ChevronDown, X, BadgeCheck,
   GraduationCap, Briefcase, BookOpen, Mail, Globe,
   Link2, Filter, Eye, FileSpreadsheet, Building2, Handshake,
-  AlertCircle,
+  AlertCircle, Phone,
 } from 'lucide-react'
 import { motion } from 'framer-motion'
 import AdminSidebar from '@/components/admin/AdminSidebar'
@@ -29,7 +29,7 @@ function exportCSV(rows) {
   const headers = [
     'Nama', 'Tahun Lulus', 'Angkatan Ke', 'Nama Angkatan',
     'Bidang', 'Profesi', 'Perusahaan', 'Domisili',
-    'Keahlian', 'Bahasa', 'Email Kontak', 'LinkedIn', 'Website',
+    'Keahlian', 'Bahasa', 'No. HP', 'LinkedIn', 'Website',
     'Pengalaman Terbaru', 'Institusi Pengalaman', 'Periode Pengalaman',
     'Pendidikan Terakhir', 'Institusi Pendidikan', 'Tahun Pendidikan',
     'Nama Lembaga', 'Jenis Lembaga', 'Sebagai di Lembaga', 'Buka Kerjasama',
@@ -51,7 +51,7 @@ function exportCSV(rows) {
       alumni.domisili,
       (alumni.keahlian ?? []).join('; '),
       (detail?.bahasa ?? []).join('; '),
-      detail?.kontak?.email ?? '',
+      detail?.kontak?.noHp ?? '',
       detail?.kontak?.linkedin ?? '',
       detail?.kontak?.website ?? '',
       pengExp?.jabatan ?? '',
@@ -81,7 +81,7 @@ function exportXLSX(rows) {
   const headers = [
     'Nama', 'Tahun Lulus', 'Angkatan Ke', 'Nama Angkatan',
     'Bidang', 'Profesi', 'Perusahaan', 'Domisili',
-    'Keahlian', 'Bahasa', 'Email Kontak', 'LinkedIn', 'Website',
+    'Keahlian', 'Bahasa', 'No. HP', 'LinkedIn', 'Website',
     'Pengalaman Terbaru', 'Institusi Pengalaman', 'Periode Pengalaman',
     'Pendidikan Terakhir', 'Institusi Pendidikan', 'Tahun Pendidikan',
     'Nama Lembaga', 'Jenis Lembaga', 'Sebagai di Lembaga', 'Buka Kerjasama',
@@ -96,7 +96,7 @@ function exportXLSX(rows) {
       angkatanInfo?.angkatanKe ?? '', angkatanInfo?.nama ?? '',
       alumni.bidang, alumni.profesi, alumni.perusahaan, alumni.domisili,
       (alumni.keahlian ?? []).join('; '), (detail?.bahasa ?? []).join('; '),
-      detail?.kontak?.email ?? '', detail?.kontak?.linkedin ?? '', detail?.kontak?.website ?? '',
+      detail?.kontak?.noHp ?? '', detail?.kontak?.linkedin ?? '', detail?.kontak?.website ?? '',
       pengExp?.jabatan ?? '', pengExp?.institusi ?? '', pengExp?.periode ?? '',
       pengPend?.gelar ?? '', pengPend?.institusi ?? '', pengPend?.tahun ?? '',
       lembaga0?.nama ?? '', lembaga0?.jenis ?? '', lembaga0?.sebagai ?? '',
@@ -318,10 +318,10 @@ function DetailModal({ alumni, detail, angkatanInfo, onClose }) {
 
           {tab === 'kontak' && (
             <div className="space-y-3">
-              {detail?.kontak?.email && (
+              {detail?.kontak?.noHp && (
                 <div className="flex items-center gap-3 p-3 bg-gray-50 rounded-xl">
-                  <Mail className="w-4 h-4 text-[#1A5C38]" />
-                  <span className="text-sm text-gray-700">{detail.kontak.email}</span>
+                  <Phone className="w-4 h-4 text-[#1A5C38]" />
+                  <span className="text-sm text-gray-700">{detail.kontak.noHp}</span>
                 </div>
               )}
               {detail?.kontak?.linkedin && (
@@ -336,7 +336,7 @@ function DetailModal({ alumni, detail, angkatanInfo, onClose }) {
                   <span className="text-sm text-gray-700">{detail.kontak.website}</span>
                 </div>
               )}
-              {!detail?.kontak?.email && !detail?.kontak?.linkedin && !detail?.kontak?.website && (
+              {!detail?.kontak?.noHp && !detail?.kontak?.linkedin && !detail?.kontak?.website && (
                 <p className="text-sm text-gray-400 text-center py-8">Belum ada data kontak.</p>
               )}
             </div>
@@ -371,7 +371,7 @@ export default function AdminDataAlumniPage() {
       // Profiles with role alumni + their alumni_profile
       const { data: profiles, error: profErr } = await supabase
         .from('profiles')
-        .select('id, nama_lengkap, email, angkatan, bidang, domisili, status, role')
+        .select('id, nama_lengkap, no_hp, angkatan, bidang, domisili, status, role')
         .eq('role', 'alumni')
         .order('created_at', { ascending: false })
 
@@ -408,8 +408,8 @@ export default function AdminDataAlumniPage() {
 
         const alumni = {
           id:         pid,
-          name:       p.nama_lengkap || p.email,
-          email:      p.email,
+          name:       p.nama_lengkap || 'Alumni',
+          noHp:       p.no_hp ?? '',
           angkatan:   p.angkatan,
           bidang:     p.bidang ?? '',
           profesi:    ap.profesi ?? '',
@@ -424,7 +424,7 @@ export default function AdminDataAlumniPage() {
           bio:    ap.bio ?? '',
           bahasa: bahasaAll.filter((b) => b.alumni_id === pid).map((b) => b.nama),
           kontak: {
-            email:    p.email,
+            noHp:     p.no_hp ?? '',
             linkedin: ap.linkedin_url ?? '',
             website:  ap.website_url ?? '',
           },
@@ -678,8 +678,8 @@ export default function AdminDataAlumniPage() {
                             <AlumniAvatar alumni={alumni} size={9} />
                             <div>
                               <p className="font-semibold text-[#0A2415] text-sm leading-snug">{alumni.name}</p>
-                              {det?.kontak?.email && (
-                                <p className="text-[11px] text-gray-400">{det.kontak.email}</p>
+                              {det?.kontak?.noHp && (
+                                <p className="text-[11px] text-gray-400">{det.kontak.noHp}</p>
                               )}
                             </div>
                           </div>

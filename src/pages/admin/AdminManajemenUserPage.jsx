@@ -484,7 +484,7 @@ export default function AdminManajemenUserPage() {
     try {
       const { data: profiles, error: profErr } = await supabase
         .from('profiles')
-        .select('id, nama_lengkap, email, no_hp, angkatan, role, status, domisili, is_active, permissions, updated_at')
+        .select('id, nama_lengkap, no_hp, angkatan, role, status, domisili, is_active, permissions, updated_at')
         .order('created_at', { ascending: false })
 
       if (profErr) throw profErr
@@ -503,8 +503,8 @@ export default function AdminManajemenUserPage() {
         const isSA  = p.role === 'super_admin'
         return {
           id:          p.id,
-          name:        p.nama_lengkap || p.email,
-          email:       p.email,
+          name:        p.nama_lengkap || 'User',
+          email:       '',
           phone:       p.no_hp ?? '',
           angkatan:    p.angkatan,
           peran,
@@ -656,22 +656,26 @@ export default function AdminManajemenUserPage() {
   }
 
   function addUser(form) {
-    // Creating auth users from the frontend requires service_role key.
-    // This creates a local entry only until a backend invite flow is implemented.
     askConfirm({
-      title: 'Tambah User Baru',
-      message: 'Catatan: user ini hanya ditambahkan secara lokal. Untuk akun permanen, gunakan fitur undang via email.',
-      confirmLabel: 'Tambah Lokal',
+      title: 'Kirim Undangan',
+      message: `Kirim tautan login ke ${form.email}? Pengguna dapat langsung mengakses portal setelah mengklik tautan yang dikirim.`,
+      confirmLabel: 'Kirim Undangan',
       variant: 'success',
-      onConfirm: () => {
-        setUsers((prev) => [{
-          id: 'local-' + Date.now(),
-          name: form.name, email: form.email, phone: form.phone || '',
-          angkatan: Number(form.angkatan), peran: form.peran,
-          aktif: true, lastLogin: '-', avatar: '',
-          profesi: form.profesi || '', kota: form.kota || '',
-          permissions: DEFAULT_PERMISSIONS[form.peran] || [],
-        }, ...prev])
+      onConfirm: async () => {
+        const { error } = await supabase.auth.signInWithOtp({
+          email: form.email,
+          options: {
+            data: {
+              nama_lengkap: form.name,
+              ...(form.phone   && { no_hp: form.phone }),
+              ...(form.angkatan && { angkatan: Number(form.angkatan) }),
+              ...(form.kota    && { domisili: form.kota }),
+              ...(form.profesi && { bidang: form.profesi }),
+            },
+            shouldCreateUser: true,
+          },
+        })
+        if (error) { console.error(error); closeConfirm(); return }
         setModal(null)
         closeConfirm()
       },

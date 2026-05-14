@@ -1,10 +1,11 @@
-import { useState } from 'react'
-import { Settings, Edit2, Check, X, AlertTriangle, Send, RefreshCw, Save, Shield } from 'lucide-react'
+import { useState, useEffect, useCallback } from 'react'
+import { Settings, Edit2, Check, X, AlertTriangle, Send, Save, Shield, Loader2 } from 'lucide-react'
 import { motion } from 'framer-motion'
 import AdminSidebar from '../../components/admin/AdminSidebar'
 import AdminHeader from '../../components/admin/AdminHeader'
 import ConfirmDialog from '../../components/admin/ConfirmDialog'
 import { siteConfig as defaultConfig } from '../../data/siteConfig'
+import { supabase } from '@/lib/supabase'
 
 const defaultRoles = [
   { id: 'superadmin', label: 'Super Admin', desc: 'Akses penuh ke seluruh fitur dan data sistem', editable: false },
@@ -12,12 +13,6 @@ const defaultRoles = [
   { id: 'editor', label: 'Editor', desc: 'Dapat membuat dan mengedit berita serta agenda', editable: true },
   { id: 'alumni', label: 'Alumni', desc: 'Akses profil alumni dan direktori (sudah terverifikasi)', editable: true },
   { id: 'user', label: 'Pengguna', desc: 'Akun alumni yang belum terverifikasi', editable: true },
-]
-
-const initialLaporan = [
-  { id: 1, nama: 'Ahmad Fauzi', email: 'ahmad@email.com', judul: 'Link profil tidak dapat dibuka', detail: 'Ketika mengklik link profil alumni, halaman blank putih muncul.', waktu: '2025-05-11 10:22', status: 'menunggu' },
-  { id: 2, nama: 'Siti Rahmah', email: 'siti@email.com', judul: 'Foto profil tidak tersimpan', detail: 'Setelah mengunggah foto profil baru, foto tetap menampilkan avatar lama setelah refresh.', waktu: '2025-05-10 14:05', status: 'diproses' },
-  { id: 3, nama: 'Budi Santoso', email: 'budi@email.com', judul: 'Tidak bisa login setelah ganti password', detail: 'Saat reset password melalui email, link yang dikirim tidak berfungsi.', waktu: '2025-05-09 08:30', status: 'selesai' },
 ]
 
 const STATUS_CONFIG = {
@@ -78,11 +73,43 @@ function RoleRow({ role, onSave }) {
 
 export default function AdminPengaturanPage() {
   const [roles, setRoles] = useState(defaultRoles)
-  const [laporan, setLaporan] = useState(initialLaporan)
+  const [laporan, setLaporan] = useState([])
+  const [loadingLaporan, setLoadingLaporan] = useState(true)
   const [activeTab, setActiveTab] = useState('peran')
   const [siteConfig, setSiteConfig] = useState(defaultConfig)
+  const [loadingConfig, setLoadingConfig] = useState(true)
   const [saved, setSaved] = useState(false)
   const [confirm, setConfirm] = useState({ open: false })
+
+  const loadSiteConfig = useCallback(async () => {
+    setLoadingConfig(true)
+    const { data } = await supabase.from('pengaturan').select('value').eq('key', 'site_config').single()
+    if (data?.value) {
+      try { setSiteConfig(JSON.parse(data.value)) } catch {}
+    }
+    setLoadingConfig(false)
+  }, [])
+
+  const loadLaporan = useCallback(async () => {
+    setLoadingLaporan(true)
+    const { data } = await supabase
+      .from('laporan_masalah')
+      .select('id, nama, email, judul, detail, status, created_at')
+      .order('created_at', { ascending: false })
+    setLaporan((data ?? []).map(row => ({
+      id: row.id,
+      nama: row.nama,
+      email: row.email,
+      judul: row.judul,
+      detail: row.detail ?? '',
+      waktu: new Date(row.created_at).toLocaleString('id-ID', { hour12: false }).replace(',', ''),
+      status: row.status,
+    })))
+    setLoadingLaporan(false)
+  }, [])
+
+  useEffect(() => { loadSiteConfig() }, [loadSiteConfig])
+  useEffect(() => { loadLaporan() }, [loadLaporan])
 
   function askConfirm(opts) { setConfirm({ open: true, ...opts }) }
   function closeConfirm() { setConfirm({ open: false }) }
@@ -91,11 +118,13 @@ export default function AdminPengaturanPage() {
     setRoles(r => r.map(x => x.id === id ? { ...x, ...updates } : x))
   }
 
-  function updateStatus(id, status) {
+  async function updateStatus(id, status) {
+    await supabase.from('laporan_masalah').update({ status }).eq('id', id)
     setLaporan(l => l.map(x => x.id === id ? { ...x, status } : x))
   }
 
-  function handleSaveConfig() {
+  async function handleSaveConfig() {
+    await supabase.from('pengaturan').upsert({ key: 'site_config', value: JSON.stringify(siteConfig) })
     setSaved(true)
     setTimeout(() => setSaved(false), 2500)
   }
@@ -206,7 +235,7 @@ export default function AdminPengaturanPage() {
 
               <div className="flex justify-end">
                 <button
-                  onClick={() => askConfirm({ title: 'Simpan Pengaturan Sistem', message: 'Apakah Anda yakin ingin menyimpan perubahan pengaturan ini? Perubahan akan segera diterapkan ke seluruh sistem.', confirmLabel: 'Ya, Simpan', variant: 'success', onConfirm: () => { handleSaveConfig(); closeConfirm() } })}
+                  onClick={() => askConfirm({ title: 'Simpan Pengaturan Sistem', message: 'Apakah Anda yakin ingin menyimpan perubahan pengaturan ini? Perubahan akan segera diterapkan ke seluruh sistem.', confirmLabel: 'Ya, Simpan', variant: 'success', onConfirm: async () => { await handleSaveConfig(); closeConfirm() } })}
                   className="flex items-center gap-1.5 px-5 py-2.5 rounded-xl text-sm font-semibold text-white transition-colors"
                   style={{ backgroundColor: saved ? '#059669' : '#1A5C38' }}>
                   {saved ? <><Check className="w-4 h-4" /> Tersimpan</> : <><Save className="w-4 h-4" /> Simpan Pengaturan</>}
@@ -218,12 +247,16 @@ export default function AdminPengaturanPage() {
           {/* Laporan Masalah */}
           {activeTab === 'laporan' && (
             <div className="space-y-3">
-              {laporan.length === 0 ? (
+              {loadingLaporan && (
+                <div className="flex items-center justify-center py-12"><Loader2 className="w-5 h-5 animate-spin text-gray-400" /></div>
+              )}
+              {!loadingLaporan && laporan.length === 0 && (
                 <div className="bg-white rounded-2xl border border-gray-100 p-12 text-center">
                   <AlertTriangle className="w-10 h-10 text-gray-300 mx-auto mb-3" />
                   <p className="text-sm text-gray-400">Tidak ada laporan masalah</p>
                 </div>
-              ) : laporan.map(l => {
+              )}
+              {!loadingLaporan && laporan.map(l => {
                 const cfg = STATUS_CONFIG[l.status] ?? STATUS_CONFIG.menunggu
                 return (
                   <div key={l.id} className="bg-white rounded-2xl border border-gray-100 p-5">

@@ -11,7 +11,7 @@ function OrganisasiModal({ item, onClose, onSave }) {
   const isEdit = !!item?.id
   const [form, setForm] = useState(
     item ?? {
-      nama: '', namaLengkap: '', tahunBerdiri: new Date().getFullYear(),
+      namaLengkap: '', singkatan: '', tahunBerdiri: new Date().getFullYear(),
       deskripsi: '', logo: '', ketua: '', kontak: '', aktif: true,
     }
   )
@@ -19,7 +19,7 @@ function OrganisasiModal({ item, onClose, onSave }) {
   function set(field, val) { setForm(f => ({ ...f, [field]: val })) }
 
   function handleSave() {
-    if (!form.nama.trim() || !form.namaLengkap.trim()) return
+    if (!form.namaLengkap.trim()) return
     onSave(form)
   }
 
@@ -31,19 +31,19 @@ function OrganisasiModal({ item, onClose, onSave }) {
           <button onClick={onClose} className="p-1 rounded-lg hover:bg-gray-100"><X className="w-4 h-4 text-gray-500" /></button>
         </div>
         <div className="px-6 py-5 space-y-4 max-h-[70vh] overflow-y-auto">
+          <div>
+            <label className="text-xs font-semibold text-gray-700 mb-1 block">Nama Lengkap Organisasi <span className="text-red-400">*</span></label>
+            <input value={form.namaLengkap} onChange={e => set('namaLengkap', e.target.value)} placeholder="cth. Ikatan Alumni Daarul Mughni" className="w-full px-3 py-2 rounded-xl border border-gray-200 text-sm outline-none focus:border-green-400" />
+          </div>
           <div className="grid grid-cols-2 gap-3">
             <div>
-              <label className="text-xs font-semibold text-gray-700 mb-1 block">Singkatan / Nama Pendek</label>
-              <input value={form.nama} onChange={e => set('nama', e.target.value)} placeholder="cth. HIKMAD" className="w-full px-3 py-2 rounded-xl border border-gray-200 text-sm outline-none focus:border-green-400" />
+              <label className="text-xs font-semibold text-gray-700 mb-1 block">Singkatan</label>
+              <input value={form.singkatan} onChange={e => set('singkatan', e.target.value)} placeholder="cth. IADM" className="w-full px-3 py-2 rounded-xl border border-gray-200 text-sm outline-none focus:border-green-400" />
             </div>
             <div>
               <label className="text-xs font-semibold text-gray-700 mb-1 block">Tahun Berdiri</label>
-              <input type="number" value={form.tahunBerdiri} onChange={e => set('tahunBerdiri', parseInt(e.target.value))} min="1990" max="2030" className="w-full px-3 py-2 rounded-xl border border-gray-200 text-sm outline-none focus:border-green-400" />
+              <input type="number" value={form.tahunBerdiri} onChange={e => set('tahunBerdiri', parseInt(e.target.value))} min="1900" max="2030" className="w-full px-3 py-2 rounded-xl border border-gray-200 text-sm outline-none focus:border-green-400" />
             </div>
-          </div>
-          <div>
-            <label className="text-xs font-semibold text-gray-700 mb-1 block">Nama Lengkap Organisasi</label>
-            <input value={form.namaLengkap} onChange={e => set('namaLengkap', e.target.value)} placeholder="Nama lengkap organisasi..." className="w-full px-3 py-2 rounded-xl border border-gray-200 text-sm outline-none focus:border-green-400" />
           </div>
           <ImageUploadBox label="Logo Organisasi" hint="Upload file atau paste URL" value={form.logo} onChange={url => set('logo', url)} />
           <div>
@@ -79,12 +79,12 @@ function OrganisasiModal({ item, onClose, onSave }) {
 function mapOrganisasi(row) {
   return {
     id: row.id,
-    nama: row.nama,
-    namaLengkap: row.kategori ?? row.nama,
+    namaLengkap: row.nama,
+    singkatan: row.singkatan ?? '',
     deskripsi: row.deskripsi ?? '',
     logo: row.logo_url ?? '',
-    ketua: '',
-    kontak: '',
+    ketua: row.ketua ?? '',
+    kontak: row.kontak ?? '',
     tahunBerdiri: row.tahun_berdiri ?? new Date().getFullYear(),
     aktif: row.is_aktif,
   }
@@ -105,7 +105,7 @@ export default function AdminOrganisasiPage() {
     setLoading(true)
     const { data } = await supabase
       .from('organisasi')
-      .select('id, nama, deskripsi, logo_url, kategori, tahun_berdiri, is_aktif')
+      .select('id, nama, singkatan, deskripsi, logo_url, tahun_berdiri, ketua, kontak, is_aktif')
       .order('id', { ascending: true })
     setOrganisasi((data ?? []).map(mapOrganisasi))
     setLoading(false)
@@ -114,7 +114,8 @@ export default function AdminOrganisasiPage() {
   useEffect(() => { loadData() }, [loadData])
 
   const filtered = organisasi.filter(o => {
-    const matchSearch = o.nama.toLowerCase().includes(search.toLowerCase()) || o.namaLengkap.toLowerCase().includes(search.toLowerCase())
+    const q = search.toLowerCase()
+    const matchSearch = o.namaLengkap.toLowerCase().includes(q) || (o.singkatan ?? '').toLowerCase().includes(q)
     const matchAktif = filterAktif === 'semua' || (filterAktif === 'aktif' ? o.aktif : !o.aktif)
     return matchSearch && matchAktif
   })
@@ -130,10 +131,13 @@ export default function AdminOrganisasiPage() {
       variant: 'success',
       onConfirm: async () => {
         const dbData = {
-          nama: form.nama,
+          nama: form.namaLengkap,
+          singkatan: form.singkatan || null,
           deskripsi: form.deskripsi || null,
           logo_url: form.logo || null,
           tahun_berdiri: form.tahunBerdiri ? parseInt(form.tahunBerdiri) : null,
+          ketua: form.ketua || null,
+          kontak: form.kontak || null,
           is_aktif: form.aktif,
         }
         if (isEdit) {
@@ -245,17 +249,17 @@ export default function AdminOrganisasiPage() {
                 <div key={o.id} className="bg-white rounded-2xl border border-gray-100 p-5">
                   <div className="flex items-start gap-4">
                     {o.logo ? (
-                      <img src={o.logo} alt={o.nama} className="w-16 h-16 rounded-2xl object-cover flex-shrink-0 border border-gray-100"
+                      <img src={o.logo} alt={o.namaLengkap} className="w-16 h-16 rounded-2xl object-cover flex-shrink-0 border border-gray-100"
                         onError={e => { e.target.onerror = null; e.target.src = 'https://images.unsplash.com/photo-1523050854058-8df90110c9f1?auto=format&fit=crop&w=100&h=100&q=80' }} />
                     ) : (
                       <div className="w-16 h-16 rounded-2xl flex-shrink-0 flex items-center justify-center text-white font-bold text-xl" style={{ backgroundColor: '#1A5C38' }}>
-                        {o.nama.charAt(0)}
+                        {(o.singkatan || o.namaLengkap).charAt(0)}
                       </div>
                     )}
                     <div className="flex-1 min-w-0">
                       <div className="flex items-center justify-between gap-2 flex-wrap">
                         <div>
-                          <p className="text-base font-bold text-gray-900">{o.nama}</p>
+                          <p className="text-base font-bold text-gray-900">{o.singkatan || o.namaLengkap}</p>
                           <p className="text-xs text-gray-500 line-clamp-1">{o.namaLengkap}</p>
                         </div>
                         <span className={`text-[10px] font-bold px-2 py-0.5 rounded-full ${o.aktif ? 'bg-green-100 text-green-700' : 'bg-gray-100 text-gray-500'}`}>

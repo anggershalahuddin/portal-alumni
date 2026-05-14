@@ -383,7 +383,7 @@ export default function AdminVerifikasiPage() {
     try {
       const { data: profiles, error: profErr } = await supabase
         .from('profiles')
-        .select('id, nama_lengkap, email, angkatan, status, pesan_admin, created_at')
+        .select('id, nama_lengkap, no_hp, angkatan, status, pesan_admin, created_at')
         .in('status', ['menunggu', 'ditolak'])
         .order('created_at', { ascending: false })
 
@@ -420,8 +420,8 @@ export default function AdminVerifikasiPage() {
         }))
         return {
           id:           p.id,
-          name:         p.nama_lengkap || p.email,
-          email:        p.email,
+          name:         p.nama_lengkap || 'Alumni',
+          phone:        p.no_hp ?? '',
           angkatan:     p.angkatan,
           status:       p.status,
           tanggal:      formatTanggal(p.created_at),
@@ -444,7 +444,7 @@ export default function AdminVerifikasiPage() {
   /* Filter */
   const filtered = alumni.filter((a) => {
     const q = search.toLowerCase()
-    const matchSearch = !q || a.name.toLowerCase().includes(q) || a.email.toLowerCase().includes(q)
+    const matchSearch = !q || a.name.toLowerCase().includes(q) || (a.phone ?? '').includes(q)
     const matchTahun  = !filterTahun  || String(a.angkatan) === filterTahun
     const matchStatus = !filterStatus || a.status === filterStatus
     return matchSearch && matchTahun && matchStatus
@@ -714,7 +714,7 @@ export default function AdminVerifikasiPage() {
                             </div>
                             <div>
                               <p className="text-sm font-semibold text-gray-900 whitespace-nowrap">{a.name}</p>
-                              <p className="text-xs text-gray-400">{a.email}</p>
+                              {a.phone && <p className="text-xs text-gray-400">{a.phone}</p>}
                             </div>
                           </div>
                         </td>

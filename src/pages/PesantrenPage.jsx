@@ -12,7 +12,7 @@ import heroImg from '@/assets/hero.jpg'
 import pimpinanImg from '@/assets/pimpinan.jpg'
 import { fadeUp, fadeLeft, fadeRight, stagger, viewport } from '@/lib/animations'
 import { kategoriGaleri } from '@/data/galeri'
-import { initialGuru, getGurPhotoSrc } from '@/data/guru'
+import { getGurPhotoSrc } from '@/data/guru'
 import { supabase } from '@/lib/supabase'
 
 /* ─── Data ─── */
@@ -61,11 +61,12 @@ function mapOrganisasi(row) {
   return {
     id: row.id,
     nama: row.nama,
-    namaLengkap: row.kategori ?? row.nama,
+    namaLengkap: row.nama,
+    singkatan: row.singkatan ?? '',
     deskripsi: row.deskripsi ?? '',
     logo: row.logo_url ?? '',
-    ketua: '',
-    kontak: '',
+    ketua: row.ketua ?? '',
+    kontak: row.kontak ?? '',
     tahunBerdiri: row.tahun_berdiri ?? '—',
     aktif: row.is_aktif,
   }
@@ -91,16 +92,18 @@ export default function PesantrenPage() {
   const [angkatanList, setAngkatanList] = useState([])
   const [organisasiList, setOrganisasiList] = useState([])
   const [galeriList, setGaleriList] = useState([])
+  const [guru, setGuru] = useState([])
   const pengasuhScrollRef = useRef(null)
   const orgScrollRef = useRef(null)
 
   useEffect(() => {
     let cancelled = false
     async function loadData() {
-      const [angkatanRes, orgRes, galeriRes] = await Promise.all([
+      const [angkatanRes, orgRes, galeriRes, guruRes] = await Promise.all([
         supabase.from('angkatan').select('id, tahun_lulus, nama_angkatan').order('tahun_lulus', { ascending: true }),
-        supabase.from('organisasi').select('id, nama, deskripsi, logo_url, kategori, tahun_berdiri, is_aktif').eq('is_aktif', true),
+        supabase.from('organisasi').select('id, nama, singkatan, deskripsi, logo_url, tahun_berdiri, ketua, kontak, is_aktif').eq('is_aktif', true),
         supabase.from('galeri').select('id, judul, foto_url, kategori').eq('is_aktif', true).order('created_at', { ascending: false }),
+        supabase.from('guru').select('id, nama, jabatan, deskripsi, foto_url, is_pengasuh').eq('is_aktif', true).order('urutan', { ascending: true }),
       ])
       if (cancelled) return
       setAngkatanList((angkatanRes.data ?? []).map(mapAngkatan))
@@ -112,6 +115,14 @@ export default function PesantrenPage() {
         src: row.foto_url,
         alt: row.judul,
         judul: row.judul,
+      })))
+      setGuru((guruRes.data ?? []).map(row => ({
+        id: row.id,
+        nama: row.nama ?? '',
+        jabatan: row.jabatan ?? '',
+        deskripsi: row.deskripsi ?? '',
+        foto: row.foto_url ?? null,
+        isPengasuh: row.is_pengasuh ?? false,
       })))
     }
     loadData()
@@ -322,7 +333,7 @@ export default function PesantrenPage() {
             className="flex gap-8 overflow-x-auto pb-4 snap-x snap-mandatory scroll-smooth justify-center"
             style={{ scrollbarWidth: 'none', msOverflowStyle: 'none' }}
           >
-            {initialGuru.filter(g => g.aktif).map((g) => {
+            {guru.map((g) => {
               const fotoSrc = getGurPhotoSrc(g)
               return (
                 <div key={g.id} className="min-w-[200px] max-w-[220px] flex-shrink-0 snap-start text-center group">
@@ -513,40 +524,59 @@ export default function PesantrenPage() {
             style={{ scrollbarWidth: 'none', msOverflowStyle: 'none' }}
           >
             {organisasiList.map((org) => (
-              <div key={org.id} className="min-w-[280px] max-w-[320px] flex-shrink-0 snap-start bg-white rounded-2xl p-6 border border-gray-100 shadow-sm hover:shadow-md transition-shadow text-center group">
+              <div key={org.id} className="min-w-[260px] max-w-[300px] flex-shrink-0 snap-start bg-white rounded-2xl p-6 border border-gray-100 shadow-sm hover:shadow-md transition-shadow text-center group">
+                {/* Logo */}
                 <div className="flex justify-center mb-4">
                   {org.logo ? (
-                    <img src={org.logo} alt={org.nama}
-                      className="w-20 h-20 rounded-2xl object-cover border-2 border-gray-100 group-hover:border-[#1A5C38]/30 transition-all"
+                    <img src={org.logo} alt={org.namaLengkap}
+                      className="w-16 h-16 rounded-2xl object-cover border-2 border-gray-100 group-hover:border-[#1A5C38]/30 transition-all"
                       onError={e => { e.target.onerror = null; e.target.style.display = 'none'; e.target.nextSibling.style.display = 'flex' }}
                     />
                   ) : null}
-                  <div className="w-20 h-20 rounded-2xl flex items-center justify-center text-white text-2xl font-black"
+                  <div className="w-16 h-16 rounded-2xl flex items-center justify-center text-white text-2xl font-black"
                     style={{ backgroundColor: '#1A5C38', display: org.logo ? 'none' : 'flex' }}>
-                    {org.nama.charAt(0)}
+                    {(org.singkatan || org.namaLengkap).charAt(0)}
                   </div>
                 </div>
-                <div className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full text-xs font-bold mb-3"
+
+                {/* Badge */}
+                <div className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full text-[11px] font-semibold mb-3"
                   style={{ backgroundColor: '#F0FDF4', color: '#1A5C38' }}>
-                  <Shield className="w-3 h-3" /> Organisasi Resmi
+                  <CheckCircle className="w-3 h-3" /> Organisasi Resmi
                 </div>
-                <h3 className="text-lg font-extrabold text-gray-900 mb-1">{org.nama}</h3>
-                <p className="text-xs font-semibold text-gray-500 mb-3">{org.namaLengkap}</p>
-                <p className="text-sm text-gray-500 leading-relaxed mb-4">{org.deskripsi}</p>
+
+                {/* Singkatan — paling besar, bold */}
+                <h3 className="text-lg font-extrabold text-gray-900 mb-1 leading-tight">
+                  {org.singkatan || org.namaLengkap}
+                </h3>
+
+                {/* Kepanjangan — semibold, lebih kecil dari singkatan */}
+                {org.singkatan && org.namaLengkap && (
+                  <p className="text-sm font-semibold text-gray-600 mb-2 leading-snug">{org.namaLengkap}</p>
+                )}
+
+                {/* Deskripsi — paling kecil, normal */}
+                {org.deskripsi && (
+                  <p className="text-xs text-gray-400 leading-relaxed mb-4">{org.deskripsi}</p>
+                )}
+
+                {/* Info bawah */}
                 <div className="flex flex-col gap-1.5 text-xs text-gray-400">
                   {org.ketua && (
                     <div className="flex items-center justify-center gap-1.5">
-                      <Users className="w-3 h-3" />
+                      <Users className="w-3 h-3 flex-shrink-0" />
                       <span>{org.ketua}</span>
                     </div>
                   )}
                   {org.kontak && (
                     <div className="flex items-center justify-center gap-1.5">
-                      <Mail className="w-3 h-3" />
-                      <a href={`mailto:${org.kontak}`} className="hover:text-[#1A5C38] transition-colors">{org.kontak}</a>
+                      <Mail className="w-3 h-3 flex-shrink-0" />
+                      <a href={`mailto:${org.kontak}`} className="hover:text-[#1A5C38] transition-colors truncate">{org.kontak}</a>
                     </div>
                   )}
-                  <div className="text-[10px] text-gray-300 mt-1">Berdiri sejak {org.tahunBerdiri}</div>
+                  {org.tahunBerdiri && (
+                    <p className="text-[10px] text-gray-300 mt-1">Berdiri sejak {org.tahunBerdiri}</p>
+                  )}
                 </div>
               </div>
             ))}

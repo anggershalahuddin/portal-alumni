@@ -5,8 +5,6 @@ import AdminSidebar from '../../components/admin/AdminSidebar'
 import AdminHeader from '../../components/admin/AdminHeader'
 import ConfirmDialog from '../../components/admin/ConfirmDialog'
 import ImageUploadBox from '../../components/admin/ImageUploadBox'
-import { initialMilestones, initialTentangKami } from '../../data/landingContent'
-import { initialGuru } from '../../data/guru'
 import { supabase } from '@/lib/supabase'
 
 function mapTestimoni(row) {
@@ -38,6 +36,28 @@ function mapPimpinanAdmin(row) {
     judul: 'Menjaga Warisan Luhur di Era',
     judulAksen: 'Disrupsi Digital',
     deskripsi: null,
+  }
+}
+
+function mapGuru(row) {
+  return {
+    id: row.id,
+    nama: row.nama ?? '',
+    jabatan: row.jabatan ?? '',
+    deskripsi: row.deskripsi ?? '',
+    foto: row.foto_url ?? null,
+    isPengasuh: row.is_pengasuh ?? false,
+    aktif: row.is_aktif ?? true,
+  }
+}
+
+function mapMilestone(row) {
+  return {
+    id: row.id,
+    tahun: String(row.tahun),
+    judul: row.judul ?? '',
+    keterangan: row.keterangan ?? '',
+    aktif: row.is_aktif ?? true,
   }
 }
 
@@ -338,17 +358,19 @@ export default function AdminLandingPage() {
   const [pengasuhModal, setPengasuhModal] = useState(null)
 
   // Guru state — multiple records for PesantrenPage
-  const [guru, setGuru] = useState(initialGuru)
+  const [guru, setGuru] = useState([])
+  const [loadingGuru, setLoadingGuru] = useState(true)
   const [guruModal, setGuruModal] = useState(null)
 
   // Milestone state
-  const [milestones, setMilestones] = useState(initialMilestones)
+  const [milestones, setMilestones] = useState([])
+  const [loadingMilestone, setLoadingMilestone] = useState(true)
   const [milestoneModal, setMilestoneModal] = useState(null)
 
   // Tentang & Visi Misi
-  const [tentang, setTentang] = useState(initialTentangKami)
+  const [tentang, setTentang] = useState({ judul: '', subtitle: '', deskripsi: '', visi: '', misi: [] })
   const [editingMisi, setEditingMisi] = useState(false)
-  const [misiDraft, setMisiDraft] = useState(initialTentangKami.misi.join('\n'))
+  const [misiDraft, setMisiDraft] = useState('')
 
   const loadTestimonials = useCallback(async () => {
     setLoadingTestimoni(true)
@@ -370,8 +392,38 @@ export default function AdminLandingPage() {
     setLoadingPengasuh(false)
   }, [])
 
+  const loadGuru = useCallback(async () => {
+    setLoadingGuru(true)
+    const { data } = await supabase
+      .from('guru')
+      .select('id, nama, jabatan, deskripsi, foto_url, is_pengasuh, is_aktif, urutan')
+      .order('urutan', { ascending: true })
+    setGuru((data ?? []).map(mapGuru))
+    setLoadingGuru(false)
+  }, [])
+
+  const loadMilestones = useCallback(async () => {
+    setLoadingMilestone(true)
+    const { data } = await supabase
+      .from('milestone')
+      .select('id, tahun, judul, keterangan, is_aktif')
+      .order('tahun', { ascending: true })
+    setMilestones((data ?? []).map(mapMilestone))
+    setLoadingMilestone(false)
+  }, [])
+
+  const loadTentang = useCallback(async () => {
+    const { data } = await supabase.from('pengaturan').select('value').eq('key', 'tentang_kami').single()
+    if (data?.value) {
+      try { setTentang(JSON.parse(data.value)) } catch {}
+    }
+  }, [])
+
   useEffect(() => { loadTestimonials() }, [loadTestimonials])
   useEffect(() => { loadPengasuh() }, [loadPengasuh])
+  useEffect(() => { loadGuru() }, [loadGuru])
+  useEffect(() => { loadMilestones() }, [loadMilestones])
+  useEffect(() => { loadTentang() }, [loadTentang])
 
   // Confirm
   const [confirm, setConfirm] = useState({ open: false })
@@ -455,11 +507,21 @@ export default function AdminLandingPage() {
       message: isEdit ? 'Apakah Anda yakin ingin menyimpan perubahan data guru ini?' : 'Apakah Anda yakin ingin menambahkan guru baru ini?',
       confirmLabel: 'Ya, Simpan',
       variant: 'success',
-      onConfirm: () => {
+      onConfirm: async () => {
+        const payload = {
+          nama: form.nama,
+          jabatan: form.jabatan || null,
+          deskripsi: form.deskripsi || null,
+          foto_url: form.foto ?? null,
+          is_pengasuh: form.isPengasuh ?? false,
+          is_aktif: form.aktif ?? true,
+        }
         if (isEdit) {
-          setGuru(prev => prev.map(g => g.id === form.id ? form : g))
+          await supabase.from('guru').update(payload).eq('id', form.id)
+          setGuru(prev => prev.map(g => g.id === form.id ? { ...form } : g))
         } else {
-          setGuru(prev => [...prev, { ...form, id: Date.now() }])
+          const { data } = await supabase.from('guru').insert(payload).select().single()
+          if (data) setGuru(prev => [...prev, mapGuru(data)])
         }
         setGuruModal(null)
         closeConfirm()
@@ -468,11 +530,18 @@ export default function AdminLandingPage() {
   }
 
   function deleteGuru(id) {
-    askConfirm({ title: 'Hapus Guru', message: 'Apakah Anda yakin ingin menghapus data guru ini?', confirmLabel: 'Ya, Hapus', variant: 'danger', onConfirm: () => { setGuru(prev => prev.filter(g => g.id !== id)); closeConfirm() } })
+    askConfirm({ title: 'Hapus Guru', message: 'Apakah Anda yakin ingin menghapus data guru ini?', confirmLabel: 'Ya, Hapus', variant: 'danger', onConfirm: async () => {
+      await supabase.from('guru').delete().eq('id', id)
+      setGuru(prev => prev.filter(g => g.id !== id))
+      closeConfirm()
+    }})
   }
 
-  function toggleGuru(id) {
-    setGuru(prev => prev.map(g => g.id === id ? { ...g, aktif: !g.aktif } : g))
+  async function toggleGuru(id) {
+    const g = guru.find(x => x.id === id)
+    if (!g) return
+    await supabase.from('guru').update({ is_aktif: !g.aktif }).eq('id', id)
+    setGuru(prev => prev.map(x => x.id === id ? { ...x, aktif: !x.aktif } : x))
   }
 
   // Handlers — Milestone
@@ -485,11 +554,19 @@ export default function AdminLandingPage() {
         : 'Apakah Anda yakin ingin menambahkan milestone baru ini?',
       confirmLabel: 'Ya, Simpan',
       variant: 'success',
-      onConfirm: () => {
+      onConfirm: async () => {
+        const payload = {
+          tahun: Number(form.tahun),
+          judul: form.judul,
+          keterangan: form.keterangan || null,
+          is_aktif: form.aktif ?? true,
+        }
         if (isEdit) {
-          setMilestones(prev => prev.map(m => m.id === form.id ? form : m))
+          await supabase.from('milestone').update(payload).eq('id', form.id)
+          setMilestones(prev => prev.map(m => m.id === form.id ? { ...form } : m))
         } else {
-          setMilestones(prev => [...prev, { ...form, id: Date.now() }])
+          const { data } = await supabase.from('milestone').insert(payload).select().single()
+          if (data) setMilestones(prev => [...prev, mapMilestone(data)])
         }
         setMilestoneModal(null)
         closeConfirm()
@@ -498,7 +575,11 @@ export default function AdminLandingPage() {
   }
 
   function deleteMilestone(id) {
-    askConfirm({ title: 'Hapus Milestone', message: 'Apakah Anda yakin ingin menghapus milestone ini?', confirmLabel: 'Ya, Hapus', variant: 'danger', onConfirm: () => { setMilestones(prev => prev.filter(m => m.id !== id)); closeConfirm() } })
+    askConfirm({ title: 'Hapus Milestone', message: 'Apakah Anda yakin ingin menghapus milestone ini?', confirmLabel: 'Ya, Hapus', variant: 'danger', onConfirm: async () => {
+      await supabase.from('milestone').delete().eq('id', id)
+      setMilestones(prev => prev.filter(m => m.id !== id))
+      closeConfirm()
+    }})
   }
 
   function saveTentang() {
@@ -507,9 +588,13 @@ export default function AdminLandingPage() {
       message: 'Apakah Anda yakin ingin menyimpan perubahan konten ini?',
       confirmLabel: 'Ya, Simpan',
       variant: 'success',
-      onConfirm: () => {
+      onConfirm: async () => {
+        const finalTentang = editingMisi
+          ? { ...tentang, misi: misiDraft.split('\n').map(s => s.trim()).filter(Boolean) }
+          : tentang
+        await supabase.from('pengaturan').upsert({ key: 'tentang_kami', value: JSON.stringify(finalTentang) })
         if (editingMisi) {
-          setTentang(t => ({ ...t, misi: misiDraft.split('\n').map(s => s.trim()).filter(Boolean) }))
+          setTentang(finalTentang)
           setEditingMisi(false)
         }
         closeConfirm()
@@ -681,8 +766,11 @@ export default function AdminLandingPage() {
                   <Plus className="w-4 h-4" /> Tambah Guru
                 </button>
               </div>
+              {loadingGuru && (
+                <div className="flex items-center justify-center py-12"><Loader2 className="w-5 h-5 animate-spin text-gray-400" /></div>
+              )}
               <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-4">
-                {guru.map(g => (
+                {!loadingGuru && guru.map(g => (
                   <div key={g.id} className={`bg-white rounded-2xl p-5 border border-gray-100 ${!g.aktif ? 'opacity-60' : ''}`}>
                     <div className="flex items-start gap-3 mb-3">
                       <div className="w-12 h-12 rounded-xl overflow-hidden flex-shrink-0 bg-gray-100 flex items-center justify-center">
@@ -736,8 +824,11 @@ export default function AdminLandingPage() {
                   <Plus className="w-4 h-4" /> Tambah Milestone
                 </button>
               </div>
+              {loadingMilestone && (
+                <div className="flex items-center justify-center py-12"><Loader2 className="w-5 h-5 animate-spin text-gray-400" /></div>
+              )}
               <div className="space-y-2">
-                {milestones.sort((a, b) => a.tahun - b.tahun).map(m => (
+                {!loadingMilestone && milestones.sort((a, b) => a.tahun - b.tahun).map(m => (
                   <div key={m.id} className={`bg-white rounded-xl p-4 border border-gray-100 flex items-center gap-4 ${!m.aktif ? 'opacity-60' : ''}`}>
                     <div className="w-14 h-14 rounded-xl flex items-center justify-center text-white text-sm font-extrabold flex-shrink-0" style={{ backgroundColor: '#0A2415' }}>
                       {m.tahun}

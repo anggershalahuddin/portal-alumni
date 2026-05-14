@@ -116,7 +116,9 @@ export default function Testimonials() {
                 <div>
                   <div className="text-[#0A2415] font-bold text-sm">{name}</div>
                   <div className="text-gray-400 text-xs mt-0.5">
-                    {batch} · {role}
+                    {batch}                   </div>
+                  <div className="text-gray-400 text-xs mt-0.5">
+                    {role}
                   </div>
                 </div>
               </div>

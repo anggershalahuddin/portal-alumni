@@ -25,46 +25,81 @@ const ROLE_PERM_KEY = {
 const AuthContext = createContext(null)
 
 export function AuthProvider({ children }) {
-  const [supaUser, setSupaUser]     = useState(null) // Supabase auth user
-  const [profile, setProfile]       = useState(null) // public.profiles row
-  const [loading, setLoading]       = useState(true)
+  const [supaUser, setSupaUser]         = useState(null)
+  const [profile, setProfile]           = useState(null)
+  const [loading, setLoading]           = useState(true)
+  const [profileReady, setProfileReady] = useState(false)
 
-  // Ambil profile dari public.profiles berdasarkan auth user id
+  // Ambil profile — retry 3x karena kadang row belum terbuat saat OAuth selesai
   async function fetchProfile(userId) {
-    const { data, error } = await supabase
-      .from('profiles')
-      .select('*')
-      .eq('id', userId)
-      .single()
-    if (error) { console.error('fetchProfile:', error); return null }
-    return data
+    for (let i = 0; i < 3; i++) {
+      const { data, error } = await supabase
+        .from('profiles')
+        .select('*')
+        .eq('id', userId)
+        .maybeSingle()
+      if (data) return data
+      if (error) console.warn('[fetchProfile]', error.code, error.message)
+      if (i < 2) await new Promise(r => setTimeout(r, 800))
+    }
+    return null
   }
 
   useEffect(() => {
-    // Cek sesi aktif saat app pertama kali load
-    supabase.auth.getSession().then(async ({ data: { session } }) => {
-      setSupaUser(session?.user ?? null)
-      if (session?.user) {
-        const p = await fetchProfile(session.user.id)
-        setProfile(p)
-      }
-      setLoading(false)
-    })
+    let active = true
 
-    // Subscribe perubahan auth state (login, logout, token refresh)
-    const { data: { subscription } } = supabase.auth.onAuthStateChange(
-      async (_event, session) => {
-        setSupaUser(session?.user ?? null)
+    async function init() {
+      try {
+        const { data: { session } } = await supabase.auth.getSession()
+        if (!active) return
         if (session?.user) {
+          setSupaUser(session.user)
           const p = await fetchProfile(session.user.id)
-          setProfile(p)
+          if (active) setProfile(p)
         } else {
+          setSupaUser(null)
           setProfile(null)
+        }
+      } catch (e) {
+        console.warn('[AuthContext] init error', e)
+      } finally {
+        if (active) {
+          setLoading(false)
+          setProfileReady(true)
+        }
+      }
+    }
+
+    init()
+
+    const { data: { subscription } } = supabase.auth.onAuthStateChange(
+      async (event, session) => {
+        if (event === 'INITIAL_SESSION') return
+        if (!active) return
+        try {
+          if (session?.user) {
+            setSupaUser(session.user)
+            const p = await fetchProfile(session.user.id)
+            if (active) setProfile(p)
+          } else {
+            setSupaUser(null)
+            setProfile(null)
+          }
+        } catch (e) {
+          console.warn('[AuthContext] auth change error', e)
+        } finally {
+          if (active) {
+            setLoading(false)
+            setProfileReady(true)
+          }
         }
       }
     )
 
-    return () => subscription.unsubscribe()
+    return () => {
+      active = false
+      subscription.unsubscribe()
+    }
   }, [])
 
   // ── Auth actions ────────────────────────────────────────────────────
@@ -144,6 +179,7 @@ export function AuthProvider({ children }) {
       profile,
       supaUser,
       loading,
+      profileReady,
       isAdminUser,
       permissions,
       hasPermission,

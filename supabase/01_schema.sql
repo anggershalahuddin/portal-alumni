@@ -367,8 +367,11 @@ CREATE TABLE public.organisasi (
   nama            TEXT        NOT NULL,
   deskripsi       TEXT,
   logo_url        TEXT,
+  singkatan       TEXT,
   kategori        TEXT,
   tahun_berdiri   SMALLINT,
+  ketua           TEXT,
+  kontak          TEXT,
   is_aktif        BOOLEAN     NOT NULL DEFAULT true,
   created_at      TIMESTAMPTZ NOT NULL DEFAULT now()
 );
@@ -450,6 +453,61 @@ CREATE TRIGGER on_alumni_verified
   FOR EACH ROW
   WHEN (NEW.status = 'disetujui' AND OLD.status IS DISTINCT FROM NEW.status)
   EXECUTE FUNCTION public.handle_alumni_verified();
+
+-- ─── ALTER: tambah kolom tipe ke pekerjaan ───────────────────────────
+-- Jalankan ini jika tabel pekerjaan sudah ada di database:
+-- ALTER TABLE public.pekerjaan ADD COLUMN IF NOT EXISTS tipe TEXT;
+
+-- ─── GURU PESANTREN ──────────────────────────────────────────────────
+
+CREATE TABLE public.guru (
+  id              SERIAL      PRIMARY KEY,
+  nama            TEXT        NOT NULL,
+  jabatan         TEXT,
+  deskripsi       TEXT,
+  foto_url        TEXT,
+  is_pengasuh     BOOLEAN     NOT NULL DEFAULT false,
+  is_aktif        BOOLEAN     NOT NULL DEFAULT true,
+  urutan          SMALLINT    NOT NULL DEFAULT 0,
+  created_at      TIMESTAMPTZ NOT NULL DEFAULT now()
+);
+
+-- ─── MILESTONE PESANTREN ─────────────────────────────────────────────
+
+CREATE TABLE public.milestone (
+  id              SERIAL      PRIMARY KEY,
+  tahun           SMALLINT    NOT NULL,
+  judul           TEXT        NOT NULL,
+  keterangan      TEXT,
+  is_aktif        BOOLEAN     NOT NULL DEFAULT true,
+  urutan          SMALLINT    NOT NULL DEFAULT 0,
+  created_at      TIMESTAMPTZ NOT NULL DEFAULT now()
+);
+
+-- ─── PENGATURAN (key-value config) ───────────────────────────────────
+
+CREATE TABLE public.pengaturan (
+  key             TEXT        PRIMARY KEY,
+  value           TEXT,
+  updated_at      TIMESTAMPTZ NOT NULL DEFAULT now()
+);
+
+-- ─── LAPORAN MASALAH ─────────────────────────────────────────────────
+
+CREATE TABLE public.laporan_masalah (
+  id              UUID        PRIMARY KEY DEFAULT gen_random_uuid(),
+  nama            TEXT        NOT NULL,
+  email           TEXT        NOT NULL,
+  judul           TEXT        NOT NULL,
+  detail          TEXT,
+  status          TEXT        NOT NULL DEFAULT 'menunggu',
+  created_at      TIMESTAMPTZ NOT NULL DEFAULT now(),
+  updated_at      TIMESTAMPTZ NOT NULL DEFAULT now()
+);
+
+CREATE TRIGGER laporan_masalah_set_updated_at
+  BEFORE UPDATE ON public.laporan_masalah
+  FOR EACH ROW EXECUTE FUNCTION public.set_updated_at();
 
 -- ─── INDEXES ──────────────────────────────────────────────────────────
 

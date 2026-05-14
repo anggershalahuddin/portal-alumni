@@ -479,3 +479,23 @@ CREATE POLICY "log: admin bisa baca"
 CREATE POLICY "log: service role insert"
   ON public.log_aktivitas FOR INSERT
   WITH CHECK (public.is_admin_or_above());
+
+-- =====================================================================
+-- GRANT PERMISSIONS
+-- Harus dijalankan agar role authenticated & anon bisa mengakses tabel.
+-- RLS saja tidak cukup tanpa GRANT di level tabel.
+-- =====================================================================
+
+GRANT USAGE ON SCHEMA public TO anon, authenticated;
+
+GRANT SELECT ON ALL TABLES IN SCHEMA public TO anon;
+GRANT ALL    ON ALL TABLES IN SCHEMA public TO authenticated;
+
+GRANT USAGE, SELECT ON ALL SEQUENCES IN SCHEMA public TO authenticated;
+
+ALTER DEFAULT PRIVILEGES IN SCHEMA public
+  GRANT SELECT ON TABLES TO anon;
+ALTER DEFAULT PRIVILEGES IN SCHEMA public
+  GRANT ALL ON TABLES TO authenticated;
+ALTER DEFAULT PRIVILEGES IN SCHEMA public
+  GRANT USAGE, SELECT ON SEQUENCES TO authenticated;

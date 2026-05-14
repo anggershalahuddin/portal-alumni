@@ -3,7 +3,7 @@ import { Link, useNavigate } from 'react-router-dom'
 import {
   Search, Bell, Shield, CheckCheck,
   Newspaper, CalendarDays, Users, AlertCircle,
-  User, Settings, LogOut,
+  User, Settings, LogOut, GraduationCap,
 } from 'lucide-react'
 import { motion, AnimatePresence } from 'framer-motion'
 import { useAuth } from '../../context/AuthContext'
@@ -98,7 +98,7 @@ function NotifDropdown({ notif, unread, onMarkRead, onMarkAllRead, onClose }) {
   )
 }
 
-function ProfileDropdown({ user, onClose, onLogout }) {
+function ProfileDropdown({ user, onClose, onLogout, onGoAlumni }) {
   const { hasPermission } = useAuth()
 
   return (
@@ -136,6 +136,13 @@ function ProfileDropdown({ user, onClose, onLogout }) {
             Pengaturan
           </Link>
         )}
+        <button
+          onClick={onGoAlumni}
+          className="w-full flex items-center gap-2.5 px-4 py-2.5 text-sm text-gray-700 hover:bg-gray-50 transition-colors"
+        >
+          <GraduationCap className="w-4 h-4 text-gray-400" />
+          Buka Dashboard Alumni
+        </button>
       </div>
 
       <div className="border-t border-gray-100 py-1">
@@ -198,6 +205,11 @@ export default function AdminHeader({ searchValue = '', onSearchChange, searchPl
     if (ids.length === 0) return
     await supabase.from('notifikasi').update({ is_dibaca: true }).in('id', ids)
     setNotif((n) => n.map((x) => ({ ...x, dibaca: true })))
+  }
+
+  function handleGoAlumni() {
+    setShowProfile(false)
+    navigate('/dashboard')
   }
 
   async function handleLogout() {
@@ -275,6 +287,7 @@ export default function AdminHeader({ searchValue = '', onSearchChange, searchPl
                 user={user}
                 onClose={() => setShowProfile(false)}
                 onLogout={handleLogout}
+                onGoAlumni={handleGoAlumni}
               />
             )}
           </AnimatePresence>

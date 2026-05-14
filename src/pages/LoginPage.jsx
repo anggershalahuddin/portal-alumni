@@ -46,14 +46,14 @@ export default function LoginPage() {
       const role   = prof?.role   ?? null
       const status = prof?.status ?? null
 
-      if (ADMIN_ROLES.includes(role)) {
-        redirectTo = '/admin/dashboard'
-      } else if (status === 'menunggu' || status === 'ditolak') {
+      if (status === 'menunggu' || status === 'ditolak') {
         redirectTo = `/verifikasi-status?status=${status}`
+      } else {
+        redirectTo = '/dashboard'
       }
     }
     setLoading(false)
-    navigate(redirectTo)
+    navigate(redirectTo, { replace: true })
   }
 
   async function handleGoogle() {

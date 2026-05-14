@@ -14,6 +14,7 @@ import Footer from '../components/landing/Footer'
 import { kategoriStyle } from '../data/agenda'
 import { useAuth } from '@/context/AuthContext'
 import { supabase } from '@/lib/supabase'
+import ConfirmDialog from '../components/admin/ConfirmDialog'
 
 const SEBAGAI_OPTIONS = [
   'Pendiri / Founder',
@@ -37,6 +38,19 @@ const JENIS_USAHA = [
 
 function jenisConfig(jenis) {
   return JENIS_USAHA.find(j => j.value === jenis) ?? JENIS_USAHA[JENIS_USAHA.length - 1]
+}
+
+const JENJANG_OPTIONS = ['SD', 'SMP', 'SMA/SMK', 'D3', 'S1', 'S2', 'S3', 'Lainnya']
+
+const TIPE_PEKERJAAN = [
+  { value: 'full-time', label: 'Full-time', color: '#1D4ED8', bg: '#EFF6FF' },
+  { value: 'part-time', label: 'Part-time', color: '#7C3AED', bg: '#FAF5FF' },
+  { value: 'remote',    label: 'Remote',    color: '#0E7490', bg: '#ECFEFF' },
+  { value: 'magang',    label: 'Magang',    color: '#D97706', bg: '#FFFBEB' },
+  { value: 'freelance', label: 'Freelance', color: '#15803D', bg: '#F0FDF4' },
+]
+function tipeConfig(tipe) {
+  return TIPE_PEKERJAAN.find(t => t.value === tipe) ?? TIPE_PEKERJAAN[0]
 }
 
 // ── Alumni notifications ───────────────────────────────────────────────────────
@@ -143,7 +157,19 @@ function SvgFacebook() {
 
 function EditProfilModal({ profil, onSave, onClose }) {
   const [form, setForm] = useState({ ...profil })
+  const [fotoFile, setFotoFile] = useState(null)
+  const [fotoPreview, setFotoPreview] = useState(profil.fotoUrl ?? null)
+  const fileRef = useRef(null)
   const s = k => e => setForm(p => ({ ...p, [k]: e.target.value }))
+
+  function handleFotoChange(e) {
+    const f = e.target.files?.[0]
+    if (!f) return
+    if (f.size > 2 * 1024 * 1024) { alert('Ukuran foto maks. 2MB'); return }
+    setFotoFile(f)
+    setFotoPreview(URL.createObjectURL(f))
+  }
+
   return (
     <ModalWrapper onClose={onClose}>
       <div className="relative bg-white rounded-2xl shadow-2xl w-full max-w-md max-h-[90vh] flex flex-col">
@@ -152,6 +178,27 @@ function EditProfilModal({ profil, onSave, onClose }) {
           <button onClick={onClose}><X className="w-5 h-5 text-gray-400" /></button>
         </div>
         <div className="p-6 space-y-4 overflow-y-auto flex-1">
+
+          {/* Foto Profil */}
+          <div>
+            <label className="block text-xs font-semibold text-gray-600 mb-2">Foto Profil</label>
+            <div className="flex items-center gap-4">
+              <div className="w-16 h-16 rounded-full overflow-hidden flex-shrink-0 bg-[#1A5C38] flex items-center justify-center">
+                {fotoPreview
+                  ? <img src={fotoPreview} alt="preview" className="w-full h-full object-cover" />
+                  : <span className="text-xl font-bold text-white">{profil.nama?.[0]?.toUpperCase() ?? '?'}</span>}
+              </div>
+              <div className="flex-1">
+                <button onClick={() => fileRef.current?.click()}
+                  className="flex items-center gap-1.5 px-3 py-2 rounded-xl border border-gray-200 text-xs font-semibold text-gray-600 hover:bg-gray-50 transition-colors">
+                  <Upload className="w-3.5 h-3.5" /> Pilih Foto
+                </button>
+                <p className="text-[10px] text-gray-400 mt-1">JPG, PNG, WebP — maks. 2MB</p>
+                <input ref={fileRef} type="file" className="hidden" accept=".jpg,.jpeg,.png,.webp" onChange={handleFotoChange} />
+              </div>
+            </div>
+          </div>
+
           <MF label="Nama Lengkap"><input className={inp} value={form.nama} onChange={s('nama')} /></MF>
           <MF label="Bio Singkat"><textarea className={`${inp} resize-none`} rows={3} value={form.bio} onChange={s('bio')} placeholder="Ceritakan tentang diri Anda..." /></MF>
           <div className="grid grid-cols-2 gap-3">
@@ -171,9 +218,7 @@ function EditProfilModal({ profil, onSave, onClose }) {
                 { key: 'twitter',   label: 'Twitter / X', placeholder: 'username', prefix: '@', icon: <SvgTwitterX /> },
                 { key: 'facebook',  label: 'Facebook',  placeholder: 'username atau URL', prefix: '', icon: <SvgFacebook /> },
               ].map(({ key, label, placeholder, prefix, icon }) => (
-                <MF key={key} label={
-                  <span className="flex items-center gap-1.5">{icon} {label}</span>
-                }>
+                <MF key={key} label={<span className="flex items-center gap-1.5">{icon} {label}</span>}>
                   <div className="relative">
                     {prefix && <span className="absolute left-3.5 top-1/2 -translate-y-1/2 text-sm text-gray-400">{prefix}</span>}
                     <input className={`${inp} ${prefix ? 'pl-8' : ''}`} value={form[key]} onChange={s(key)} placeholder={placeholder} />
@@ -182,17 +227,11 @@ function EditProfilModal({ profil, onSave, onClose }) {
               ))}
             </div>
           </div>
-          <MF label="Foto Profil">
-            <div className="border-2 border-dashed border-gray-200 rounded-xl p-5 text-center hover:border-[#1A5C38]/40 transition-colors cursor-pointer">
-              <ImageIcon className="w-6 h-6 text-gray-300 mx-auto mb-1" />
-              <p className="text-xs text-gray-400">Klik untuk upload foto</p>
-              <p className="text-[10px] text-gray-300 mt-0.5">JPG, PNG — maks. 2MB</p>
-            </div>
-          </MF>
         </div>
         <div className="flex justify-end gap-3 px-6 py-4 border-t border-gray-100">
           <button onClick={onClose} className="px-5 py-2.5 rounded-xl border border-gray-200 text-sm font-medium text-gray-700 hover:bg-gray-50">Batal</button>
-          <button onClick={() => { onSave(form); onClose() }} className="px-5 py-2.5 rounded-xl text-sm font-bold text-white hover:opacity-90" style={{ backgroundColor: '#1A5C38' }}>Simpan</button>
+          <button onClick={() => onSave({ ...form, fotoFile })}
+            className="px-5 py-2.5 rounded-xl text-sm font-bold text-white hover:opacity-90" style={{ backgroundColor: '#1A5C38' }}>Simpan</button>
         </div>
       </div>
     </ModalWrapper>
@@ -201,10 +240,16 @@ function EditProfilModal({ profil, onSave, onClose }) {
 
 function PendidikanModal({ item, onSave, onClose }) {
   const [form, setForm] = useState({
-    gelar: item?.gelar ?? '', institusi: item?.institusi ?? '',
-    tahun: item?.tahun ?? '', lokasi: item?.lokasi ?? '', deskripsi: item?.deskripsi ?? '',
+    jenjang:      item?.jenjang      ?? 'S1',
+    jurusan:      item?.jurusan      ?? '',
+    institusi:    item?.institusi    ?? '',
+    tahun_mulai:  item?.tahun_mulai  ? String(item.tahun_mulai)  : '',
+    tahun_selesai:item?.tahun_selesai? String(item.tahun_selesai): '',
+    is_current:   item?.is_current   ?? false,
   })
   const s = k => e => setForm(p => ({ ...p, [k]: e.target.value }))
+  const curYear = new Date().getFullYear()
+
   return (
     <ModalWrapper onClose={onClose}>
       <div className="relative bg-white rounded-2xl shadow-2xl w-full max-w-md max-h-[90vh] flex flex-col">
@@ -213,17 +258,37 @@ function PendidikanModal({ item, onSave, onClose }) {
           <button onClick={onClose}><X className="w-5 h-5 text-gray-400" /></button>
         </div>
         <div className="p-6 space-y-4 overflow-y-auto flex-1">
-          <MF label="Gelar / Jenjang"><input className={inp} value={form.gelar} onChange={s('gelar')} placeholder="S1 Teknik Informatika" /></MF>
-          <MF label="Institusi"><input className={inp} value={form.institusi} onChange={s('institusi')} placeholder="Nama universitas/pesantren" /></MF>
+          <MF label="Jenjang Pendidikan *">
+            <select className={inp} value={form.jenjang} onChange={s('jenjang')}>
+              {JENJANG_OPTIONS.map(j => <option key={j} value={j}>{j}</option>)}
+            </select>
+          </MF>
+          <MF label="Jurusan / Program Studi">
+            <input className={inp} value={form.jurusan} onChange={s('jurusan')} placeholder="cth. Teknik Informatika" />
+          </MF>
+          <MF label="Institusi / Nama Sekolah *">
+            <input className={inp} value={form.institusi} onChange={s('institusi')} placeholder="Nama universitas, sekolah, atau pesantren" />
+          </MF>
           <div className="grid grid-cols-2 gap-3">
-            <MF label="Periode"><input className={inp} value={form.tahun} onChange={s('tahun')} placeholder="2018 - 2022" /></MF>
-            <MF label="Lokasi"><input className={inp} value={form.lokasi} onChange={s('lokasi')} placeholder="Kota, Provinsi" /></MF>
+            <MF label="Tahun Mulai">
+              <input className={inp} type="number" value={form.tahun_mulai} onChange={s('tahun_mulai')} placeholder={String(curYear - 4)} min="1970" max={curYear} />
+            </MF>
+            <MF label="Tahun Selesai">
+              <input className={inp} type="number" value={form.tahun_selesai} onChange={s('tahun_selesai')}
+                placeholder={form.is_current ? 'Sekarang' : String(curYear)}
+                disabled={form.is_current} min="1970" max={curYear + 10} />
+            </MF>
           </div>
-          <MF label="Deskripsi"><textarea className={`${inp} resize-none`} rows={3} value={form.deskripsi} onChange={s('deskripsi')} placeholder="Prestasi, kegiatan, dll." /></MF>
+          <label className="flex items-center gap-2 cursor-pointer text-sm text-gray-600">
+            <input type="checkbox" checked={form.is_current}
+              onChange={e => setForm(p => ({ ...p, is_current: e.target.checked, tahun_selesai: e.target.checked ? '' : p.tahun_selesai }))}
+              className="w-4 h-4 accent-green-600" />
+            Masih menempuh pendidikan ini
+          </label>
         </div>
         <div className="flex justify-end gap-3 px-6 py-4 border-t border-gray-100">
           <button onClick={onClose} className="px-5 py-2.5 rounded-xl border border-gray-200 text-sm font-medium text-gray-700 hover:bg-gray-50">Batal</button>
-          <button onClick={() => form.gelar && form.institusi && onSave(form)} disabled={!form.gelar || !form.institusi}
+          <button onClick={() => form.institusi && onSave(form)} disabled={!form.institusi}
             className="px-5 py-2.5 rounded-xl text-sm font-bold text-white hover:opacity-90 disabled:opacity-40" style={{ backgroundColor: '#1A5C38' }}>Simpan</button>
         </div>
       </div>
@@ -232,12 +297,20 @@ function PendidikanModal({ item, onSave, onClose }) {
 }
 
 function KarirModal({ item, onSave, onClose }) {
+  const curYear = new Date().getFullYear()
   const [form, setForm] = useState({
-    jabatan: item?.jabatan ?? '', perusahaan: item?.perusahaan ?? '',
-    periode: item?.periode ?? '', lokasi: item?.lokasi ?? '',
-    deskripsi: item?.deskripsi ?? '', current: item?.current ?? false,
+    posisi:       item?.posisi       ?? item?.jabatan ?? '',
+    perusahaan:   item?.perusahaan   ?? '',
+    tipe:         item?.tipe         ?? 'full-time',
+    lokasi:       item?.lokasi       ?? '',
+    tahun_mulai:  item?.tahun_mulai  ? String(item.tahun_mulai)  : '',
+    tahun_selesai:item?.tahun_selesai? String(item.tahun_selesai): '',
+    is_current:   item?.is_current   ?? item?.current ?? false,
+    deskripsi:    item?.deskripsi    ?? '',
   })
   const s = k => e => setForm(p => ({ ...p, [k]: e.target.value }))
+  const tc = tipeConfig(form.tipe)
+
   return (
     <ModalWrapper onClose={onClose}>
       <div className="relative bg-white rounded-2xl shadow-2xl w-full max-w-md max-h-[90vh] flex flex-col">
@@ -246,21 +319,48 @@ function KarirModal({ item, onSave, onClose }) {
           <button onClick={onClose}><X className="w-5 h-5 text-gray-400" /></button>
         </div>
         <div className="p-6 space-y-4 overflow-y-auto flex-1">
-          <MF label="Jabatan / Posisi"><input className={inp} value={form.jabatan} onChange={s('jabatan')} placeholder="Software Engineer" /></MF>
-          <MF label="Perusahaan / Instansi"><input className={inp} value={form.perusahaan} onChange={s('perusahaan')} placeholder="Nama perusahaan" /></MF>
+          <MF label="Jabatan / Posisi *">
+            <input className={inp} value={form.posisi} onChange={s('posisi')} placeholder="Software Engineer" />
+          </MF>
+          <MF label="Perusahaan / Instansi *">
+            <input className={inp} value={form.perusahaan} onChange={s('perusahaan')} placeholder="Nama perusahaan" />
+          </MF>
+          <MF label="Tipe Pekerjaan">
+            <select className={inp} value={form.tipe} onChange={s('tipe')}>
+              {TIPE_PEKERJAAN.map(t => <option key={t.value} value={t.value}>{t.label}</option>)}
+            </select>
+            {form.tipe && (
+              <span className="inline-flex items-center mt-1.5 text-[10px] font-bold px-2 py-0.5 rounded-full"
+                style={{ backgroundColor: tc.bg, color: tc.color }}>{tc.label}</span>
+            )}
+          </MF>
+          <MF label="Lokasi">
+            <input className={inp} value={form.lokasi} onChange={s('lokasi')} placeholder="Jakarta" />
+          </MF>
           <div className="grid grid-cols-2 gap-3">
-            <MF label="Periode"><input className={inp} value={form.periode} onChange={s('periode')} placeholder="Jan 2023 - Sekarang" /></MF>
-            <MF label="Lokasi"><input className={inp} value={form.lokasi} onChange={s('lokasi')} placeholder="Jakarta (Remote)" /></MF>
+            <MF label="Tahun Mulai">
+              <input className={inp} type="number" value={form.tahun_mulai} onChange={s('tahun_mulai')}
+                placeholder={String(curYear - 2)} min="1970" max={curYear} />
+            </MF>
+            <MF label="Tahun Selesai">
+              <input className={inp} type="number" value={form.tahun_selesai} onChange={s('tahun_selesai')}
+                placeholder={form.is_current ? 'Sekarang' : String(curYear)}
+                disabled={form.is_current} min="1970" max={curYear + 5} />
+            </MF>
           </div>
           <label className="flex items-center gap-2 cursor-pointer text-sm text-gray-600">
-            <input type="checkbox" checked={form.current} onChange={e => setForm(p => ({ ...p, current: e.target.checked }))} className="w-4 h-4 accent-green-600" />
+            <input type="checkbox" checked={form.is_current}
+              onChange={e => setForm(p => ({ ...p, is_current: e.target.checked, tahun_selesai: e.target.checked ? '' : p.tahun_selesai }))}
+              className="w-4 h-4 accent-green-600" />
             Masih bekerja di sini
           </label>
-          <MF label="Deskripsi"><textarea className={`${inp} resize-none`} rows={3} value={form.deskripsi} onChange={s('deskripsi')} /></MF>
+          <MF label="Deskripsi">
+            <textarea className={`${inp} resize-none`} rows={3} value={form.deskripsi} onChange={s('deskripsi')} />
+          </MF>
         </div>
         <div className="flex justify-end gap-3 px-6 py-4 border-t border-gray-100">
           <button onClick={onClose} className="px-5 py-2.5 rounded-xl border border-gray-200 text-sm font-medium text-gray-700 hover:bg-gray-50">Batal</button>
-          <button onClick={() => form.jabatan && form.perusahaan && onSave(form)} disabled={!form.jabatan || !form.perusahaan}
+          <button onClick={() => form.posisi && form.perusahaan && onSave(form)} disabled={!form.posisi || !form.perusahaan}
             className="px-5 py-2.5 rounded-xl text-sm font-bold text-white hover:opacity-90 disabled:opacity-40" style={{ backgroundColor: '#1A5C38' }}>Simpan</button>
         </div>
       </div>
@@ -697,7 +797,10 @@ function KartuAlumniModal({ user, profil, onClose }) {
             <div style={{ flex: 1 }}>
               <div style={{ fontSize: 15, fontWeight: 900, color: '#fff', marginBottom: 3, letterSpacing: -0.3 }}>{user.name}</div>
               <div style={{ fontSize: 8.5, color: 'rgba(255,255,255,0.55)', marginBottom: 2 }}>{profil.bidang || 'Alumni'}</div>
-              <div style={{ fontSize: 8.5, color: 'rgba(255,255,255,0.55)', marginBottom: 6 }}>Angkatan {user.angkatan} · Ke-{user.angkatan - 2005}</div>
+              <div style={{ fontSize: 8.5, color: 'rgba(255,255,255,0.55)', marginBottom: 6 }}>
+                {user.tahunLulus ? `Lulusan ${user.tahunLulus}` : (user.angkatan ? `Angkatan ${user.angkatan}` : 'Alumni')}
+                {user.angkatanKe ? ` · Angkatan Ke-${user.angkatanKe}` : ''}
+              </div>
               <div style={{ display: 'inline-flex', alignItems: 'center', gap: 5, backgroundColor: 'rgba(74,222,128,0.15)', border: '1px solid rgba(74,222,128,0.3)', borderRadius: 20, padding: '2px 8px' }}>
                 <div style={{ width: 5, height: 5, borderRadius: '50%', backgroundColor: '#4ADE80' }} />
                 <span style={{ fontSize: 7.5, color: '#4ADE80', fontWeight: 700, letterSpacing: 0.5 }}>TERVERIFIKASI</span>
@@ -745,10 +848,11 @@ function KartuAlumniModal({ user, profil, onClose }) {
 // ── Main Page ──────────────────────────────────────────────────────────────────
 export default function AlumniDashboardPage() {
   const navigate = useNavigate()
-  const { user, profile: authProfile, signOut, refreshProfile } = useAuth()
+  const { user, profile: authProfile, signOut, refreshProfile, isAdminUser } = useAuth()
 
   const [alumniId, setAlumniId]   = useState(null)
-  const [idAlumni, setIdAlumni]   = useState(null)  // formatted: "DM-2018-042"
+  const [idAlumni, setIdAlumni]   = useState(null)
+  const [angkatanInfo, setAngkatanInfo] = useState(null)
   const [pageLoading, setPageLoading] = useState(true)
 
   // Section states (mulai kosong, diisi dari Supabase)
@@ -756,7 +860,7 @@ export default function AlumniDashboardPage() {
     nama: '', email: '', phone: '', bio: '',
     bidang: '', domisili: '', linkedin: '', website: '',
     instagram: '', youtube: '', twitter: '', facebook: '',
-    foto: false,
+    foto: false, fotoUrl: '',
   })
   const [pendidikan, setPendidikan] = useState([])
   const [pekerjaan, setPekerjaan]   = useState([])
@@ -780,6 +884,11 @@ export default function AlumniDashboardPage() {
   const [showProfile, setShowProfile] = useState(false)
   const bellRef    = useRef(null)
   const profileRef = useRef(null)
+
+  // Confirm dialog
+  const [confirm, setConfirm] = useState({ open: false })
+  function askConfirm(opts) { setConfirm({ open: true, ...opts }) }
+  function closeConfirm() { setConfirm({ open: false }) }
 
   // ── Load data dari Supabase ──────────────────────────────────────────────────
   useEffect(() => {
@@ -850,9 +959,31 @@ export default function AlumniDashboardPage() {
 
       const aid = ap?.id
       setAlumniId(aid)
-      setIdAlumni(ap?.id_alumni ?? null)
+      const currentIdAlumni = ap?.id_alumni ?? null
+      setIdAlumni(currentIdAlumni)
 
-      // 2. Bangun state profil dari profiles + alumni_profiles
+      // 2. Load angkatan info
+      let angk = null
+      if (ap?.angkatan_id) {
+        const { data: a } = await supabase.from('angkatan').select('*').eq('id', ap.angkatan_id).maybeSingle()
+        angk = a
+      } else if (authProfile?.angkatan) {
+        const { data: a } = await supabase.from('angkatan').select('*').eq('tahun_lulus', authProfile.angkatan).maybeSingle()
+        angk = a
+      }
+      setAngkatanInfo(angk)
+
+      // 3. Auto-generate id_alumni if missing
+      if (!currentIdAlumni && angk && aid) {
+        const { count } = await supabase.from('alumni_profiles').select('id', { count: 'exact', head: true }).eq('angkatan_id', angk.id)
+        const prefix = (angk.nama_angkatan ?? 'ALUMNI').replace(/[^A-Za-z0-9]/g, '').toUpperCase()
+        const newId = `${prefix}-${String((count ?? 1)).padStart(3, '0')}`
+        await supabase.from('alumni_profiles').update({ id_alumni: newId }).eq('id', aid)
+        setIdAlumni(newId)
+      }
+
+      // 4. Bangun state profil dari profiles + alumni_profiles
+      const fotoUrl = authProfile?.foto_url ?? ''
       setProfil({
         nama:      authProfile?.nama_lengkap ?? user.name ?? '',
         email:     user.email ?? '',
@@ -866,7 +997,8 @@ export default function AlumniDashboardPage() {
         youtube:   ap?.youtube_url ?? '',
         twitter:   ap?.twitter_url ?? '',
         facebook:  ap?.facebook_url ?? '',
-        foto:      !!(ap?.foto_url ?? authProfile?.foto_url),
+        foto:      !!fotoUrl,
+        fotoUrl,
       })
 
       if (!aid) { setPageLoading(false); return }
@@ -936,165 +1068,308 @@ export default function AlumniDashboardPage() {
 
   // ── CRUD — Supabase ──────────────────────────────────────────────────────────
 
-  async function handleSaveProfil(form) {
-    await supabase.from('profiles').update({
-      nama_lengkap: form.nama,
-      no_hp:        form.phone,
-      bidang:       form.bidang,
-      domisili:     form.domisili,
-    }).eq('id', user.id)
+  function handleSaveProfil(form) {
+    askConfirm({
+      title: 'Simpan Perubahan Profil',
+      message: 'Apakah Anda yakin ingin menyimpan perubahan profil ini?',
+      confirmLabel: 'Ya, Simpan',
+      variant: 'success',
+      onConfirm: async () => {
+        let fotoUrl = form.fotoUrl ?? profil.fotoUrl ?? null
 
-    await supabase.from('alumni_profiles').update({
-      bio:           form.bio,
-      bidang:        form.bidang,
-      domisili:      form.domisili,
-      linkedin_url:  form.linkedin,
-      website_url:   form.website,
-      instagram_url: form.instagram,
-      youtube_url:   form.youtube,
-      twitter_url:   form.twitter,
-      facebook_url:  form.facebook,
-    }).eq('user_id', user.id)
+        if (form.fotoFile) {
+          const ext = form.fotoFile.name.split('.').pop().toLowerCase()
+          const filePath = `${user.id}/avatar.${ext}`
+          const { error: upErr } = await supabase.storage.from('avatars').upload(filePath, form.fotoFile, { upsert: true })
+          if (!upErr) {
+            const { data: urlData } = supabase.storage.from('avatars').getPublicUrl(filePath)
+            fotoUrl = urlData.publicUrl
+          }
+        }
 
-    setProfil({ ...form })
-    await refreshProfile()
-    setModal(null)
-  }
+        const profilesPayload = { nama_lengkap: form.nama, no_hp: form.phone, bidang: form.bidang, domisili: form.domisili }
+        if (fotoUrl) profilesPayload.foto_url = fotoUrl
+        await supabase.from('profiles').update(profilesPayload).eq('id', user.id)
+        await supabase.from('alumni_profiles').update({
+          bio: form.bio, bidang: form.bidang, domisili: form.domisili, no_hp: form.phone,
+          linkedin_url: form.linkedin, website_url: form.website,
+          instagram_url: form.instagram, youtube_url: form.youtube,
+          twitter_url: form.twitter, facebook_url: form.facebook,
+        }).eq('user_id', user.id)
 
-  async function addPendidikan(form) {
-    const { data } = await supabase.from('pendidikan').insert({
-      alumni_id: alumniId,
-      gelar: form.gelar, institusi: form.institusi,
-      tahun: form.tahun, lokasi: form.lokasi, deskripsi: form.deskripsi,
-    }).select().single()
-    if (data) setPendidikan(p => [...p, data])
-    setModal(null)
-  }
-  async function editPendidikan(id, form) {
-    const { data } = await supabase.from('pendidikan').update({
-      gelar: form.gelar, institusi: form.institusi,
-      tahun: form.tahun, lokasi: form.lokasi, deskripsi: form.deskripsi,
-    }).eq('id', id).select().single()
-    if (data) setPendidikan(p => p.map(x => x.id === id ? data : x))
-    setModal(null)
-  }
-  async function delPendidikan(id) {
-    await supabase.from('pendidikan').delete().eq('id', id)
-    setPendidikan(p => p.filter(x => x.id !== id))
+        setProfil({ ...form, foto: !!fotoUrl, fotoUrl: fotoUrl ?? '' })
+        await refreshProfile()
+        closeConfirm()
+        setModal(null)
+      },
+    })
   }
 
-  async function addPekerjaan(form) {
-    const { data } = await supabase.from('pekerjaan').insert({
-      alumni_id: alumniId,
-      posisi: form.jabatan, perusahaan: form.perusahaan,
-      lokasi: form.lokasi, periode: form.periode,
-      is_current: !!form.current, deskripsi: form.deskripsi,
-    }).select().single()
-    if (data) setPekerjaan(p => [{ ...data, jabatan: data.posisi, current: data.is_current }, ...p])
-    setModal(null)
+  function addPendidikan(form) {
+    askConfirm({
+      title: 'Tambah Riwayat Pendidikan',
+      message: 'Apakah Anda yakin ingin menyimpan riwayat pendidikan ini?',
+      confirmLabel: 'Ya, Simpan',
+      variant: 'success',
+      onConfirm: async () => {
+        const { data } = await supabase.from('pendidikan').insert({
+          alumni_id: alumniId, jenjang: form.jenjang, jurusan: form.jurusan || null,
+          institusi: form.institusi,
+          tahun_mulai:  form.tahun_mulai  ? Number(form.tahun_mulai)  : null,
+          tahun_selesai:form.is_current   ? null : (form.tahun_selesai ? Number(form.tahun_selesai) : null),
+          is_current: !!form.is_current,
+        }).select().single()
+        if (data) setPendidikan(p => [...p, data])
+        closeConfirm(); setModal(null)
+      },
+    })
   }
-  async function editPekerjaan(id, form) {
-    const { data } = await supabase.from('pekerjaan').update({
-      posisi: form.jabatan, perusahaan: form.perusahaan,
-      lokasi: form.lokasi, periode: form.periode,
-      is_current: !!form.current, deskripsi: form.deskripsi,
-    }).eq('id', id).select().single()
-    if (data) setPekerjaan(p => p.map(x => x.id === id ? { ...data, jabatan: data.posisi, current: data.is_current } : x))
-    setModal(null)
+  function editPendidikan(id, form) {
+    askConfirm({
+      title: 'Simpan Perubahan Pendidikan',
+      message: 'Apakah Anda yakin ingin menyimpan perubahan riwayat pendidikan ini?',
+      confirmLabel: 'Ya, Simpan',
+      variant: 'success',
+      onConfirm: async () => {
+        const { data } = await supabase.from('pendidikan').update({
+          jenjang: form.jenjang, jurusan: form.jurusan || null, institusi: form.institusi,
+          tahun_mulai:  form.tahun_mulai  ? Number(form.tahun_mulai)  : null,
+          tahun_selesai:form.is_current   ? null : (form.tahun_selesai ? Number(form.tahun_selesai) : null),
+          is_current: !!form.is_current,
+        }).eq('id', id).select().single()
+        if (data) setPendidikan(p => p.map(x => x.id === id ? data : x))
+        closeConfirm(); setModal(null)
+      },
+    })
   }
-  async function delPekerjaan(id) {
-    await supabase.from('pekerjaan').delete().eq('id', id)
-    setPekerjaan(p => p.filter(x => x.id !== id))
-  }
-
-  async function addSertifikasi(form) {
-    const { data } = await supabase.from('sertifikasi').insert({
-      alumni_id: alumniId,
-      nama: form.nama, penerbit: form.penerbit,
-      tahun: form.tahun ? Number(form.tahun) : null,
-      no_cert: form.noCert, url: form.url,
-    }).select().single()
-    if (data) setSertifikasi(p => [...p, { ...data, noCert: data.no_cert }])
-    setModal(null)
-  }
-  async function delSertifikasi(id) {
-    await supabase.from('sertifikasi').delete().eq('id', id)
-    setSertifikasi(p => p.filter(x => x.id !== id))
-  }
-
-  async function addPublikasi(form) {
-    const { data } = await supabase.from('publikasi').insert({
-      alumni_id: alumniId,
-      judul: form.judul, penerbit: form.penerbit,
-      tahun: form.tahun ? Number(form.tahun) : null,
-      url: form.url, deskripsi: form.deskripsi,
-    }).select().single()
-    if (data) setPublikasi(p => [...p, data])
-    setModal(null)
-  }
-  async function delPublikasi(id) {
-    await supabase.from('publikasi').delete().eq('id', id)
-    setPublikasi(p => p.filter(x => x.id !== id))
+  function delPendidikan(id) {
+    askConfirm({
+      title: 'Hapus Riwayat Pendidikan',
+      message: 'Data riwayat pendidikan ini akan dihapus permanen. Lanjutkan?',
+      confirmLabel: 'Ya, Hapus',
+      variant: 'danger',
+      onConfirm: async () => {
+        await supabase.from('pendidikan').delete().eq('id', id)
+        setPendidikan(p => p.filter(x => x.id !== id))
+        closeConfirm()
+      },
+    })
   }
 
-  async function addUsaha(form) {
-    const { data } = await supabase.from('lembaga_alumni').insert({
-      alumni_id: alumniId,
-      nama: form.nama, jenis: form.jenis, sebagai: form.sebagai,
-      bidang: form.bidang, lokasi: form.lokasi,
-      tahun_berdiri: form.tahun ? Number(form.tahun) : null,
-      website: form.website, deskripsi: form.deskripsi,
-      open_kerjasama: !!form.openKerjasama,
-    }).select().single()
-    if (data) setUsaha(p => [...p, { ...data, tahun: data.tahun_berdiri, openKerjasama: data.open_kerjasama }])
-    setModal(null)
+  function addPekerjaan(form) {
+    askConfirm({
+      title: 'Tambah Riwayat Pekerjaan',
+      message: 'Apakah Anda yakin ingin menyimpan riwayat pekerjaan ini?',
+      confirmLabel: 'Ya, Simpan',
+      variant: 'success',
+      onConfirm: async () => {
+        const { data } = await supabase.from('pekerjaan').insert({
+          alumni_id: alumniId, posisi: form.posisi, perusahaan: form.perusahaan,
+          lokasi: form.lokasi || null, tipe: form.tipe || null,
+          tahun_mulai:  form.tahun_mulai  ? Number(form.tahun_mulai)  : null,
+          tahun_selesai:form.is_current   ? null : (form.tahun_selesai ? Number(form.tahun_selesai) : null),
+          is_current: !!form.is_current, deskripsi: form.deskripsi || null,
+        }).select().single()
+        if (data) setPekerjaan(p => [{ ...data, jabatan: data.posisi, current: data.is_current }, ...p])
+        closeConfirm(); setModal(null)
+      },
+    })
   }
-  async function editUsaha(id, form) {
-    const { data } = await supabase.from('lembaga_alumni').update({
-      nama: form.nama, jenis: form.jenis, sebagai: form.sebagai,
-      bidang: form.bidang, lokasi: form.lokasi,
-      tahun_berdiri: form.tahun ? Number(form.tahun) : null,
-      website: form.website, deskripsi: form.deskripsi,
-      open_kerjasama: !!form.openKerjasama,
-    }).eq('id', id).select().single()
-    if (data) setUsaha(p => p.map(x => x.id === id ? { ...data, tahun: data.tahun_berdiri, openKerjasama: data.open_kerjasama } : x))
-    setModal(null)
+  function editPekerjaan(id, form) {
+    askConfirm({
+      title: 'Simpan Perubahan Pekerjaan',
+      message: 'Apakah Anda yakin ingin menyimpan perubahan riwayat pekerjaan ini?',
+      confirmLabel: 'Ya, Simpan',
+      variant: 'success',
+      onConfirm: async () => {
+        const { data } = await supabase.from('pekerjaan').update({
+          posisi: form.posisi, perusahaan: form.perusahaan,
+          lokasi: form.lokasi || null, tipe: form.tipe || null,
+          tahun_mulai:  form.tahun_mulai  ? Number(form.tahun_mulai)  : null,
+          tahun_selesai:form.is_current   ? null : (form.tahun_selesai ? Number(form.tahun_selesai) : null),
+          is_current: !!form.is_current, deskripsi: form.deskripsi || null,
+        }).eq('id', id).select().single()
+        if (data) setPekerjaan(p => p.map(x => x.id === id ? { ...data, jabatan: data.posisi, current: data.is_current } : x))
+        closeConfirm(); setModal(null)
+      },
+    })
   }
-  async function delUsaha(id) {
-    await supabase.from('lembaga_alumni').delete().eq('id', id)
-    setUsaha(p => p.filter(x => x.id !== id))
-  }
-
-  async function handleSaveKeahlianBahasa(listK, listB) {
-    await supabase.from('keahlian_alumni').delete().eq('alumni_id', alumniId)
-    if (listK.length > 0)
-      await supabase.from('keahlian_alumni').insert(listK.map(nama => ({ alumni_id: alumniId, nama })))
-    await supabase.from('bahasa_alumni').delete().eq('alumni_id', alumniId)
-    if (listB.length > 0)
-      await supabase.from('bahasa_alumni').insert(listB.map(nama => ({ alumni_id: alumniId, nama })))
-    setKeahlian(listK)
-    setBahasa(listB)
-    setModal(null)
-  }
-
-  async function addDokumen({ nama, tipe, ukuran, kategori, file }) {
-    const ext      = file.name.split('.').pop().toLowerCase()
-    const filePath = `${user.id}/${Date.now()}_${nama.replace(/\s+/g, '_')}.${ext}`
-    const { error: uploadErr } = await supabase.storage
-      .from('berkas-alumni')
-      .upload(filePath, file, { contentType: file.type, upsert: false })
-    if (uploadErr) { console.error('upload berkas:', uploadErr); setModal(null); return }
-    const { data } = await supabase.from('berkas_alumni').insert({
-      alumni_id: alumniId, nama, kategori, tipe, ukuran, file_url: filePath,
-    }).select().single()
-    if (data) setDokumen(p => [...p, data])
-    setModal(null)
+  function delPekerjaan(id) {
+    askConfirm({
+      title: 'Hapus Riwayat Pekerjaan',
+      message: 'Data riwayat pekerjaan ini akan dihapus permanen. Lanjutkan?',
+      confirmLabel: 'Ya, Hapus',
+      variant: 'danger',
+      onConfirm: async () => {
+        await supabase.from('pekerjaan').delete().eq('id', id)
+        setPekerjaan(p => p.filter(x => x.id !== id))
+        closeConfirm()
+      },
+    })
   }
 
-  async function delDokumen(id, fileUrl) {
-    if (fileUrl) await supabase.storage.from('berkas-alumni').remove([fileUrl])
-    await supabase.from('berkas_alumni').delete().eq('id', id)
-    setDokumen(p => p.filter(x => x.id !== id))
+  function addSertifikasi(form) {
+    askConfirm({
+      title: 'Tambah Sertifikasi',
+      message: 'Apakah Anda yakin ingin menyimpan sertifikasi ini?',
+      confirmLabel: 'Ya, Simpan',
+      variant: 'success',
+      onConfirm: async () => {
+        const { data } = await supabase.from('sertifikasi').insert({
+          alumni_id: alumniId, nama: form.nama, penerbit: form.penerbit,
+          tahun: form.tahun ? Number(form.tahun) : null, no_cert: form.noCert, url: form.url,
+        }).select().single()
+        if (data) setSertifikasi(p => [...p, { ...data, noCert: data.no_cert }])
+        closeConfirm(); setModal(null)
+      },
+    })
+  }
+  function delSertifikasi(id) {
+    askConfirm({
+      title: 'Hapus Sertifikasi',
+      message: 'Data sertifikasi ini akan dihapus permanen. Lanjutkan?',
+      confirmLabel: 'Ya, Hapus',
+      variant: 'danger',
+      onConfirm: async () => {
+        await supabase.from('sertifikasi').delete().eq('id', id)
+        setSertifikasi(p => p.filter(x => x.id !== id))
+        closeConfirm()
+      },
+    })
+  }
+
+  function addPublikasi(form) {
+    askConfirm({
+      title: 'Tambah Publikasi',
+      message: 'Apakah Anda yakin ingin menyimpan publikasi ini?',
+      confirmLabel: 'Ya, Simpan',
+      variant: 'success',
+      onConfirm: async () => {
+        const { data } = await supabase.from('publikasi').insert({
+          alumni_id: alumniId, judul: form.judul, penerbit: form.penerbit,
+          tahun: form.tahun ? Number(form.tahun) : null, url: form.url, deskripsi: form.deskripsi,
+        }).select().single()
+        if (data) setPublikasi(p => [...p, data])
+        closeConfirm(); setModal(null)
+      },
+    })
+  }
+  function delPublikasi(id) {
+    askConfirm({
+      title: 'Hapus Publikasi',
+      message: 'Data publikasi ini akan dihapus permanen. Lanjutkan?',
+      confirmLabel: 'Ya, Hapus',
+      variant: 'danger',
+      onConfirm: async () => {
+        await supabase.from('publikasi').delete().eq('id', id)
+        setPublikasi(p => p.filter(x => x.id !== id))
+        closeConfirm()
+      },
+    })
+  }
+
+  function addUsaha(form) {
+    askConfirm({
+      title: 'Tambah Lembaga / Badan Usaha',
+      message: 'Apakah Anda yakin ingin menyimpan data lembaga ini?',
+      confirmLabel: 'Ya, Simpan',
+      variant: 'success',
+      onConfirm: async () => {
+        const { data } = await supabase.from('lembaga_alumni').insert({
+          alumni_id: alumniId, nama: form.nama, jenis: form.jenis, sebagai: form.sebagai,
+          bidang: form.bidang, lokasi: form.lokasi,
+          tahun_berdiri: form.tahun ? Number(form.tahun) : null,
+          website: form.website, deskripsi: form.deskripsi, open_kerjasama: !!form.openKerjasama,
+        }).select().single()
+        if (data) setUsaha(p => [...p, { ...data, tahun: data.tahun_berdiri, openKerjasama: data.open_kerjasama }])
+        closeConfirm(); setModal(null)
+      },
+    })
+  }
+  function editUsaha(id, form) {
+    askConfirm({
+      title: 'Simpan Perubahan Lembaga',
+      message: 'Apakah Anda yakin ingin menyimpan perubahan data lembaga ini?',
+      confirmLabel: 'Ya, Simpan',
+      variant: 'success',
+      onConfirm: async () => {
+        const { data } = await supabase.from('lembaga_alumni').update({
+          nama: form.nama, jenis: form.jenis, sebagai: form.sebagai,
+          bidang: form.bidang, lokasi: form.lokasi,
+          tahun_berdiri: form.tahun ? Number(form.tahun) : null,
+          website: form.website, deskripsi: form.deskripsi, open_kerjasama: !!form.openKerjasama,
+        }).eq('id', id).select().single()
+        if (data) setUsaha(p => p.map(x => x.id === id ? { ...data, tahun: data.tahun_berdiri, openKerjasama: data.open_kerjasama } : x))
+        closeConfirm(); setModal(null)
+      },
+    })
+  }
+  function delUsaha(id) {
+    askConfirm({
+      title: 'Hapus Lembaga / Badan Usaha',
+      message: 'Data lembaga ini akan dihapus permanen. Lanjutkan?',
+      confirmLabel: 'Ya, Hapus',
+      variant: 'danger',
+      onConfirm: async () => {
+        await supabase.from('lembaga_alumni').delete().eq('id', id)
+        setUsaha(p => p.filter(x => x.id !== id))
+        closeConfirm()
+      },
+    })
+  }
+
+  function handleSaveKeahlianBahasa(listK, listB) {
+    askConfirm({
+      title: 'Simpan Keahlian & Bahasa',
+      message: 'Apakah Anda yakin ingin menyimpan perubahan keahlian dan bahasa?',
+      confirmLabel: 'Ya, Simpan',
+      variant: 'success',
+      onConfirm: async () => {
+        await supabase.from('keahlian_alumni').delete().eq('alumni_id', alumniId)
+        if (listK.length > 0)
+          await supabase.from('keahlian_alumni').insert(listK.map(nama => ({ alumni_id: alumniId, nama })))
+        await supabase.from('bahasa_alumni').delete().eq('alumni_id', alumniId)
+        if (listB.length > 0)
+          await supabase.from('bahasa_alumni').insert(listB.map(nama => ({ alumni_id: alumniId, nama })))
+        setKeahlian(listK); setBahasa(listB)
+        closeConfirm(); setModal(null)
+      },
+    })
+  }
+
+  function addDokumen({ nama, tipe, ukuran, kategori, file }) {
+    askConfirm({
+      title: 'Unggah Dokumen',
+      message: `Apakah Anda yakin ingin mengunggah dokumen "${nama}"?`,
+      confirmLabel: 'Ya, Unggah',
+      variant: 'success',
+      onConfirm: async () => {
+        const ext      = file.name.split('.').pop().toLowerCase()
+        const filePath = `${user.id}/${Date.now()}_${nama.replace(/\s+/g, '_')}.${ext}`
+        const { error: uploadErr } = await supabase.storage.from('berkas-alumni').upload(filePath, file, { contentType: file.type, upsert: false })
+        if (uploadErr) { console.error('upload berkas:', uploadErr); closeConfirm(); setModal(null); return }
+        const { data } = await supabase.from('berkas_alumni').insert({
+          alumni_id: alumniId, nama, kategori, tipe, ukuran, file_url: filePath,
+        }).select().single()
+        if (data) setDokumen(p => [...p, data])
+        closeConfirm(); setModal(null)
+      },
+    })
+  }
+
+  function delDokumen(id, fileUrl) {
+    askConfirm({
+      title: 'Hapus Dokumen',
+      message: 'Dokumen ini akan dihapus permanen dari penyimpanan. Lanjutkan?',
+      confirmLabel: 'Ya, Hapus',
+      variant: 'danger',
+      onConfirm: async () => {
+        if (fileUrl) await supabase.storage.from('berkas-alumni').remove([fileUrl])
+        await supabase.from('berkas_alumni').delete().eq('id', id)
+        setDokumen(p => p.filter(x => x.id !== id))
+        closeConfirm()
+      },
+    })
   }
 
   // Loading screen
@@ -1178,9 +1453,11 @@ export default function AlumniDashboardPage() {
             {/* Profile */}
             <div ref={profileRef} className="relative">
               <button onClick={() => { setShowProfile(v => !v); setShowBell(false) }}
-                className="w-9 h-9 rounded-full flex items-center justify-center text-white text-sm font-bold hover:opacity-90 transition-opacity"
+                className="w-9 h-9 rounded-full overflow-hidden flex items-center justify-center text-white text-sm font-bold hover:opacity-90 transition-opacity"
                 style={{ backgroundColor: '#1A5C38' }}>
-                {initials(profil.nama)}
+                {profil.fotoUrl
+                  ? <img src={profil.fotoUrl} alt={profil.nama} className="w-full h-full object-cover" />
+                  : initials(profil.nama)}
               </button>
               <AnimatePresence>
                 {showProfile && (
@@ -1188,8 +1465,10 @@ export default function AlumniDashboardPage() {
                     className="absolute right-0 top-11 w-60 bg-white rounded-2xl shadow-2xl border border-gray-100 overflow-hidden z-50">
                     <div className="px-4 py-3 border-b border-gray-50">
                       <div className="flex items-center gap-3">
-                        <div className="w-10 h-10 rounded-full flex items-center justify-center text-white text-sm font-bold flex-shrink-0" style={{ backgroundColor: '#1A5C38' }}>
-                          {initials(profil.nama)}
+                        <div className="w-10 h-10 rounded-full overflow-hidden flex items-center justify-center text-white text-sm font-bold flex-shrink-0" style={{ backgroundColor: '#1A5C38' }}>
+                          {profil.fotoUrl
+                            ? <img src={profil.fotoUrl} alt={profil.nama} className="w-full h-full object-cover" />
+                            : initials(profil.nama)}
                         </div>
                         <div className="min-w-0">
                           <p className="text-sm font-bold text-gray-900 truncate">{profil.nama}</p>
@@ -1212,6 +1491,14 @@ export default function AlumniDashboardPage() {
                         <FileText className="w-3.5 h-3.5 text-gray-400" /> Unduh Kartu Alumni
                       </button>
                     </div>
+                    {isAdminUser && (
+                      <div className="border-t border-gray-50 py-1">
+                        <button onClick={() => { setShowProfile(false); navigate('/admin/dashboard') }}
+                          className="w-full flex items-center gap-2.5 px-4 py-2.5 text-sm text-gray-700 hover:bg-gray-50 transition-colors">
+                          <Shield className="w-3.5 h-3.5 text-gray-400" /> Buka Dashboard Admin
+                        </button>
+                      </div>
+                    )}
                     <div className="border-t border-gray-50 py-1">
                       <button onClick={handleSignOut}
                         className="w-full flex items-center gap-2.5 px-4 py-2.5 text-sm text-red-500 hover:bg-red-50 transition-colors">
@@ -1245,7 +1532,15 @@ export default function AlumniDashboardPage() {
                     <div className="flex items-center gap-2 flex-wrap text-xs text-gray-400 mb-4">
                       {profil.bidang && <span className="flex items-center gap-1"><Briefcase className="w-3 h-3" />{profil.bidang}</span>}
                       {profil.domisili && <span className="flex items-center gap-1"><MapPin className="w-3 h-3" />{profil.domisili}</span>}
-                      {authProfile?.angkatan && <span className="flex items-center gap-1"><Users className="w-3 h-3" />Angkatan {authProfile.angkatan} · Ke-{authProfile.angkatan - 2005}</span>}
+                      {(angkatanInfo || authProfile?.angkatan) && (
+                        <span className="flex items-center gap-1">
+                          <Users className="w-3 h-3" />
+                          {angkatanInfo?.nama_angkatan ?? `Angkatan ${authProfile?.angkatan}`}
+                          {angkatanInfo
+                            ? ` · Lulusan ${angkatanInfo.tahun_lulus}`
+                            : authProfile?.angkatan ? ` · Ke-${authProfile.angkatan - 2005}` : ''}
+                        </span>
+                      )}
                     </div>
                     {/* Stat chips */}
                     <div className="flex items-center gap-2 flex-wrap mb-5">
@@ -1308,13 +1603,21 @@ export default function AlumniDashboardPage() {
                         {i > 0 && <div className="border-t border-gray-100 mb-4" />}
                         <div className="flex items-start justify-between gap-4">
                           <div className="flex-1">
-                            <h3 className="text-sm font-bold text-[#0A2415]">{p.gelar}</h3>
-                            <p className="text-xs font-semibold text-[#1A5C38] mt-0.5">{p.institusi}</p>
-                            <div className="flex items-center gap-3 mt-1.5 text-[11px] text-gray-400 flex-wrap">
-                              <span className="flex items-center gap-1"><Calendar className="w-3 h-3" />{p.tahun}</span>
-                              {p.lokasi && <span className="flex items-center gap-1"><MapPin className="w-3 h-3" />{p.lokasi}</span>}
+                            <div className="flex items-center gap-2 flex-wrap">
+                              <h3 className="text-sm font-bold text-[#0A2415]">{p.jenjang}</h3>
+                              {p.is_current && <span className="text-[10px] font-bold bg-green-100 text-green-700 px-2 py-0.5 rounded-full">Saat Ini</span>}
                             </div>
-                            {p.deskripsi && <p className="text-xs text-gray-500 mt-2 leading-relaxed">{p.deskripsi}</p>}
+                            <p className="text-xs font-semibold text-[#1A5C38] mt-0.5">
+                              {p.jurusan ? `${p.jurusan} · ` : ''}{p.institusi}
+                            </p>
+                            <div className="flex items-center gap-3 mt-1.5 text-[11px] text-gray-400 flex-wrap">
+                              {(p.tahun_mulai || p.tahun_selesai) && (
+                                <span className="flex items-center gap-1">
+                                  <Calendar className="w-3 h-3" />
+                                  {p.tahun_mulai ?? '?'} – {p.is_current ? 'Sekarang' : (p.tahun_selesai ?? '?')}
+                                </span>
+                              )}
+                            </div>
                           </div>
                           <div className="flex items-center gap-1 shrink-0">
                             <button onClick={() => setModal({ type: 'editPendidikan', item: p })}
@@ -1355,12 +1658,21 @@ export default function AlumniDashboardPage() {
                         <div className="flex items-start justify-between gap-4">
                           <div className="flex-1">
                             <div className="flex items-center gap-2 flex-wrap">
-                              <h3 className="text-sm font-bold text-[#0A2415]">{p.jabatan}</h3>
-                              {p.current && <span className="text-[10px] font-bold bg-green-100 text-green-700 px-2 py-0.5 rounded-full">Saat Ini</span>}
+                              <h3 className="text-sm font-bold text-[#0A2415]">{p.jabatan ?? p.posisi}</h3>
+                              {p.is_current && <span className="text-[10px] font-bold bg-green-100 text-green-700 px-2 py-0.5 rounded-full">Saat Ini</span>}
+                              {p.tipe && (() => { const tc = tipeConfig(p.tipe); return (
+                                <span className="text-[10px] font-bold px-2 py-0.5 rounded-full"
+                                  style={{ backgroundColor: tc.bg, color: tc.color }}>{tc.label}</span>
+                              )})()}
                             </div>
                             <p className="text-xs font-semibold text-[#1A5C38] mt-0.5">{p.perusahaan}</p>
                             <div className="flex items-center gap-3 mt-1.5 text-[11px] text-gray-400 flex-wrap">
-                              <span className="flex items-center gap-1"><Calendar className="w-3 h-3" />{p.periode}</span>
+                              {(p.tahun_mulai || p.tahun_selesai) && (
+                                <span className="flex items-center gap-1">
+                                  <Calendar className="w-3 h-3" />
+                                  {p.tahun_mulai ?? '?'} – {p.is_current ? 'Sekarang' : (p.tahun_selesai ?? '?')}
+                                </span>
+                              )}
                               {p.lokasi && <span className="flex items-center gap-1"><MapPin className="w-3 h-3" />{p.lokasi}</span>}
                             </div>
                             {p.deskripsi && <p className="text-xs text-gray-500 mt-2 leading-relaxed">{p.deskripsi}</p>}
@@ -1661,6 +1973,72 @@ export default function AlumniDashboardPage() {
                 </div>
               </div>
 
+              {/* Informasi Kontak */}
+              {(profil.email || profil.phone || profil.linkedin || profil.website ||
+                profil.instagram || profil.youtube || profil.twitter || profil.facebook) && (
+                <div className="bg-white rounded-2xl p-4 border border-gray-100">
+                  <h3 className="text-xs font-bold text-[#0A2415] uppercase tracking-wider mb-3">Informasi Kontak</h3>
+                  <div className="space-y-2">
+                    {profil.email && (
+                      <div className="flex items-center gap-2 text-xs text-gray-600">
+                        <Mail className="w-3.5 h-3.5 text-gray-400 shrink-0" />
+                        <span className="truncate">{profil.email}</span>
+                      </div>
+                    )}
+                    {profil.phone && (
+                      <div className="flex items-center gap-2 text-xs text-gray-600">
+                        <Phone className="w-3.5 h-3.5 text-gray-400 shrink-0" />
+                        <span>{profil.phone}</span>
+                      </div>
+                    )}
+                    {profil.linkedin && (
+                      <a href={profil.linkedin.startsWith('http') ? profil.linkedin : `https://${profil.linkedin}`}
+                        target="_blank" rel="noreferrer"
+                        className="flex items-center gap-2 text-xs text-blue-600 hover:underline">
+                        <ExternalLink className="w-3.5 h-3.5 shrink-0" />
+                        <span className="truncate">{profil.linkedin}</span>
+                      </a>
+                    )}
+                    {profil.website && (
+                      <a href={profil.website.startsWith('http') ? profil.website : `https://${profil.website}`}
+                        target="_blank" rel="noreferrer"
+                        className="flex items-center gap-2 text-xs text-[#1A5C38] hover:underline">
+                        <Globe className="w-3.5 h-3.5 shrink-0" />
+                        <span className="truncate">{profil.website}</span>
+                      </a>
+                    )}
+                  </div>
+                  {(profil.instagram || profil.youtube || profil.twitter || profil.facebook) && (
+                    <div className="flex items-center gap-1.5 mt-3 pt-3 border-t border-gray-50">
+                      {profil.instagram && (
+                        <a href={`https://instagram.com/${profil.instagram.replace('@', '')}`} target="_blank" rel="noreferrer"
+                          className="w-7 h-7 rounded-lg hover:bg-gray-100 flex items-center justify-center transition-colors">
+                          <SvgInstagram />
+                        </a>
+                      )}
+                      {profil.youtube && (
+                        <a href={`https://youtube.com/${profil.youtube}`} target="_blank" rel="noreferrer"
+                          className="w-7 h-7 rounded-lg hover:bg-gray-100 flex items-center justify-center transition-colors">
+                          <SvgYouTube />
+                        </a>
+                      )}
+                      {profil.twitter && (
+                        <a href={`https://twitter.com/${profil.twitter.replace('@', '')}`} target="_blank" rel="noreferrer"
+                          className="w-7 h-7 rounded-lg hover:bg-gray-100 flex items-center justify-center transition-colors">
+                          <SvgTwitterX />
+                        </a>
+                      )}
+                      {profil.facebook && (
+                        <a href={`https://facebook.com/${profil.facebook}`} target="_blank" rel="noreferrer"
+                          className="w-7 h-7 rounded-lg hover:bg-gray-100 flex items-center justify-center transition-colors">
+                          <SvgFacebook />
+                        </a>
+                      )}
+                    </div>
+                  )}
+                </div>
+              )}
+
               {/* Agenda Mendatang */}
               <div className="bg-white rounded-2xl p-4 border border-gray-100">
                 <div className="flex items-center justify-between mb-3">
@@ -1820,10 +2198,28 @@ export default function AlumniDashboardPage() {
       )}
       {modal?.type === 'kartu' && (
         <KartuAlumniModal
-          user={{ name: profil.nama, angkatan: authProfile?.angkatan, id: idAlumni ?? '-' }}
+          user={{
+            name: profil.nama,
+            angkatan: authProfile?.angkatan,
+            tahunLulus: angkatanInfo?.tahun_lulus ?? authProfile?.angkatan,
+            angkatanKe: angkatanInfo
+              ? angkatanInfo.tahun_lulus - 2005
+              : authProfile?.angkatan ? authProfile.angkatan - 2005 : null,
+            id: idAlumni ?? '-',
+          }}
           profil={profil}
           onClose={() => setModal(null)} />
       )}
+
+      <ConfirmDialog
+        open={confirm.open}
+        title={confirm.title}
+        message={confirm.message}
+        confirmLabel={confirm.confirmLabel}
+        variant={confirm.variant}
+        onConfirm={confirm.onConfirm}
+        onCancel={closeConfirm}
+      />
     </div>
   )
 }
