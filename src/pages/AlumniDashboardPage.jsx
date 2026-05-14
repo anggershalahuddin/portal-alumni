@@ -7,7 +7,7 @@ import {
   Check, CheckCheck, ChevronRight, LogOut, Settings,
   FileText, Globe, Users, Clock, Newspaper, CalendarDays,
   Shield, AlertCircle, ExternalLink, Loader2, Star, Image as ImageIcon,
-  Phone, Mail, Building2, ShoppingBag, Heart, Handshake, Layers,
+  Phone, Mail, Building2, ShoppingBag, Heart, Handshake, Layers, Upload, Paperclip,
 } from 'lucide-react'
 import Footer from '../components/landing/Footer'
 import { news } from '../data/news'
@@ -60,6 +60,7 @@ const SEBAGAI_OPTIONS = [
 
 const initKeahlian = _mockAlumni?.keahlian ?? []
 const initBahasa   = _mockDetail?.bahasa   ?? []
+const initDokumen  = (_mockDetail?.dokumen ?? []).map((d, i) => ({ ...d, id: i + 1 }))
 
 const initUsaha = [
   {
@@ -495,6 +496,81 @@ function KeahlianBahasaModal({ keahlian, bahasa, onSave, onClose }) {
   )
 }
 
+// ── Berkas / Dokumen Modal ────────────────────────────────────────────────────
+const TIPE_DOKUMEN = ['PDF', 'DOCX', 'JPG', 'PNG', 'XLSX', 'Lainnya']
+
+function BerkasModal({ onSave, onClose }) {
+  const [file, setFile] = useState(null)
+  const [nama, setNama] = useState('')
+  const [tipe, setTipe] = useState('PDF')
+  const fileRef = useRef(null)
+
+  function handleFile(e) {
+    const f = e.target.files?.[0]
+    if (!f) return
+    setFile(f)
+    setNama(f.name.replace(/\.[^/.]+$/, ''))
+    const ext = f.name.split('.').pop().toUpperCase()
+    if (TIPE_DOKUMEN.includes(ext)) setTipe(ext)
+  }
+
+  function handleSave() {
+    const ukuran = file
+      ? file.size > 1048576
+        ? `${(file.size / 1048576).toFixed(1)} MB`
+        : `${(file.size / 1024).toFixed(0)} KB`
+      : '—'
+    onSave({ nama: nama.trim() || 'Dokumen Baru', tipe, ukuran })
+    onClose()
+  }
+
+  return (
+    <ModalWrapper onClose={onClose}>
+      <div className="relative bg-white rounded-2xl shadow-2xl w-full max-w-md flex flex-col">
+        <div className="flex items-center justify-between px-6 py-4 border-b border-gray-100">
+          <h2 className="text-base font-bold text-gray-900">Unggah Dokumen</h2>
+          <button onClick={onClose}><X className="w-5 h-5 text-gray-400" /></button>
+        </div>
+        <div className="p-6 space-y-4">
+          {/* Drop zone */}
+          <div
+            onClick={() => fileRef.current?.click()}
+            className="border-2 border-dashed border-gray-200 rounded-xl p-6 text-center cursor-pointer hover:border-[#1A5C38]/40 hover:bg-[#F8FAF9] transition-colors"
+          >
+            <Upload className="w-8 h-8 text-gray-300 mx-auto mb-2" />
+            {file ? (
+              <p className="text-sm font-semibold text-[#1A5C38]">{file.name}</p>
+            ) : (
+              <p className="text-sm text-gray-400">Klik untuk pilih file <span className="text-[#1A5C38] font-semibold">Browse</span></p>
+            )}
+            <p className="text-[10px] text-gray-300 mt-1">PDF, DOCX, JPG, PNG, XLSX · Maks 10 MB</p>
+            <input ref={fileRef} type="file" className="hidden"
+              accept=".pdf,.doc,.docx,.jpg,.jpeg,.png,.xlsx"
+              onChange={handleFile} />
+          </div>
+          <div>
+            <label className="block text-xs font-semibold text-gray-600 mb-1.5">Nama Dokumen</label>
+            <input className={inp} value={nama} onChange={e => setNama(e.target.value)}
+              placeholder="Contoh: Curriculum Vitae 2024" />
+          </div>
+          <div>
+            <label className="block text-xs font-semibold text-gray-600 mb-1.5">Tipe File</label>
+            <select className={inp} value={tipe} onChange={e => setTipe(e.target.value)}>
+              {TIPE_DOKUMEN.map(t => <option key={t}>{t}</option>)}
+            </select>
+          </div>
+        </div>
+        <div className="flex justify-end gap-3 px-6 py-4 border-t border-gray-100">
+          <button onClick={onClose} className="px-5 py-2.5 rounded-xl border border-gray-200 text-sm font-medium text-gray-700 hover:bg-gray-50">Batal</button>
+          <button onClick={handleSave} disabled={!nama.trim() && !file}
+            className="px-5 py-2.5 rounded-xl text-sm font-bold text-white hover:opacity-90 disabled:opacity-40"
+            style={{ backgroundColor: '#1A5C38' }}>Simpan</button>
+        </div>
+      </div>
+    </ModalWrapper>
+  )
+}
+
 // ── Kartu Alumni Modal ─────────────────────────────────────────────────────────
 function KartuAlumniModal({ user, profil, onClose }) {
   useScrollLock()
@@ -626,6 +702,7 @@ export default function AlumniDashboardPage() {
   const [usaha, setUsaha] = useState(initUsaha)
   const [keahlian, setKeahlian] = useState(initKeahlian)
   const [bahasa, setBahasa] = useState(initBahasa)
+  const [dokumen, setDokumen] = useState(initDokumen)
   const [notif, setNotif] = useState(initNotif)
 
   // UI states
@@ -654,10 +731,11 @@ export default function AlumniDashboardPage() {
     { label: 'LinkedIn', weight: 10, done: !!profil.linkedin },
     { label: 'Riwayat Pendidikan', weight: 15, done: pendidikan.length > 0 },
     { label: 'Riwayat Pekerjaan', weight: 15, done: pekerjaan.length > 0 },
-    { label: 'Keahlian', weight: 10, done: keahlian.length > 0 },
+    { label: 'Keahlian', weight: 5, done: keahlian.length > 0 },
     { label: 'Sertifikasi', weight: 5, done: sertifikasi.length > 0 },
     { label: 'Publikasi', weight: 5, done: publikasi.length > 0 },
     { label: 'Lembaga/Badan Usaha', weight: 5, done: usaha.length > 0 },
+    { label: 'Dokumen & Lampiran', weight: 5, done: dokumen.length > 0 },
   ]
   const profileCompletion = completionItems.reduce((a, i) => a + (i.done ? i.weight : 0), 0)
   const missing = completionItems.filter(i => !i.done)
@@ -1158,6 +1236,50 @@ export default function AlumniDashboardPage() {
                 )}
               </section>
 
+              {/* Dokumen & Lampiran */}
+              <section className="bg-white rounded-2xl p-5 sm:p-6 border border-gray-100">
+                <div className="flex items-center justify-between mb-5">
+                  <div className="flex items-center gap-2">
+                    <Paperclip className="w-4.5 h-4.5 text-[#1A5C38]" />
+                    <h2 className="text-sm font-bold text-[#0A2415]">Dokumen & Lampiran</h2>
+                  </div>
+                  <button onClick={() => setModal({ type: 'addBerkas' })}
+                    className="flex items-center gap-1 text-xs font-semibold text-[#1A5C38] hover:text-[#0A2415] transition-colors">
+                    <Plus className="w-3.5 h-3.5" /> Unggah
+                  </button>
+                </div>
+                {dokumen.length === 0 ? (
+                  <div className="text-center py-8">
+                    <Upload className="w-8 h-8 text-gray-200 mx-auto mb-2" />
+                    <p className="text-sm text-gray-400">Belum ada dokumen. Unggah CV, ijazah, atau sertifikat.</p>
+                  </div>
+                ) : (
+                  <div className="space-y-2">
+                    {dokumen.map(doc => (
+                      <motion.div key={doc.id} initial={{ opacity: 0, x: -8 }} animate={{ opacity: 1, x: 0 }}
+                        className="flex items-center gap-3 p-3 bg-[#F8FAF9] rounded-xl group hover:bg-[#E8F5EE] transition-colors">
+                        <div className="w-9 h-9 bg-red-50 rounded-lg flex items-center justify-center flex-shrink-0">
+                          <span className="text-[10px] font-bold text-red-500">{doc.tipe}</span>
+                        </div>
+                        <div className="flex-1 min-w-0">
+                          <p className="text-xs font-semibold text-[#0A2415] truncate">{doc.nama}</p>
+                          <p className="text-[10px] text-gray-400">{doc.tipe} · {doc.ukuran}</p>
+                        </div>
+                        <div className="flex items-center gap-1 opacity-0 group-hover:opacity-100 transition-opacity">
+                          <button className="w-7 h-7 rounded-lg hover:bg-white flex items-center justify-center text-gray-400 hover:text-[#1A5C38] transition-colors">
+                            <Download className="w-3.5 h-3.5" />
+                          </button>
+                          <button onClick={() => setDokumen(p => p.filter(d => d.id !== doc.id))}
+                            className="w-7 h-7 rounded-lg hover:bg-red-50 flex items-center justify-center text-gray-400 hover:text-red-500 transition-colors">
+                            <Trash2 className="w-3.5 h-3.5" />
+                          </button>
+                        </div>
+                      </motion.div>
+                    ))}
+                  </div>
+                )}
+              </section>
+
               {/* Banner Penghargaan */}
               <div className="rounded-2xl p-5 sm:p-6 flex items-center gap-5" style={{ background: 'linear-gradient(135deg, #1A5C38 0%, #0A2415 100%)' }}>
                 <div className="flex-1">
@@ -1188,6 +1310,7 @@ export default function AlumniDashboardPage() {
                     { label: 'Sertifikasi', icon: Award, action: () => setModal({ type: 'addSertifikasi' }) },
                     { label: 'Publikasi', icon: BookOpen, action: () => setModal({ type: 'addPublikasi' }) },
                     { label: 'Lembaga', icon: Building2, action: () => setModal({ type: 'addUsaha' }) },
+                    { label: 'Berkas', icon: Paperclip, action: () => setModal({ type: 'addBerkas' }) },
                     { label: 'Kartu Alumni', icon: FileText, action: () => setModal({ type: 'kartu' }) },
                     { label: 'Direktori', icon: Users, action: () => navigate('/direktori') },
                   ].map(({ label, icon: Icon, action }) => (
@@ -1343,6 +1466,11 @@ export default function AlumniDashboardPage() {
       {modal?.type === 'editKeahlianBahasa' && (
         <KeahlianBahasaModal keahlian={keahlian} bahasa={bahasa}
           onSave={(k, b) => { setKeahlian(k); setBahasa(b) }}
+          onClose={() => setModal(null)} />
+      )}
+      {modal?.type === 'addBerkas' && (
+        <BerkasModal
+          onSave={doc => setDokumen(p => [...p, { ...doc, id: Date.now() }])}
           onClose={() => setModal(null)} />
       )}
       {modal?.type === 'addPublikasi' && (
