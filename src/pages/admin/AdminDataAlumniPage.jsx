@@ -1,17 +1,18 @@
-import { useState, useMemo } from 'react'
+import { useState, useMemo, useEffect, useCallback } from 'react'
 import * as XLSX from 'xlsx'
 import {
   Search, Download, ChevronDown, X, BadgeCheck,
   GraduationCap, Briefcase, BookOpen, Mail, Globe,
   Link2, Filter, Eye, FileSpreadsheet, Building2, Handshake,
+  AlertCircle,
 } from 'lucide-react'
 import { motion } from 'framer-motion'
 import AdminSidebar from '@/components/admin/AdminSidebar'
 import AdminHeader from '@/components/admin/AdminHeader'
 import { PaginationBar, PerPageSelector } from '@/components/PaginationBar'
-import { alumniData, getAvatarColor, getInitials, bidangList } from '@/data/alumni'
-import { getAlumniDetail } from '@/data/alumniDetail'
+import { getAvatarColor, getInitials, bidangList } from '@/data/alumni'
 import { initialAngkatan } from '@/data/angkatan'
+import { supabase } from '@/lib/supabase'
 
 // ── Helpers ──────────────────────────────────────────────────────────────────
 
@@ -33,7 +34,7 @@ function exportCSV(rows) {
   ]
 
   const csvRows = rows.map(({ alumni, detail, angkatanInfo }) => {
-    const pengExp = detail?.pengalaman?.[0]
+    const pengExp  = detail?.pengalaman?.[0]
     const pengPend = detail?.pendidikan?.[0]
     const lembaga0 = detail?.lembaga?.[0]
     return [
@@ -65,9 +66,9 @@ function exportCSV(rows) {
   })
 
   const blob = new Blob([[headers.join(','), ...csvRows].join('\n')], { type: 'text/csv;charset=utf-8;' })
-  const url = URL.createObjectURL(blob)
-  const a = document.createElement('a')
-  a.href = url
+  const url  = URL.createObjectURL(blob)
+  const a    = document.createElement('a')
+  a.href     = url
   a.download = `data-alumni-daarul-mughni-${new Date().toISOString().slice(0, 10)}.csv`
   a.click()
   URL.revokeObjectURL(url)
@@ -84,7 +85,7 @@ function exportXLSX(rows) {
     'Status Verifikasi',
   ]
   const data = rows.map(({ alumni, detail, angkatanInfo }) => {
-    const pengExp = detail?.pengalaman?.[0]
+    const pengExp  = detail?.pengalaman?.[0]
     const pengPend = detail?.pendidikan?.[0]
     const lembaga0 = detail?.lembaga?.[0]
     return [
@@ -180,23 +181,24 @@ function DetailModal({ alumni, detail, angkatanInfo, onClose }) {
 
           {tab === 'ringkasan' && (
             <>
-              {/* Bio */}
               {detail?.bio && (
                 <div>
                   <p className="text-[10px] font-bold text-gray-400 uppercase tracking-widest mb-2">Bio</p>
                   <p className="text-sm text-gray-600 leading-relaxed">{detail.bio}</p>
                 </div>
               )}
-              {/* Keahlian */}
               <div>
                 <p className="text-[10px] font-bold text-gray-400 uppercase tracking-widest mb-2">Keahlian</p>
-                <div className="flex flex-wrap gap-2">
-                  {alumni.keahlian.map(k => (
-                    <span key={k} className="text-xs text-[#1A5C38] border border-[#1A5C38]/30 bg-[#E8F5EE] px-3 py-1 rounded-full">{k}</span>
-                  ))}
-                </div>
+                {alumni.keahlian?.length > 0 ? (
+                  <div className="flex flex-wrap gap-2">
+                    {alumni.keahlian.map(k => (
+                      <span key={k} className="text-xs text-[#1A5C38] border border-[#1A5C38]/30 bg-[#E8F5EE] px-3 py-1 rounded-full">{k}</span>
+                    ))}
+                  </div>
+                ) : (
+                  <p className="text-sm text-gray-400">Belum ada keahlian.</p>
+                )}
               </div>
-              {/* Bahasa */}
               {detail?.bahasa?.length > 0 && (
                 <div>
                   <p className="text-[10px] font-bold text-gray-400 uppercase tracking-widest mb-2">Bahasa</p>
@@ -207,10 +209,9 @@ function DetailModal({ alumni, detail, angkatanInfo, onClose }) {
                   </div>
                 </div>
               )}
-              {/* Domisili */}
               <div>
                 <p className="text-[10px] font-bold text-gray-400 uppercase tracking-widest mb-2">Domisili</p>
-                <p className="text-sm text-gray-700">{alumni.domisili}</p>
+                <p className="text-sm text-gray-700">{alumni.domisili || '-'}</p>
               </div>
             </>
           )}
@@ -298,7 +299,7 @@ function DetailModal({ alumni, detail, angkatanInfo, onClose }) {
                     <div className="flex flex-wrap gap-x-4 gap-y-0.5 mt-1">
                       {l.bidang && <p className="text-xs text-gray-500">{l.bidang}</p>}
                       {l.lokasi && <p className="text-xs text-gray-400">{l.lokasi}</p>}
-                      {l.tahun && <p className="text-xs text-gray-400">Est. {l.tahun}</p>}
+                      {l.tahun  && <p className="text-xs text-gray-400">Est. {l.tahun}</p>}
                     </div>
                     {l.deskripsi && <p className="text-xs text-gray-500 mt-1.5 leading-relaxed">{l.deskripsi}</p>}
                     {l.website && (
@@ -346,20 +347,126 @@ function DetailModal({ alumni, detail, angkatanInfo, onClose }) {
 // ── Main Page ─────────────────────────────────────────────────────────────────
 
 export default function AdminDataAlumniPage() {
-  const [search, setSearch] = useState('')
-  const [filterBidang, setFilterBidang] = useState('')
+  const [enriched, setEnriched]       = useState([])
+  const [pageLoading, setPageLoading] = useState(true)
+  const [loadError, setLoadError]     = useState(null)
+
+  const [search, setSearch]               = useState('')
+  const [filterBidang, setFilterBidang]   = useState('')
   const [filterAngkatan, setFilterAngkatan] = useState('')
   const [filterVerifikasi, setFilterVerifikasi] = useState('')
-  const [page, setPage] = useState(1)
+  const [page, setPage]     = useState(1)
   const [perPage, setPerPage] = useState(10)
-  const [detail, setDetail] = useState(null) // { alumni, detail, angkatanInfo }
+  const [detail, setDetail] = useState(null)
 
-  const enriched = useMemo(() => alumniData.map(a => ({
-    alumni: a,
-    detail: getAlumniDetail(a.id),
-    angkatanInfo: initialAngkatan.find(x => x.tahunLulusan === a.angkatan) ?? null,
-  })), [])
+  /* ── Load all alumni data from Supabase ── */
+  const loadData = useCallback(async () => {
+    setPageLoading(true)
+    setLoadError(null)
+    try {
+      // Profiles with role alumni + their alumni_profile
+      const { data: profiles, error: profErr } = await supabase
+        .from('profiles')
+        .select('id, nama_lengkap, email, angkatan, bidang, domisili, status, role')
+        .eq('role', 'alumni')
+        .order('created_at', { ascending: false })
 
+      if (profErr) throw profErr
+      if (!profiles?.length) { setEnriched([]); return }
+
+      const ids = profiles.map((p) => p.id)
+
+      // alumni_profiles + all sub-tables in parallel
+      const [apRes, keahlianRes, bahasaRes, pekerjaanRes, pendidikanRes, lembagaRes] =
+        await Promise.all([
+          supabase.from('alumni_profiles').select('*').in('id', ids),
+          supabase.from('keahlian_alumni').select('*').in('alumni_id', ids),
+          supabase.from('bahasa_alumni').select('*').in('alumni_id', ids),
+          supabase.from('pekerjaan').select('*').in('alumni_id', ids),
+          supabase.from('pendidikan').select('*').in('alumni_id', ids),
+          supabase.from('lembaga_alumni').select('*').in('alumni_id', ids),
+        ])
+
+      const apAll        = apRes.data ?? []
+      const keahlianAll  = keahlianRes.data ?? []
+      const bahasaAll    = bahasaRes.data ?? []
+      const pekerjaanAll = pekerjaanRes.data ?? []
+      const pendidikanAll= pendidikanRes.data ?? []
+      const lembagaAll   = lembagaRes.data ?? []
+
+      const enrichedData = profiles.map((p) => {
+        const ap  = apAll.find((a) => a.id === p.id) ?? {}
+        const pid = p.id
+
+        const alumni = {
+          id:         pid,
+          name:       p.nama_lengkap || p.email,
+          email:      p.email,
+          angkatan:   p.angkatan,
+          bidang:     p.bidang ?? '',
+          profesi:    ap.profesi ?? '',
+          perusahaan: ap.perusahaan ?? '',
+          domisili:   p.domisili ?? '',
+          keahlian:   keahlianAll.filter((k) => k.alumni_id === pid).map((k) => k.nama),
+          isVerified: p.status === 'disetujui',
+          avatar:     null,
+        }
+
+        const detail = {
+          bio:    ap.bio ?? '',
+          bahasa: bahasaAll.filter((b) => b.alumni_id === pid).map((b) => b.nama),
+          kontak: {
+            email:    p.email,
+            linkedin: ap.linkedin_url ?? '',
+            website:  ap.website_url ?? '',
+          },
+          pengalaman: pekerjaanAll
+            .filter((pek) => pek.alumni_id === pid)
+            .map((pek) => ({
+              jabatan:   pek.posisi ?? '',
+              institusi: pek.institusi ?? '',
+              periode:   pek.periode ?? '',
+              deskripsi: pek.deskripsi ?? '',
+            })),
+          pendidikan: pendidikanAll
+            .filter((pend) => pend.alumni_id === pid)
+            .map((pend) => ({
+              gelar:     pend.gelar ?? '',
+              institusi: pend.institusi ?? '',
+              tahun:     pend.tahun ?? '',
+            })),
+          lembaga: lembagaAll
+            .filter((l) => l.alumni_id === pid)
+            .map((l) => ({
+              nama:          l.nama_lembaga ?? '',
+              jenis:         l.jenis_lembaga ?? '',
+              sebagai:       l.peran ?? '',
+              bidang:        l.bidang_usaha ?? '',
+              lokasi:        l.domisili ?? '',
+              tahun:         l.tahun_berdiri ?? '',
+              openKerjasama: l.open_kerjasama ?? false,
+              deskripsi:     l.deskripsi ?? '',
+              website:       l.website ?? '',
+            })),
+        }
+
+        const angkatanInfo = initialAngkatan.find((x) => x.tahunLulusan === p.angkatan) ?? null
+
+        return { alumni, detail, angkatanInfo }
+      })
+
+      setEnriched(enrichedData)
+    } catch (err) {
+      console.error('Error loading alumni data:', err)
+      setLoadError(err.message)
+    } finally {
+      setPageLoading(false)
+    }
+  }, [])
+
+  useEffect(() => { loadData() }, [loadData])
+
+  /* ── Filters ── */
   const filtered = useMemo(() => enriched.filter(({ alumni }) => {
     const q = search.toLowerCase()
     const matchSearch = q === '' ||
@@ -368,23 +475,36 @@ export default function AdminDataAlumniPage() {
       alumni.perusahaan.toLowerCase().includes(q) ||
       alumni.domisili.toLowerCase().includes(q) ||
       String(alumni.angkatan).includes(q)
-    const matchBidang = filterBidang === '' || alumni.bidang === filterBidang
+    const matchBidang   = filterBidang === '' || alumni.bidang === filterBidang
     const matchAngkatan = filterAngkatan === '' || String(alumni.angkatan) === filterAngkatan
-    const matchVerif = filterVerifikasi === '' ||
-      (filterVerifikasi === 'ya' && alumni.isVerified) ||
+    const matchVerif    = filterVerifikasi === '' ||
+      (filterVerifikasi === 'ya'    && alumni.isVerified) ||
       (filterVerifikasi === 'tidak' && !alumni.isVerified)
     return matchSearch && matchBidang && matchAngkatan && matchVerif
   }), [enriched, search, filterBidang, filterAngkatan, filterVerifikasi])
 
   const totalPages = Math.ceil(filtered.length / perPage)
-  const paged = filtered.slice((page - 1) * perPage, page * perPage)
-  const startIdx = filtered.length === 0 ? 0 : (page - 1) * perPage + 1
-  const endIdx = Math.min(page * perPage, filtered.length)
+  const paged      = filtered.slice((page - 1) * perPage, page * perPage)
+  const startIdx   = filtered.length === 0 ? 0 : (page - 1) * perPage + 1
+  const endIdx     = Math.min(page * perPage, filtered.length)
 
   function resetPage() { setPage(1) }
 
   const angkatanOptions = useMemo(() =>
-    [...new Set(alumniData.map(a => a.angkatan))].sort((a, b) => a - b), [])
+    [...new Set(enriched.map(({ alumni }) => alumni.angkatan).filter(Boolean))].sort((a, b) => a - b),
+    [enriched])
+
+  /* ── Loading screen ── */
+  if (pageLoading) {
+    return (
+      <div className="flex min-h-screen bg-[#F8FAF9]">
+        <AdminSidebar active="alumni-data" />
+        <div className="flex-1 flex items-center justify-center">
+          <div className="w-8 h-8 border-4 border-green-600 border-t-transparent rounded-full animate-spin" />
+        </div>
+      </div>
+    )
+  }
 
   return (
     <div className="flex min-h-screen bg-[#F8FAF9]">
@@ -421,13 +541,23 @@ export default function AdminDataAlumniPage() {
               </button>
             </div>
           </div>
+
+          {/* Error banner */}
+          {loadError && (
+            <div className="flex items-center gap-2 px-4 py-3 rounded-xl bg-red-50 border border-red-200 text-sm text-red-700 mb-4">
+              <AlertCircle className="w-4 h-4 flex-shrink-0" />
+              {loadError}
+              <button onClick={loadData} className="ml-auto underline text-xs">Coba lagi</button>
+            </div>
+          )}
+
           {/* Stats */}
           <div className="grid grid-cols-2 sm:grid-cols-4 gap-4 mb-6">
             {[
-              { label: 'Total Alumni', value: alumniData.length, color: '#1A5C38' },
-              { label: 'Terverifikasi', value: alumniData.filter(a => a.isVerified).length, color: '#0E7490' },
-              { label: 'Belum Verifikasi', value: alumniData.filter(a => !a.isVerified).length, color: '#D97706' },
-              { label: 'Bidang Tersedia', value: bidangList.length, color: '#7C3AED' },
+              { label: 'Total Alumni',      value: enriched.length,                                     color: '#1A5C38' },
+              { label: 'Terverifikasi',     value: enriched.filter(({ alumni }) => alumni.isVerified).length,  color: '#0E7490' },
+              { label: 'Belum Verifikasi',  value: enriched.filter(({ alumni }) => !alumni.isVerified).length, color: '#D97706' },
+              { label: 'Bidang Tersedia',   value: bidangList.length,                                   color: '#7C3AED' },
             ].map(({ label, value, color }) => (
               <div key={label} className="bg-white rounded-xl border border-gray-100 px-4 py-4">
                 <p className="text-xs text-gray-400 mb-1">{label}</p>
@@ -511,7 +641,7 @@ export default function AdminDataAlumniPage() {
                     <th className="text-left px-4 py-3 text-xs font-semibold text-gray-500 w-10">#</th>
                     <th className="text-left px-4 py-3 text-xs font-semibold text-gray-500">Alumni</th>
                     <th className="text-left px-4 py-3 text-xs font-semibold text-gray-500">Angkatan</th>
-                    <th className="text-left px-4 py-3 text-xs font-semibold text-gray-500">Profesi & Perusahaan</th>
+                    <th className="text-left px-4 py-3 text-xs font-semibold text-gray-500">Profesi &amp; Perusahaan</th>
                     <th className="text-left px-4 py-3 text-xs font-semibold text-gray-500">Bidang</th>
                     <th className="text-left px-4 py-3 text-xs font-semibold text-gray-500">Domisili</th>
                     <th className="text-center px-4 py-3 text-xs font-semibold text-gray-500">Verifikasi</th>
@@ -523,7 +653,9 @@ export default function AdminDataAlumniPage() {
                     <tr>
                       <td colSpan={8} className="text-center py-16 text-gray-400">
                         <Search className="w-8 h-8 mx-auto mb-2 opacity-30" />
-                        <p className="text-sm">Tidak ada alumni ditemukan</p>
+                        <p className="text-sm">
+                          {enriched.length === 0 ? 'Belum ada alumni terdaftar.' : 'Tidak ada alumni ditemukan.'}
+                        </p>
                       </td>
                     </tr>
                   ) : paged.map(({ alumni, detail: det, angkatanInfo }, i) => {
@@ -551,21 +683,23 @@ export default function AdminDataAlumniPage() {
                             )}
                             <div>
                               <p className="text-xs font-bold text-[#1A5C38]">
-                                {angkatanInfo ? `Angkatan ${angkatanInfo.angkatanKe}` : `Angkatan ${alumni.angkatan}`}
+                                {angkatanInfo ? `Angkatan ${angkatanInfo.angkatanKe}` : `Angkatan ${alumni.angkatan ?? '-'}`}
                               </p>
-                              <p className="text-[10px] text-gray-400">{alumni.angkatan}</p>
+                              <p className="text-[10px] text-gray-400">{alumni.angkatan ?? '-'}</p>
                             </div>
                           </div>
                         </td>
                         <td className="px-4 py-3">
-                          <p className="text-sm font-medium text-[#0A2415] leading-snug">{alumni.profesi}</p>
+                          <p className="text-sm font-medium text-[#0A2415] leading-snug">{alumni.profesi || '-'}</p>
                           <p className="text-xs text-gray-400">{alumni.perusahaan}</p>
                         </td>
                         <td className="px-4 py-3">
-                          <span className="text-xs bg-gray-100 text-gray-600 px-2.5 py-1 rounded-full">{bidangLabel}</span>
+                          <span className="text-xs bg-gray-100 text-gray-600 px-2.5 py-1 rounded-full">
+                            {bidangLabel || '-'}
+                          </span>
                         </td>
                         <td className="px-4 py-3">
-                          <p className="text-xs text-gray-600">{alumni.domisili}</p>
+                          <p className="text-xs text-gray-600">{alumni.domisili || '-'}</p>
                         </td>
                         <td className="px-4 py-3 text-center">
                           {alumni.isVerified ? (
