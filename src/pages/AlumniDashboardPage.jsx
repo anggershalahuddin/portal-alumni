@@ -497,32 +497,65 @@ function KeahlianBahasaModal({ keahlian, bahasa, onSave, onClose }) {
 }
 
 // ── Berkas / Dokumen Modal ────────────────────────────────────────────────────
-const TIPE_DOKUMEN = ['PDF', 'DOCX', 'JPG', 'PNG', 'XLSX', 'Lainnya']
+const KATEGORI_BERKAS = {
+  'CV / Resume':     { accept: '.pdf', formatLabel: 'PDF', maxMB: 2,  tipe: 'PDF' },
+  'Ijazah':          { accept: '.pdf', formatLabel: 'PDF', maxMB: 2,  tipe: 'PDF' },
+  'Sertifikat':      { accept: '.pdf', formatLabel: 'PDF', maxMB: 2,  tipe: 'PDF' },
+  'Foto / Scan':     { accept: '.webp,.jpg,.jpeg', formatLabel: 'WebP / JPEG', maxMB: 1, tipe: 'IMG' },
+  'Company Profile': { accept: '.pdf', formatLabel: 'PDF', maxMB: 5,  tipe: 'PDF' },
+  'Lainnya':         { accept: '.pdf', formatLabel: 'PDF', maxMB: 2,  tipe: 'PDF' },
+}
 
 function BerkasModal({ onSave, onClose }) {
-  const [file, setFile] = useState(null)
-  const [nama, setNama] = useState('')
-  const [tipe, setTipe] = useState('PDF')
+  const [kategori, setKategori] = useState('CV / Resume')
+  const [file, setFile]         = useState(null)
+  const [nama, setNama]         = useState('')
+  const [error, setError]       = useState('')
   const fileRef = useRef(null)
+
+  const cfg = KATEGORI_BERKAS[kategori]
+
+  function handleKategori(val) {
+    setKategori(val)
+    setFile(null)
+    setError('')
+    setNama('')
+  }
 
   function handleFile(e) {
     const f = e.target.files?.[0]
     if (!f) return
+    setError('')
+
+    const ext = f.name.split('.').pop().toLowerCase()
+    const allowed = cfg.accept.split(',').map(a => a.replace('.', ''))
+    if (!allowed.includes(ext)) {
+      setError(`Format tidak didukung. Gunakan ${cfg.formatLabel}.`)
+      e.target.value = ''
+      return
+    }
+    const maxBytes = cfg.maxMB * 1024 * 1024
+    if (f.size > maxBytes) {
+      setError(`Ukuran file melebihi batas ${cfg.maxMB} MB.`)
+      e.target.value = ''
+      return
+    }
     setFile(f)
     setNama(f.name.replace(/\.[^/.]+$/, ''))
-    const ext = f.name.split('.').pop().toUpperCase()
-    if (TIPE_DOKUMEN.includes(ext)) setTipe(ext)
+  }
+
+  function formatUkuran(bytes) {
+    return bytes > 1048576
+      ? `${(bytes / 1048576).toFixed(1)} MB`
+      : `${(bytes / 1024).toFixed(0)} KB`
   }
 
   function handleSave() {
-    const ukuran = file
-      ? file.size > 1048576
-        ? `${(file.size / 1048576).toFixed(1)} MB`
-        : `${(file.size / 1024).toFixed(0)} KB`
-      : '—'
-    onSave({ nama: nama.trim() || 'Dokumen Baru', tipe, ukuran })
+    onSave({ nama: nama.trim() || kategori, tipe: cfg.tipe, ukuran: file ? formatUkuran(file.size) : '—', kategori })
     onClose()
   }
+
+  const canSave = !!file && !!nama.trim() && !error
 
   return (
     <ModalWrapper onClose={onClose}>
@@ -532,38 +565,57 @@ function BerkasModal({ onSave, onClose }) {
           <button onClick={onClose}><X className="w-5 h-5 text-gray-400" /></button>
         </div>
         <div className="p-6 space-y-4">
+          {/* Kategori */}
+          <div>
+            <label className="block text-xs font-semibold text-gray-600 mb-1.5">Kategori</label>
+            <select className={inp} value={kategori} onChange={e => handleKategori(e.target.value)}>
+              {Object.keys(KATEGORI_BERKAS).map(k => <option key={k}>{k}</option>)}
+            </select>
+          </div>
+
+          {/* Info format */}
+          <div className="flex items-center gap-2 px-3 py-2 bg-[#F0FAF5] rounded-lg text-[11px] text-[#1A5C38] font-medium">
+            <FileText className="w-3.5 h-3.5 shrink-0" />
+            Format: <span className="font-bold">{cfg.formatLabel}</span> · Maks <span className="font-bold">{cfg.maxMB} MB</span>
+          </div>
+
           {/* Drop zone */}
           <div
             onClick={() => fileRef.current?.click()}
-            className="border-2 border-dashed border-gray-200 rounded-xl p-6 text-center cursor-pointer hover:border-[#1A5C38]/40 hover:bg-[#F8FAF9] transition-colors"
+            className={`border-2 border-dashed rounded-xl p-6 text-center cursor-pointer transition-colors ${
+              error ? 'border-red-300 bg-red-50' : 'border-gray-200 hover:border-[#1A5C38]/40 hover:bg-[#F8FAF9]'
+            }`}
           >
-            <Upload className="w-8 h-8 text-gray-300 mx-auto mb-2" />
+            <Upload className={`w-7 h-7 mx-auto mb-2 ${error ? 'text-red-300' : 'text-gray-300'}`} />
             {file ? (
-              <p className="text-sm font-semibold text-[#1A5C38]">{file.name}</p>
+              <>
+                <p className="text-sm font-semibold text-[#1A5C38]">{file.name}</p>
+                <p className="text-[10px] text-gray-400 mt-0.5">{formatUkuran(file.size)}</p>
+              </>
             ) : (
               <p className="text-sm text-gray-400">Klik untuk pilih file <span className="text-[#1A5C38] font-semibold">Browse</span></p>
             )}
-            <p className="text-[10px] text-gray-300 mt-1">PDF, DOCX, JPG, PNG, XLSX · Maks 10 MB</p>
-            <input ref={fileRef} type="file" className="hidden"
-              accept=".pdf,.doc,.docx,.jpg,.jpeg,.png,.xlsx"
-              onChange={handleFile} />
+            <input ref={fileRef} type="file" className="hidden" accept={cfg.accept} onChange={handleFile} />
           </div>
+
+          {/* Error */}
+          {error && (
+            <p className="text-xs text-red-500 flex items-center gap-1.5">
+              <AlertCircle className="w-3.5 h-3.5 shrink-0" />{error}
+            </p>
+          )}
+
+          {/* Nama */}
           <div>
             <label className="block text-xs font-semibold text-gray-600 mb-1.5">Nama Dokumen</label>
             <input className={inp} value={nama} onChange={e => setNama(e.target.value)}
               placeholder="Contoh: Curriculum Vitae 2024" />
           </div>
-          <div>
-            <label className="block text-xs font-semibold text-gray-600 mb-1.5">Tipe File</label>
-            <select className={inp} value={tipe} onChange={e => setTipe(e.target.value)}>
-              {TIPE_DOKUMEN.map(t => <option key={t}>{t}</option>)}
-            </select>
-          </div>
         </div>
         <div className="flex justify-end gap-3 px-6 py-4 border-t border-gray-100">
           <button onClick={onClose} className="px-5 py-2.5 rounded-xl border border-gray-200 text-sm font-medium text-gray-700 hover:bg-gray-50">Batal</button>
-          <button onClick={handleSave} disabled={!nama.trim() && !file}
-            className="px-5 py-2.5 rounded-xl text-sm font-bold text-white hover:opacity-90 disabled:opacity-40"
+          <button onClick={handleSave} disabled={!canSave}
+            className="px-5 py-2.5 rounded-xl text-sm font-bold text-white hover:opacity-90 disabled:opacity-40 transition-opacity"
             style={{ backgroundColor: '#1A5C38' }}>Simpan</button>
         </div>
       </div>
