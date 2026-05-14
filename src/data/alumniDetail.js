@@ -2,7 +2,7 @@ const details = {
   1: {
     bio: 'Dokter spesialis bedah umum dengan pengalaman lebih dari 12 tahun di RSUD Bogor. Semasa di Pondok Pesantren Daarul Mughni, saya belajar kedisiplinan dan ketulusan dalam melayani — nilai yang terus saya bawa dalam setiap tindakan medis. Aktif sebagai pembicara kesehatan di komunitas alumni dan berkomitmen pada pelayanan kesehatan masyarakat Bogor.',
     bahasa: ['Indonesia (Native)', 'Arabic (Academic)', 'English (Professional)'],
-    kontak: { email: 'ahmad.fauzi@rsudbogor.go.id', linkedin: 'linkedin.com/in/drahmad-fauzi', website: null },
+    kontak: { email: 'ahmad.fauzi@rsudbogor.go.id', linkedin: 'linkedin.com/in/drahmad-fauzi', website: null, instagram: 'dr.ahmaadfauzi', youtube: null, twitter: null, facebook: null },
     dokumen: [
       { nama: 'Curriculum Vitae 2024', tipe: 'PDF', ukuran: '1.4 MB' },
       { nama: 'Ijazah Kelulusan DM', tipe: 'PDF', ukuran: '2.1 MB' },
@@ -19,7 +19,7 @@ const details = {
   2: {
     bio: 'Data scientist dengan spesialisasi machine learning dan analitik data berskala besar. Pengalaman di Daarul Mughni mengajarkan saya untuk berpikir sistematis dan teliti — keterampilan yang sangat berguna di dunia data. Saat ini memimpin tim data di divisi personalisasi Tokopedia.',
     bahasa: ['Indonesia (Native)', 'English (Professional)', 'Arabic (Academic)'],
-    kontak: { email: 'siti.sarah@tokopedia.com', linkedin: 'linkedin.com/in/sitisarah', website: 'sitisarah.dev' },
+    kontak: { email: 'siti.sarah@tokopedia.com', linkedin: 'linkedin.com/in/sitisarah', website: 'sitisarah.dev', instagram: 'sitisarah.data', youtube: '@sitisarahml', twitter: 'sitisarahml', facebook: null },
     dokumen: [
       { nama: 'Curriculum Vitae 2024', tipe: 'PDF', ukuran: '0.9 MB' },
     ],
@@ -35,7 +35,7 @@ const details = {
   3: {
     bio: 'Software engineer dengan 7 tahun pengalaman di industri teknologi, berfokus pada pengembangan sistem backend berskala tinggi. Nilai kerja keras dan integritas yang ditanamkan di Daarul Mughni menjadi fondasi karir saya. Kontributor aktif open source dan mentor bagi alumni muda yang ingin terjun ke dunia tech.',
     bahasa: ['Indonesia (Native)', 'English (Professional)', 'Arabic (Conversational)'],
-    kontak: { email: 'mrizky@gojek.com', linkedin: 'linkedin.com/in/muhammadrizky', website: 'rizkydev.id' },
+    kontak: { email: 'mrizky@gojek.com', linkedin: 'linkedin.com/in/muhammadrizky', website: 'rizkydev.id', instagram: 'muhammadrizky.dev', youtube: '@rizkydev', twitter: 'mrizkydev', facebook: null },
     dokumen: [
       { nama: 'Curriculum Vitae 2024', tipe: 'PDF', ukuran: '1.1 MB' },
       { nama: 'Sertifikat AWS Solutions Architect', tipe: 'PDF', ukuran: '0.5 MB' },
@@ -54,7 +54,7 @@ const details = {
     ],
     bio: 'Founder dan creative director yang memadukan estetika modern dengan nilai-nilai Islami dalam setiap karya. Memulai bisnis fashion modest wear dari nol dan kini melayani ribuan pelanggan di seluruh Indonesia. Percaya bahwa kreativitas dan nilai pesantren bisa berjalan beriringan.',
     bahasa: ['Indonesia (Native)', 'English (Professional)', 'Arabic (Academic)'],
-    kontak: { email: 'fatimah@nusantarakreasi.id', linkedin: 'linkedin.com/in/fatimahaz', website: 'nusantarakreasi.id' },
+    kontak: { email: 'fatimah@nusantarakreasi.id', linkedin: 'linkedin.com/in/fatimahaz', website: 'nusantarakreasi.id', instagram: 'nusantarakreasi.official', youtube: '@nusantarakreasi', twitter: null, facebook: 'nusantarakreasi' },
     dokumen: [
       { nama: 'Company Profile Nusantara Kreasi', tipe: 'PDF', ukuran: '3.2 MB' },
     ],
@@ -103,7 +103,7 @@ const details = {
     ],
     bio: 'Tech entrepreneur yang telah membangun ekosistem UMKM berbasis digital sejak 2015. Perjalanan saya dimulai dari garasi rumah dengan modal seadanya, dengan bekal nilai-nilai keikhlasan dan kegigihan dari Daarul Mughni. Kini PasarBerkah.id melayani lebih dari 500 mitra UMKM di seluruh Jawa Barat.',
     bahasa: ['Indonesia (Native)', 'English (Professional)', 'Arabic (Academic)'],
-    kontak: { email: 'hendra@pasarberkah.id', linkedin: 'linkedin.com/in/hendragunawan', website: 'pasarberkah.id' },
+    kontak: { email: 'hendra@pasarberkah.id', linkedin: 'linkedin.com/in/hendragunawan', website: 'pasarberkah.id', instagram: 'pasarberkahid', youtube: '@pasarberkah', twitter: 'pasarberkahid', facebook: 'pasarberkah.id' },
     dokumen: [
       { nama: 'Company Profile PasarBerkah.id', tipe: 'PDF', ukuran: '2.8 MB' },
     ],
@@ -153,7 +153,7 @@ const details = {
   10: {
     bio: 'UI/UX designer dengan passion untuk menciptakan pengalaman digital yang intuitif dan bermakna. Saya percaya bahwa desain yang baik lahir dari empati mendalam terhadap pengguna — prinsip yang sejalan dengan nilai kepedulian yang ditanamkan di Daarul Mughni. Saat ini bekerja di Ruangguru untuk produk pendidikan yang digunakan jutaan pelajar Indonesia.',
     bahasa: ['Indonesia (Native)', 'English (Professional)', 'Arabic (Academic)'],
-    kontak: { email: 'dewi.rahayu@ruangguru.com', linkedin: 'linkedin.com/in/dewirahayu', website: 'dewirahayu.design' },
+    kontak: { email: 'dewi.rahayu@ruangguru.com', linkedin: 'linkedin.com/in/dewirahayu', website: 'dewirahayu.design', instagram: 'dewirahayu.ux', youtube: null, twitter: 'dewirahayu_ux', facebook: null },
     dokumen: [
       { nama: 'Portfolio Design 2024', tipe: 'PDF', ukuran: '4.5 MB' },
     ],
