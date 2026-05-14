@@ -2,7 +2,7 @@ import { useState, useRef } from 'react'
 import { Link } from 'react-router-dom'
 import {
   Eye, EyeOff, GraduationCap, CheckCircle,
-  ChevronDown, Upload, X, Camera, CreditCard, Scroll, AlertCircle,
+  ChevronDown, Upload, X, Camera, AlertCircle,
 } from 'lucide-react'
 import heroImg from '../assets/hero.jpg'
 
@@ -40,28 +40,13 @@ function TextInput({ value, onChange, placeholder, type = 'text', required }) {
 
 const DOC_SLOTS = [
   {
-    key: 'foto',
+    key: 'bukti',
     icon: Camera,
-    label: 'Foto Diri Terbaru',
-    desc: 'Tampak depan, latar terang',
-    accept: 'image/jpeg,image/png,image/webp',
+    label: 'Foto Bukti Alumni',
+    desc: 'Foto memegang ijazah/raport pesantren, atau foto berseragam Daarul Mughni',
+    accept: 'image/jpeg,image/webp',
+    maxMB: 2,
     required: true,
-  },
-  {
-    key: 'ktp',
-    icon: CreditCard,
-    label: 'Scan / Foto KTP',
-    desc: 'KTP atau kartu identitas resmi',
-    accept: 'image/jpeg,image/png,image/webp,application/pdf',
-    required: true,
-  },
-  {
-    key: 'ijazah',
-    icon: Scroll,
-    label: 'Ijazah Pesantren',
-    desc: 'Ijazah atau surat keterangan lulus',
-    accept: 'image/jpeg,image/png,image/webp,application/pdf',
-    required: false,
   },
 ]
 
@@ -137,8 +122,13 @@ function DocSlot({ slot, file, onSelect, onRemove }) {
         className="hidden"
         onChange={(e) => {
           const f = e.target.files?.[0]
-          if (f && f.size <= 5 * 1024 * 1024) onSelect(f)
-          else if (f) alert('Ukuran file maksimal 5 MB')
+          if (!f) return
+          const maxBytes = (slot.maxMB ?? 2) * 1024 * 1024
+          if (f.size > maxBytes) {
+            alert(`Ukuran file melebihi batas ${slot.maxMB ?? 2} MB. Kompres foto terlebih dahulu.`)
+          } else {
+            onSelect(f)
+          }
           e.target.value = ''
         }}
       />
@@ -160,7 +150,7 @@ export default function DaftarPage() {
 
   const passwordOk  = form.password.length >= 8
   const konfirmasiOk = form.password === form.konfirmasi
-  const docsOk      = !!docs.foto && !!docs.ktp
+  const docsOk      = !!docs.bukti
 
   const isValid =
     form.nama && form.email && form.hp && form.angkatan && form.bidang &&
@@ -368,8 +358,13 @@ export default function DaftarPage() {
               <p className="text-xs font-bold text-gray-400 uppercase tracking-widest mb-1 flex items-center gap-2">
                 <span className="flex-1 h-px bg-gray-100" /> Dokumen Verifikasi <span className="flex-1 h-px bg-gray-100" />
               </p>
-              <p className="text-xs text-gray-400 mb-3">
-                Dokumen digunakan admin untuk memverifikasi status alumni. Format JPG/PNG/PDF, maks. 5 MB per file.
+              <p className="text-xs text-gray-400 mb-1">
+                Foto digunakan admin untuk memverifikasi bahwa Anda adalah alumni Daarul Mughni.
+                Format <span className="font-semibold">JPEG atau WebP</span>, maks. 2 MB.
+              </p>
+              <p className="text-xs text-[#1A5C38]/70 mb-3 flex items-center gap-1">
+                <CheckCircle className="w-3 h-3 shrink-0" />
+                Foto ini akan otomatis dihapus setelah akun Anda diverifikasi.
               </p>
               <div className="space-y-3">
                 {DOC_SLOTS.map((slot) => (
@@ -382,12 +377,12 @@ export default function DaftarPage() {
                   />
                 ))}
               </div>
-              {/* Reminder jika wajib belum diisi */}
-              {(!docs.foto || !docs.ktp) && (
+              {/* Reminder jika belum diisi */}
+              {!docs.bukti && (
                 <div className="flex items-start gap-2 mt-3 p-3 rounded-xl bg-amber-50 border border-amber-200">
                   <AlertCircle className="w-4 h-4 text-amber-500 flex-shrink-0 mt-0.5" />
                   <p className="text-xs text-amber-700">
-                    <span className="font-semibold">Foto diri</span> dan <span className="font-semibold">KTP</span> wajib diunggah untuk melanjutkan pendaftaran.
+                    <span className="font-semibold">Foto bukti alumni</span> wajib diunggah untuk melanjutkan pendaftaran.
                   </p>
                 </div>
               )}
