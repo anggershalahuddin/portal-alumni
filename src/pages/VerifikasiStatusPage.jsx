@@ -1,8 +1,9 @@
 import { useState } from 'react'
 import { Link, useSearchParams, useNavigate } from 'react-router-dom'
 import { motion, AnimatePresence } from 'framer-motion'
+import logoUrl from '@/assets/Logo DM Fix.jpg'
 import {
-  GraduationCap, Clock, XCircle, CheckCircle, LogOut,
+  Clock, XCircle, CheckCircle, LogOut,
   Upload, FileText, RefreshCw, MessageSquare, Phone,
   Mail, ChevronRight, AlertTriangle, Send, X, Loader2,
 } from 'lucide-react'
@@ -87,9 +88,7 @@ export default function VerifikasiStatusPage() {
       <header className="bg-white border-b border-gray-100">
         <div className="max-w-3xl mx-auto px-4 h-14 flex items-center justify-between">
           <Link to="/" className="flex items-center gap-2.5">
-            <div className="w-8 h-8 rounded-full bg-[#F0A500] flex items-center justify-center">
-              <GraduationCap className="w-4 h-4 text-[#0A2415]" />
-            </div>
+            <img src={logoUrl} alt="Logo Daarul Mughni" className="w-8 h-8 object-contain rounded flex-shrink-0" />
             <div>
               <p className="text-sm font-extrabold text-[#0A2415] leading-none">Portal Alumni</p>
               <p className="text-[10px] text-[#1A5C38] font-semibold leading-none mt-0.5">Daarul Mughni</p>
