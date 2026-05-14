@@ -10,7 +10,7 @@ import { supabase } from '@/lib/supabase'
 
 const CURRENT_YEAR = new Date().getFullYear()
 
-function LogoBox({ value, onChange }) {
+function LogoBox({ previewUrl, onChange }) {
   const inputRef = useRef()
   return (
     <div className="flex flex-col items-center gap-2">
@@ -18,8 +18,8 @@ function LogoBox({ value, onChange }) {
         className="w-24 h-24 rounded-xl border-2 border-dashed border-gray-200 flex flex-col items-center justify-center cursor-pointer hover:border-[#1A5C38] transition-colors bg-gray-50 overflow-hidden"
         onClick={() => inputRef.current?.click()}
       >
-        {value ? (
-          <img src={value} alt="Logo angkatan" className="w-full h-full object-contain" />
+        {previewUrl ? (
+          <img src={previewUrl} alt="Logo angkatan" className="w-full h-full object-contain" />
         ) : (
           <>
             <Upload className="w-5 h-5 text-gray-300 mb-1" />
@@ -30,15 +30,15 @@ function LogoBox({ value, onChange }) {
       <input
         ref={inputRef}
         type="file"
-        accept="image/*"
+        accept="image/jpeg,image/png,image/webp,image/svg+xml"
         className="hidden"
         onChange={e => {
           const file = e.target.files?.[0]
           if (!file) return
-          onChange(URL.createObjectURL(file))
+          onChange({ previewUrl: URL.createObjectURL(file), file })
         }}
       />
-      {value && (
+      {previewUrl && (
         <button
           type="button"
           onClick={() => onChange(null)}
@@ -51,13 +51,13 @@ function LogoBox({ value, onChange }) {
   )
 }
 
-const EMPTY_FORM = { tahunLulusan: '', angkatanKe: '', nama: '', logo: null }
+const EMPTY_FORM = { tahunLulusan: '', angkatanKe: '', nama: '', logoPreview: null, logoFile: null }
 
 function AngkatanModal({ data, onClose, onSave }) {
   const isEdit = !!data
   const [form, setForm] = useState(
     isEdit
-      ? { tahunLulusan: String(data.tahunLulusan), angkatanKe: String(data.angkatanKe), nama: data.nama, logo: data.logo }
+      ? { tahunLulusan: String(data.tahunLulusan), angkatanKe: String(data.angkatanKe), nama: data.nama, logoPreview: data.logoUrl ?? null, logoFile: null }
       : { ...EMPTY_FORM }
   )
 
@@ -73,7 +73,8 @@ function AngkatanModal({ data, onClose, onSave }) {
       tahunLulusan: parseInt(form.tahunLulusan),
       angkatanKe: parseInt(form.angkatanKe),
       nama: form.nama.trim(),
-      logo: form.logo,
+      logoPreview: form.logoPreview,
+      logoFile: form.logoFile,
     })
   }
 
@@ -145,7 +146,13 @@ function AngkatanModal({ data, onClose, onSave }) {
               {/* Logo */}
               <div>
                 <label className="block text-xs font-semibold text-gray-600 mb-1.5 text-center">Logo</label>
-                <LogoBox value={form.logo} onChange={v => setForm(f => ({ ...f, logo: v }))} />
+                <LogoBox
+                  previewUrl={form.logoPreview}
+                  onChange={v => {
+                    if (v) setForm(f => ({ ...f, logoPreview: v.previewUrl, logoFile: v.file }))
+                    else setForm(f => ({ ...f, logoPreview: null, logoFile: null }))
+                  }}
+                />
               </div>
             </div>
           </div>
@@ -178,7 +185,7 @@ function mapAngkatan(row) {
     tahunLulusan: row.tahun_lulus,
     angkatanKe: row.tahun_lulus - 2005,
     nama: row.nama_angkatan ?? `Angkatan ${row.tahun_lulus - 2005}`,
-    logo: null,
+    logoUrl: row.logo_url ?? null,
   }
 }
 
@@ -196,7 +203,7 @@ export default function AdminAngkatanPage() {
 
   const loadData = useCallback(async () => {
     setLoading(true)
-    const { data } = await supabase.from('angkatan').select('id, tahun_lulus, nama_angkatan').order('tahun_lulus', { ascending: true })
+    const { data } = await supabase.from('angkatan').select('id, tahun_lulus, nama_angkatan, logo_url').order('tahun_lulus', { ascending: true })
     setAngkatan((data ?? []).map(mapAngkatan))
     setLoading(false)
   }, [])
@@ -232,17 +239,44 @@ export default function AdminAngkatanPage() {
       confirmLabel: 'Ya, Simpan',
       variant: 'success',
       onConfirm: async () => {
+        // Upload logo jika ada file baru
+        let logoUrl = formData.logoPreview // URL lama (jika tidak diganti)
+        if (formData.logoFile) {
+          const ext = formData.logoFile.name.split('.').pop().toLowerCase()
+          const filePath = `angkatan/${formData.tahunLulusan}_logo.${ext}`
+          const { error: upErr } = await supabase.storage
+            .from('site-assets')
+            .upload(filePath, formData.logoFile, { upsert: true })
+          if (!upErr) {
+            const { data: urlData } = supabase.storage.from('site-assets').getPublicUrl(filePath)
+            logoUrl = urlData.publicUrl
+          } else {
+            console.error('Upload logo angkatan gagal:', upErr)
+          }
+        } else if (formData.logoPreview === null) {
+          logoUrl = null // user hapus logo
+        }
+
         const dbData = {
-          tahun_lulus: formData.tahunLulusan,
-          tahun_masuk: formData.tahunLulusan - 4,
+          tahun_lulus:   formData.tahunLulusan,
+          tahun_masuk:   formData.tahunLulusan - 4,
           nama_angkatan: formData.nama,
+          logo_url:      logoUrl ?? null,
         }
         if (isEdit) {
           const { error } = await supabase.from('angkatan').update(dbData).eq('id', modal.data.id)
-          if (!error) setAngkatan(prev => prev.map(a => a.id === modal.data.id ? { ...a, ...formData } : a))
+          if (!error) setAngkatan(prev => prev.map(a => a.id === modal.data.id
+            ? { ...a, tahunLulusan: formData.tahunLulusan, angkatanKe: formData.angkatanKe, nama: formData.nama, logoUrl }
+            : a))
         } else {
           const { data, error } = await supabase.from('angkatan').insert(dbData).select('id').single()
-          if (!error && data) setAngkatan(prev => [...prev, { id: data.id, ...formData }])
+          if (!error && data) setAngkatan(prev => [...prev, {
+            id: data.id,
+            tahunLulusan: formData.tahunLulusan,
+            angkatanKe: formData.angkatanKe,
+            nama: formData.nama,
+            logoUrl,
+          }])
         }
         setModal(null)
         closeConfirm()
@@ -367,8 +401,8 @@ export default function AdminAngkatanPage() {
                       </td>
                       <td className="px-4 py-3">
                         <div className="w-10 h-10 rounded-lg border border-gray-100 overflow-hidden flex items-center justify-center bg-gray-50">
-                          {item.logo ? (
-                            <img src={item.logo} alt={item.nama} className="w-full h-full object-contain" />
+                          {item.logoUrl ? (
+                            <img src={item.logoUrl} alt={item.nama} className="w-full h-full object-contain" />
                           ) : (
                             <GraduationCap className="w-5 h-5 text-gray-300" />
                           )}

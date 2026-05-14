@@ -123,6 +123,7 @@ CREATE TABLE public.angkatan (
   tahun_masuk     SMALLINT    NOT NULL,
   tahun_lulus     SMALLINT    NOT NULL UNIQUE,
   nama_angkatan   TEXT,                     -- e.g., "Angkatan 1 (Perintis)"
+  logo_url        TEXT,                     -- URL logo angkatan di storage site-assets
   keterangan      TEXT,
   created_at      TIMESTAMPTZ NOT NULL DEFAULT now()
 );
