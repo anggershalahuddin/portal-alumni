@@ -15,39 +15,8 @@ import { news } from '../data/news'
 import { agendaData, kategoriStyle } from '../data/agenda'
 import { initialLowongan } from '../data/lowongan'
 import { initialGaleri } from '../data/galeri'
-import { alumniData } from '../data/alumni'
-import { getAlumniDetail } from '../data/alumniDetail'
-
-// ── Mock logged-in user (pakai data alumni ID 3 dari direktori) ────────────────
-const _mockAlumni  = alumniData.find(a => a.id === 3)
-const _mockDetail  = getAlumniDetail(3)
-const mockUser = {
-  name:     _mockAlumni.name,
-  angkatan: _mockAlumni.angkatan,
-  id:       `DM-${_mockAlumni.angkatan}-003`,
-  email:    _mockDetail?.kontak?.email ?? 'alumni@example.com',
-  phone:    '0812-3456-7890',
-}
-
-// ── Initial section data ───────────────────────────────────────────────────────
-const initPendidikan = [
-  { id: 1, gelar: 'Sarjana Teknik Informatika', institusi: 'Institut Teknologi Bandung', tahun: '2018 - 2022', lokasi: 'Bandung, Jawa Barat', deskripsi: 'Lulus dengan predikat Cum Laude. Fokus pada kecerdasan buatan dan pengembangan sistem skala besar.' },
-  { id: 2, gelar: 'Pendidikan Pesantren (Madrasah Aliyah)', institusi: 'Pondok Pesantren Daarul Mughni', tahun: '2015 - 2018', lokasi: 'Bogor, Jawa Barat', deskripsi: "Aktif dalam organisasi santri (ISDM) dan meraih juara 1 Musabaqah Qira'atil Kutub tingkat Kabupaten." },
-]
-
-const initPekerjaan = [
-  { id: 1, jabatan: 'Software Engineer', perusahaan: 'TechNova Solutions', periode: 'Jan 2023 - Sekarang', lokasi: 'Jakarta (Remote)', deskripsi: 'Mengembangkan platform e-learning menggunakan React, Node.js, dan arsitektur microservices.', current: true },
-  { id: 2, jabatan: 'Junior Web Developer', perusahaan: 'Creative Digital Agency', periode: 'Jun 2022 - Des 2022', lokasi: 'Bandung, Jawa Barat', deskripsi: 'Pengembangan front-end untuk 10+ klien UMKM di Jawa Barat.', current: false },
-]
-
-const initSertifikasi = [
-  { id: 1, nama: 'AWS Certified Solutions Architect', penerbit: 'Amazon Web Services', tahun: 2023, noCert: 'AWS-SAA-C03-00123', url: '' },
-  { id: 2, nama: 'Google Professional Cloud Developer', penerbit: 'Google Cloud', tahun: 2022, noCert: 'GCP-PCD-7890', url: '' },
-]
-
-const initPublikasi = [
-  { id: 1, judul: 'Implementasi Machine Learning pada Sistem Rekomendasi Konten Digital', penerbit: 'Jurnal Informatika Indonesia', tahun: 2023, url: '' },
-]
+import { useAuth } from '@/context/AuthContext'
+import { supabase } from '@/lib/supabase'
 
 const SEBAGAI_OPTIONS = [
   'Pendiri / Founder',
@@ -57,25 +26,6 @@ const SEBAGAI_OPTIONS = [
   'Sekretaris / Bendahara',
   'Anggota Aktif',
   'Lainnya',
-]
-
-const initKeahlian = _mockAlumni?.keahlian ?? []
-const initBahasa   = _mockDetail?.bahasa   ?? []
-const initDokumen  = (_mockDetail?.dokumen ?? []).map((d, i) => ({ ...d, id: i + 1 }))
-
-const initUsaha = [
-  {
-    id: 1,
-    nama: 'TechNova Solutions',
-    jenis: 'Perusahaan (PT/CV/UD)',
-    sebagai: 'Pendiri / Founder',
-    bidang: 'Teknologi & Perangkat Lunak',
-    lokasi: 'Jakarta Selatan',
-    tahun: 2022,
-    deskripsi: 'Perusahaan teknologi fokus pada pengembangan platform SaaS untuk UMKM.',
-    website: '',
-    openKerjasama: true,
-  },
 ]
 
 // Konfigurasi visual per jenis usaha
@@ -609,7 +559,7 @@ function BerkasModal({ onSave, onClose }) {
   }
 
   function handleSave() {
-    onSave({ nama: nama.trim() || kategori, tipe: cfg.tipe, ukuran: file ? formatUkuran(file.size) : '—', kategori })
+    onSave({ nama: nama.trim() || kategori, tipe: cfg.tipe, ukuran: formatUkuran(file.size), kategori, file })
     onClose()
   }
 
@@ -798,38 +748,112 @@ function KartuAlumniModal({ user, profil, onClose }) {
 // ── Main Page ──────────────────────────────────────────────────────────────────
 export default function AlumniDashboardPage() {
   const navigate = useNavigate()
+  const { user, profile: authProfile, signOut, refreshProfile } = useAuth()
 
-  // Section states
+  const [alumniId, setAlumniId]   = useState(null)
+  const [idAlumni, setIdAlumni]   = useState(null)  // formatted: "DM-2018-042"
+  const [pageLoading, setPageLoading] = useState(true)
+
+  // Section states (mulai kosong, diisi dari Supabase)
   const [profil, setProfil] = useState({
-    nama: mockUser.name, email: mockUser.email, phone: mockUser.phone,
-    bio: 'Software Engineer dengan passion di bidang teknologi dan pengembangan sistem digital skala besar.',
-    bidang: 'Teknik Informatika', domisili: 'Jakarta',
-    linkedin: _mockDetail?.kontak?.linkedin ?? '',
-    website:  _mockDetail?.kontak?.website  ?? '',
-    instagram: _mockDetail?.kontak?.instagram ?? '',
-    youtube:   _mockDetail?.kontak?.youtube  ?? '',
-    twitter:   _mockDetail?.kontak?.twitter  ?? '',
-    facebook:  _mockDetail?.kontak?.facebook ?? '',
+    nama: '', email: '', phone: '', bio: '',
+    bidang: '', domisili: '', linkedin: '', website: '',
+    instagram: '', youtube: '', twitter: '', facebook: '',
     foto: false,
   })
-  const [pendidikan, setPendidikan] = useState(initPendidikan)
-  const [pekerjaan, setPekerjaan] = useState(initPekerjaan)
-  const [sertifikasi, setSertifikasi] = useState(initSertifikasi)
-  const [publikasi, setPublikasi] = useState(initPublikasi)
-  const [usaha, setUsaha] = useState(initUsaha)
-  const [keahlian, setKeahlian] = useState(initKeahlian)
-  const [bahasa, setBahasa] = useState(initBahasa)
-  const [dokumen, setDokumen] = useState(initDokumen)
-  const [notif, setNotif] = useState(initNotif)
+  const [pendidikan, setPendidikan] = useState([])
+  const [pekerjaan, setPekerjaan]   = useState([])
+  const [sertifikasi, setSertifikasi] = useState([])
+  const [publikasi, setPublikasi]   = useState([])
+  const [usaha, setUsaha]           = useState([])
+  const [keahlian, setKeahlian]     = useState([])
+  const [bahasa, setBahasa]         = useState([])
+  const [dokumen, setDokumen]       = useState([])
+  const [notif, setNotif]           = useState(initNotif)
 
   // UI states
-  const [modal, setModal] = useState(null)  // { type, item? }
-  const [showBell, setShowBell] = useState(false)
+  const [modal, setModal]           = useState(null)
+  const [showBell, setShowBell]     = useState(false)
   const [showProfile, setShowProfile] = useState(false)
-  const bellRef = useRef(null)
+  const bellRef    = useRef(null)
   const profileRef = useRef(null)
 
-  // Click outside for dropdowns
+  // ── Load data dari Supabase ──────────────────────────────────────────────────
+  useEffect(() => {
+    if (!user) return
+    loadDashboard()
+  }, [user?.id]) // eslint-disable-line react-hooks/exhaustive-deps
+
+  async function loadDashboard() {
+    setPageLoading(true)
+    try {
+      // 1. Ambil atau buat alumni_profiles
+      let { data: ap } = await supabase
+        .from('alumni_profiles')
+        .select('*')
+        .eq('user_id', user.id)
+        .maybeSingle()
+
+      if (!ap) {
+        const { data: newAp } = await supabase
+          .from('alumni_profiles')
+          .insert({ user_id: user.id })
+          .select()
+          .single()
+        ap = newAp
+      }
+
+      const aid = ap?.id
+      setAlumniId(aid)
+      setIdAlumni(ap?.id_alumni ?? null)
+
+      // 2. Bangun state profil dari profiles + alumni_profiles
+      setProfil({
+        nama:      authProfile?.nama_lengkap ?? user.name ?? '',
+        email:     user.email ?? '',
+        phone:     authProfile?.no_hp ?? ap?.no_hp ?? '',
+        bio:       ap?.bio ?? '',
+        bidang:    ap?.bidang ?? authProfile?.bidang ?? '',
+        domisili:  ap?.domisili ?? authProfile?.domisili ?? '',
+        linkedin:  ap?.linkedin_url ?? '',
+        website:   ap?.website_url ?? '',
+        instagram: ap?.instagram_url ?? '',
+        youtube:   ap?.youtube_url ?? '',
+        twitter:   ap?.twitter_url ?? '',
+        facebook:  ap?.facebook_url ?? '',
+        foto:      !!(ap?.foto_url ?? authProfile?.foto_url),
+      })
+
+      if (!aid) { setPageLoading(false); return }
+
+      // 3. Fetch semua section secara paralel
+      const [pend, pekj, sert, publ, keahl, bah, lemb, berk] = await Promise.all([
+        supabase.from('pendidikan').select('*').eq('alumni_id', aid).order('created_at'),
+        supabase.from('pekerjaan').select('*').eq('alumni_id', aid).order('created_at', { ascending: false }),
+        supabase.from('sertifikasi').select('*').eq('alumni_id', aid).order('tahun', { ascending: false }),
+        supabase.from('publikasi').select('*').eq('alumni_id', aid).order('tahun', { ascending: false }),
+        supabase.from('keahlian_alumni').select('*').eq('alumni_id', aid),
+        supabase.from('bahasa_alumni').select('*').eq('alumni_id', aid),
+        supabase.from('lembaga_alumni').select('*').eq('alumni_id', aid),
+        supabase.from('berkas_alumni').select('*').eq('alumni_id', aid),
+      ])
+
+      setPendidikan(pend.data ?? [])
+      // Normalisasi field agar cocok dengan form modal
+      setPekerjaan((pekj.data ?? []).map(r => ({ ...r, jabatan: r.posisi, current: r.is_current })))
+      setSertifikasi((sert.data ?? []).map(r => ({ ...r, noCert: r.no_cert })))
+      setPublikasi(publ.data ?? [])
+      setKeahlian((keahl.data ?? []).map(k => k.nama))
+      setBahasa((bah.data ?? []).map(b => b.nama))
+      setUsaha((lemb.data ?? []).map(r => ({ ...r, tahun: r.tahun_berdiri, openKerjasama: r.open_kerjasama })))
+      setDokumen(berk.data ?? [])
+    } catch (e) {
+      console.error('loadDashboard:', e)
+    }
+    setPageLoading(false)
+  }
+
+  // Click outside untuk dropdown
   useEffect(() => {
     function handler(e) {
       if (bellRef.current && !bellRef.current.contains(e.target)) setShowBell(false)
@@ -838,6 +862,12 @@ export default function AlumniDashboardPage() {
     document.addEventListener('mousedown', handler)
     return () => document.removeEventListener('mousedown', handler)
   }, [])
+
+  // Keluar
+  async function handleSignOut() {
+    await signOut()
+    navigate('/masuk')
+  }
 
   // Profile completion
   const completionItems = [
@@ -857,30 +887,183 @@ export default function AlumniDashboardPage() {
   const profileCompletion = completionItems.reduce((a, i) => a + (i.done ? i.weight : 0), 0)
   const missing = completionItems.filter(i => !i.done)
 
-  const unreadCount = notif.filter(n => !n.dibaca).length
-  const recentNews = news.slice(0, 3)
+  const unreadCount    = notif.filter(n => !n.dibaca).length
+  const recentNews     = news.slice(0, 3)
   const upcomingAgenda = agendaData.slice(0, 3)
-  const activeJobs = initialLowongan.filter(l => l.aktif).slice(0, 3)
-  const recentGaleri = initialGaleri.filter(g => g.aktif).slice(0, 4)
+  const activeJobs     = initialLowongan.filter(l => l.aktif).slice(0, 3)
+  const recentGaleri   = initialGaleri.filter(g => g.aktif).slice(0, 4)
 
-  // CRUD helpers
-  function addPendidikan(form) { setPendidikan(p => [...p, { ...form, id: Date.now() }]); setModal(null) }
-  function editPendidikan(id, form) { setPendidikan(p => p.map(x => x.id === id ? { ...x, ...form } : x)); setModal(null) }
-  function delPendidikan(id) { setPendidikan(p => p.filter(x => x.id !== id)) }
+  // ── CRUD — Supabase ──────────────────────────────────────────────────────────
 
-  function addPekerjaan(form) { setPekerjaan(p => [{ ...form, id: Date.now(), current: !!form.current }, ...p]); setModal(null) }
-  function editPekerjaan(id, form) { setPekerjaan(p => p.map(x => x.id === id ? { ...x, ...form } : x)); setModal(null) }
-  function delPekerjaan(id) { setPekerjaan(p => p.filter(x => x.id !== id)) }
+  async function handleSaveProfil(form) {
+    await supabase.from('profiles').update({
+      nama_lengkap: form.nama,
+      no_hp:        form.phone,
+      bidang:       form.bidang,
+      domisili:     form.domisili,
+    }).eq('id', user.id)
 
-  function addSertifikasi(form) { setSertifikasi(p => [...p, { ...form, id: Date.now() }]); setModal(null) }
-  function delSertifikasi(id) { setSertifikasi(p => p.filter(x => x.id !== id)) }
+    await supabase.from('alumni_profiles').update({
+      bio:           form.bio,
+      bidang:        form.bidang,
+      domisili:      form.domisili,
+      linkedin_url:  form.linkedin,
+      website_url:   form.website,
+      instagram_url: form.instagram,
+      youtube_url:   form.youtube,
+      twitter_url:   form.twitter,
+      facebook_url:  form.facebook,
+    }).eq('user_id', user.id)
 
-  function addPublikasi(form) { setPublikasi(p => [...p, { ...form, id: Date.now() }]); setModal(null) }
-  function delPublikasi(id) { setPublikasi(p => p.filter(x => x.id !== id)) }
+    setProfil({ ...form })
+    await refreshProfile()
+    setModal(null)
+  }
 
-  function addUsaha(form) { setUsaha(p => [...p, { ...form, id: Date.now() }]); setModal(null) }
-  function editUsaha(id, form) { setUsaha(p => p.map(x => x.id === id ? { ...x, ...form } : x)); setModal(null) }
-  function delUsaha(id) { setUsaha(p => p.filter(x => x.id !== id)) }
+  async function addPendidikan(form) {
+    const { data } = await supabase.from('pendidikan').insert({
+      alumni_id: alumniId,
+      gelar: form.gelar, institusi: form.institusi,
+      tahun: form.tahun, lokasi: form.lokasi, deskripsi: form.deskripsi,
+    }).select().single()
+    if (data) setPendidikan(p => [...p, data])
+    setModal(null)
+  }
+  async function editPendidikan(id, form) {
+    const { data } = await supabase.from('pendidikan').update({
+      gelar: form.gelar, institusi: form.institusi,
+      tahun: form.tahun, lokasi: form.lokasi, deskripsi: form.deskripsi,
+    }).eq('id', id).select().single()
+    if (data) setPendidikan(p => p.map(x => x.id === id ? data : x))
+    setModal(null)
+  }
+  async function delPendidikan(id) {
+    await supabase.from('pendidikan').delete().eq('id', id)
+    setPendidikan(p => p.filter(x => x.id !== id))
+  }
+
+  async function addPekerjaan(form) {
+    const { data } = await supabase.from('pekerjaan').insert({
+      alumni_id: alumniId,
+      posisi: form.jabatan, perusahaan: form.perusahaan,
+      lokasi: form.lokasi, periode: form.periode,
+      is_current: !!form.current, deskripsi: form.deskripsi,
+    }).select().single()
+    if (data) setPekerjaan(p => [{ ...data, jabatan: data.posisi, current: data.is_current }, ...p])
+    setModal(null)
+  }
+  async function editPekerjaan(id, form) {
+    const { data } = await supabase.from('pekerjaan').update({
+      posisi: form.jabatan, perusahaan: form.perusahaan,
+      lokasi: form.lokasi, periode: form.periode,
+      is_current: !!form.current, deskripsi: form.deskripsi,
+    }).eq('id', id).select().single()
+    if (data) setPekerjaan(p => p.map(x => x.id === id ? { ...data, jabatan: data.posisi, current: data.is_current } : x))
+    setModal(null)
+  }
+  async function delPekerjaan(id) {
+    await supabase.from('pekerjaan').delete().eq('id', id)
+    setPekerjaan(p => p.filter(x => x.id !== id))
+  }
+
+  async function addSertifikasi(form) {
+    const { data } = await supabase.from('sertifikasi').insert({
+      alumni_id: alumniId,
+      nama: form.nama, penerbit: form.penerbit,
+      tahun: form.tahun ? Number(form.tahun) : null,
+      no_cert: form.noCert, url: form.url,
+    }).select().single()
+    if (data) setSertifikasi(p => [...p, { ...data, noCert: data.no_cert }])
+    setModal(null)
+  }
+  async function delSertifikasi(id) {
+    await supabase.from('sertifikasi').delete().eq('id', id)
+    setSertifikasi(p => p.filter(x => x.id !== id))
+  }
+
+  async function addPublikasi(form) {
+    const { data } = await supabase.from('publikasi').insert({
+      alumni_id: alumniId,
+      judul: form.judul, penerbit: form.penerbit,
+      tahun: form.tahun ? Number(form.tahun) : null,
+      url: form.url, deskripsi: form.deskripsi,
+    }).select().single()
+    if (data) setPublikasi(p => [...p, data])
+    setModal(null)
+  }
+  async function delPublikasi(id) {
+    await supabase.from('publikasi').delete().eq('id', id)
+    setPublikasi(p => p.filter(x => x.id !== id))
+  }
+
+  async function addUsaha(form) {
+    const { data } = await supabase.from('lembaga_alumni').insert({
+      alumni_id: alumniId,
+      nama: form.nama, jenis: form.jenis, sebagai: form.sebagai,
+      bidang: form.bidang, lokasi: form.lokasi,
+      tahun_berdiri: form.tahun ? Number(form.tahun) : null,
+      website: form.website, deskripsi: form.deskripsi,
+      open_kerjasama: !!form.openKerjasama,
+    }).select().single()
+    if (data) setUsaha(p => [...p, { ...data, tahun: data.tahun_berdiri, openKerjasama: data.open_kerjasama }])
+    setModal(null)
+  }
+  async function editUsaha(id, form) {
+    const { data } = await supabase.from('lembaga_alumni').update({
+      nama: form.nama, jenis: form.jenis, sebagai: form.sebagai,
+      bidang: form.bidang, lokasi: form.lokasi,
+      tahun_berdiri: form.tahun ? Number(form.tahun) : null,
+      website: form.website, deskripsi: form.deskripsi,
+      open_kerjasama: !!form.openKerjasama,
+    }).eq('id', id).select().single()
+    if (data) setUsaha(p => p.map(x => x.id === id ? { ...data, tahun: data.tahun_berdiri, openKerjasama: data.open_kerjasama } : x))
+    setModal(null)
+  }
+  async function delUsaha(id) {
+    await supabase.from('lembaga_alumni').delete().eq('id', id)
+    setUsaha(p => p.filter(x => x.id !== id))
+  }
+
+  async function handleSaveKeahlianBahasa(listK, listB) {
+    await supabase.from('keahlian_alumni').delete().eq('alumni_id', alumniId)
+    if (listK.length > 0)
+      await supabase.from('keahlian_alumni').insert(listK.map(nama => ({ alumni_id: alumniId, nama })))
+    await supabase.from('bahasa_alumni').delete().eq('alumni_id', alumniId)
+    if (listB.length > 0)
+      await supabase.from('bahasa_alumni').insert(listB.map(nama => ({ alumni_id: alumniId, nama })))
+    setKeahlian(listK)
+    setBahasa(listB)
+    setModal(null)
+  }
+
+  async function addDokumen({ nama, tipe, ukuran, kategori, file }) {
+    const ext      = file.name.split('.').pop().toLowerCase()
+    const filePath = `${user.id}/${Date.now()}_${nama.replace(/\s+/g, '_')}.${ext}`
+    const { error: uploadErr } = await supabase.storage
+      .from('berkas-alumni')
+      .upload(filePath, file, { contentType: file.type, upsert: false })
+    if (uploadErr) { console.error('upload berkas:', uploadErr); setModal(null); return }
+    const { data } = await supabase.from('berkas_alumni').insert({
+      alumni_id: alumniId, nama, kategori, tipe, ukuran, file_url: filePath,
+    }).select().single()
+    if (data) setDokumen(p => [...p, data])
+    setModal(null)
+  }
+
+  async function delDokumen(id, fileUrl) {
+    if (fileUrl) await supabase.storage.from('berkas-alumni').remove([fileUrl])
+    await supabase.from('berkas_alumni').delete().eq('id', id)
+    setDokumen(p => p.filter(x => x.id !== id))
+  }
+
+  // Loading screen
+  if (pageLoading) {
+    return (
+      <div className="min-h-screen flex items-center justify-center bg-[#F8FAF9]">
+        <div className="w-8 h-8 border-4 border-green-600 border-t-transparent rounded-full animate-spin" />
+      </div>
+    )
+  }
 
   return (
     <div className="min-h-screen bg-[#F8FAF9] flex flex-col">
@@ -970,7 +1153,7 @@ export default function AlumniDashboardPage() {
                         <div className="min-w-0">
                           <p className="text-sm font-bold text-gray-900 truncate">{profil.nama}</p>
                           <p className="text-[10px] text-[#1A5C38] font-semibold">Alumni Terverifikasi</p>
-                          <p className="text-[9px] text-gray-400 font-mono">{mockUser.id}</p>
+                          <p className="text-[9px] text-gray-400 font-mono">{idAlumni ?? '-'}</p>
                         </div>
                       </div>
                     </div>
@@ -989,7 +1172,7 @@ export default function AlumniDashboardPage() {
                       </button>
                     </div>
                     <div className="border-t border-gray-50 py-1">
-                      <button onClick={() => navigate('/login')}
+                      <button onClick={handleSignOut}
                         className="w-full flex items-center gap-2.5 px-4 py-2.5 text-sm text-red-500 hover:bg-red-50 transition-colors">
                         <LogOut className="w-3.5 h-3.5" /> Keluar
                       </button>
@@ -1021,12 +1204,12 @@ export default function AlumniDashboardPage() {
                     <div className="flex items-center gap-2 flex-wrap text-xs text-gray-400 mb-4">
                       {profil.bidang && <span className="flex items-center gap-1"><Briefcase className="w-3 h-3" />{profil.bidang}</span>}
                       {profil.domisili && <span className="flex items-center gap-1"><MapPin className="w-3 h-3" />{profil.domisili}</span>}
-                      <span className="flex items-center gap-1"><Users className="w-3 h-3" />Angkatan {mockUser.angkatan} · Ke-{mockUser.angkatan - 2005}</span>
+                      {authProfile?.angkatan && <span className="flex items-center gap-1"><Users className="w-3 h-3" />Angkatan {authProfile.angkatan} · Ke-{authProfile.angkatan - 2005}</span>}
                     </div>
                     {/* Stat chips */}
                     <div className="flex items-center gap-2 flex-wrap mb-5">
                       {[
-                        { label: 'ID: ' + mockUser.id, icon: FileText, color: '#7C3AED' },
+                        { label: 'ID: ' + (idAlumni ?? '-'), icon: FileText, color: '#7C3AED' },
                         { label: `${pekerjaan.length} Pengalaman Kerja`, icon: Briefcase, color: '#D97706' },
                         { label: `${sertifikasi.length} Sertifikasi`, icon: Award, color: '#0E7490' },
                       ].map(({ label, icon: Icon, color }) => (
@@ -1383,7 +1566,7 @@ export default function AlumniDashboardPage() {
                           <button className="w-7 h-7 rounded-lg hover:bg-white flex items-center justify-center text-gray-400 hover:text-[#1A5C38] transition-colors">
                             <Download className="w-3.5 h-3.5" />
                           </button>
-                          <button onClick={() => setDokumen(p => p.filter(d => d.id !== doc.id))}
+                          <button onClick={() => delDokumen(doc.id, doc.file_url)}
                             className="w-7 h-7 rounded-lg hover:bg-red-50 flex items-center justify-center text-gray-400 hover:text-red-500 transition-colors">
                             <Trash2 className="w-3.5 h-3.5" />
                           </button>
@@ -1539,7 +1722,7 @@ export default function AlumniDashboardPage() {
                   <span className="flex items-center gap-1.5 text-xs font-bold text-green-700 bg-green-100 px-2.5 py-1 rounded-full">
                     <span className="w-1.5 h-1.5 rounded-full bg-green-500" />Terverifikasi
                   </span>
-                  <span className="text-[10px] text-gray-500 font-mono">{mockUser.id}</span>
+                  <span className="text-[10px] text-gray-500 font-mono">{idAlumni ?? '-'}</span>
                 </div>
                 <p className="text-[10px] text-gray-500 leading-relaxed mb-3">
                   ID Alumni Anda aktif dan terverifikasi. Gunakan ID ini untuk akses khusus ke fasilitas dan layanan alumni Daarul Mughni.
@@ -1560,7 +1743,7 @@ export default function AlumniDashboardPage() {
 
       {/* ── Modals ── */}
       {modal?.type === 'editProfil' && (
-        <EditProfilModal profil={profil} onSave={form => setProfil(p => ({ ...p, ...form }))} onClose={() => setModal(null)} />
+        <EditProfilModal profil={profil} onSave={handleSaveProfil} onClose={() => setModal(null)} />
       )}
       {modal?.type === 'addPendidikan' && (
         <PendidikanModal item={null} onSave={addPendidikan} onClose={() => setModal(null)} />
@@ -1579,13 +1762,11 @@ export default function AlumniDashboardPage() {
       )}
       {modal?.type === 'editKeahlianBahasa' && (
         <KeahlianBahasaModal keahlian={keahlian} bahasa={bahasa}
-          onSave={(k, b) => { setKeahlian(k); setBahasa(b) }}
+          onSave={handleSaveKeahlianBahasa}
           onClose={() => setModal(null)} />
       )}
       {modal?.type === 'addBerkas' && (
-        <BerkasModal
-          onSave={doc => setDokumen(p => [...p, { ...doc, id: Date.now() }])}
-          onClose={() => setModal(null)} />
+        <BerkasModal onSave={addDokumen} onClose={() => setModal(null)} />
       )}
       {modal?.type === 'addPublikasi' && (
         <PublikasiModal item={null} onSave={addPublikasi} onClose={() => setModal(null)} />
@@ -1597,7 +1778,10 @@ export default function AlumniDashboardPage() {
         <UsahaModal item={modal.item} onSave={form => editUsaha(modal.item.id, form)} onClose={() => setModal(null)} />
       )}
       {modal?.type === 'kartu' && (
-        <KartuAlumniModal user={mockUser} profil={profil} onClose={() => setModal(null)} />
+        <KartuAlumniModal
+          user={{ name: profil.nama, angkatan: authProfile?.angkatan, id: idAlumni ?? '-' }}
+          profil={profil}
+          onClose={() => setModal(null)} />
       )}
     </div>
   )
