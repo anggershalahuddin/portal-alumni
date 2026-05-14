@@ -1,11 +1,12 @@
-﻿import { useState } from 'react'
-import { Plus, Trash2, Edit2, Image, X, Check, Eye, Tag, Layers } from 'lucide-react'
+﻿import { useState, useEffect, useCallback } from 'react'
+import { Plus, Trash2, Edit2, Image, X, Check, Eye, Tag, Layers, Loader2, AlertCircle } from 'lucide-react'
 import { motion } from 'framer-motion'
 import AdminSidebar from '../../components/admin/AdminSidebar'
 import AdminHeader from '../../components/admin/AdminHeader'
 import ImageUploadBox from '../../components/admin/ImageUploadBox'
 import ConfirmDialog from '../../components/admin/ConfirmDialog'
-import { initialGaleri as seedGaleri, kategoriGaleri as seedKategori } from '../../data/galeri'
+import { kategoriGaleri } from '../../data/galeri'
+import { supabase } from '@/lib/supabase'
 
 const PER_PAGE_OPTS = [6, 12, 24]
 
@@ -139,8 +140,8 @@ function GaleriModal({ item, onClose, onSave, kategoris }) {
 }
 
 export default function AdminGaleriPage() {
-  const [galeri, setGaleri] = useState(seedGaleri)
-  const [kategoris, setKategoris] = useState([{ value: 'semua', label: 'Semua' }, ...seedKategori])
+  const [galeri, setGaleri] = useState([])
+  const [kategoris, setKategoris] = useState([{ value: 'semua', label: 'Semua' }, ...kategoriGaleri])
   const [search, setSearch] = useState('')
   const [filterKat, setFilterKat] = useState('semua')
   const [modal, setModal] = useState(null)
@@ -149,6 +150,31 @@ export default function AdminGaleriPage() {
   const [perPage, setPerPage] = useState(6)
   const [preview, setPreview] = useState(null)
   const [confirm, setConfirm] = useState({ open: false })
+  const [loading, setLoading] = useState(true)
+  const [error, setError] = useState(null)
+
+  const loadData = useCallback(async () => {
+    setLoading(true)
+    setError(null)
+    const { data, error: err } = await supabase
+      .from('galeri')
+      .select('id, judul, deskripsi, foto_url, kategori, is_aktif, created_at')
+      .order('created_at', { ascending: false })
+    if (err) { setError(err.message); setLoading(false); return }
+    setGaleri((data ?? []).map(row => ({
+      id: row.id,
+      judul: row.judul,
+      deskripsi: row.deskripsi ?? '',
+      url: row.foto_url,
+      kategori: row.kategori ?? 'kegiatan',
+      tanggal: '',
+      tags: [],
+      aktif: row.is_aktif,
+    })))
+    setLoading(false)
+  }, [])
+
+  useEffect(() => { loadData() }, [loadData])
 
   function askConfirm(opts) { setConfirm({ open: true, ...opts }) }
   function closeConfirm() { setConfirm({ open: false }) }
@@ -171,11 +197,20 @@ export default function AdminGaleriPage() {
         : 'Apakah Anda yakin ingin menambahkan foto baru ini?',
       confirmLabel: 'Ya, Simpan',
       variant: 'success',
-      onConfirm: () => {
+      onConfirm: async () => {
+        const dbData = {
+          judul: form.judul,
+          deskripsi: form.deskripsi || null,
+          foto_url: form.url,
+          kategori: form.kategori,
+          is_aktif: form.aktif,
+        }
         if (isEdit) {
-          setGaleri(g => g.map(x => x.id === form.id ? form : x))
+          const { error: err } = await supabase.from('galeri').update(dbData).eq('id', form.id)
+          if (!err) setGaleri(g => g.map(x => x.id === form.id ? { ...x, ...form } : x))
         } else {
-          setGaleri(g => [...g, { ...form, id: Date.now() }])
+          const { data, error: err } = await supabase.from('galeri').insert(dbData).select('id').single()
+          if (!err && data) setGaleri(g => [...g, { ...form, id: data.id }])
         }
         setModal(null)
         closeConfirm()
@@ -184,13 +219,30 @@ export default function AdminGaleriPage() {
   }
 
   function handleDelete(id) {
-    askConfirm({ title: 'Hapus Foto', message: 'Apakah Anda yakin ingin menghapus foto ini? Tindakan ini tidak dapat dibatalkan.', confirmLabel: 'Ya, Hapus', variant: 'danger', onConfirm: () => { setGaleri(g => g.filter(x => x.id !== id)); closeConfirm() } })
+    askConfirm({
+      title: 'Hapus Foto', message: 'Apakah Anda yakin ingin menghapus foto ini? Tindakan ini tidak dapat dibatalkan.',
+      confirmLabel: 'Ya, Hapus', variant: 'danger',
+      onConfirm: async () => {
+        await supabase.from('galeri').delete().eq('id', id)
+        setGaleri(g => g.filter(x => x.id !== id))
+        closeConfirm()
+      },
+    })
   }
 
   function toggleAktif(id) {
     const item = galeri.find(x => x.id === id)
     if (!item) return
-    askConfirm({ title: item.aktif ? 'Sembunyikan Foto' : 'Tampilkan Foto', message: item.aktif ? 'Foto ini akan disembunyikan dari halaman publik. Lanjutkan?' : 'Foto ini akan ditampilkan di halaman pesantren publik. Lanjutkan?', confirmLabel: 'Ya, Lanjutkan', variant: 'warning', onConfirm: () => { setGaleri(g => g.map(x => x.id === id ? { ...x, aktif: !x.aktif } : x)); closeConfirm() } })
+    askConfirm({
+      title: item.aktif ? 'Sembunyikan Foto' : 'Tampilkan Foto',
+      message: item.aktif ? 'Foto ini akan disembunyikan dari halaman publik. Lanjutkan?' : 'Foto ini akan ditampilkan di halaman pesantren publik. Lanjutkan?',
+      confirmLabel: 'Ya, Lanjutkan', variant: 'warning',
+      onConfirm: async () => {
+        await supabase.from('galeri').update({ is_aktif: !item.aktif }).eq('id', id)
+        setGaleri(g => g.map(x => x.id === id ? { ...x, aktif: !x.aktif } : x))
+        closeConfirm()
+      },
+    })
   }
 
   const aktifCount = galeri.filter(g => g.aktif).length
@@ -257,8 +309,18 @@ export default function AdminGaleriPage() {
             </div>
           </div>
 
+          {error && (
+            <div className="flex items-center gap-2 px-4 py-3 rounded-xl bg-red-50 border border-red-200 text-red-700 text-sm">
+              <AlertCircle className="w-4 h-4 flex-shrink-0" />
+              <span>{error}</span>
+              <button onClick={loadData} className="ml-auto text-xs font-semibold underline">Coba lagi</button>
+            </div>
+          )}
+
           {/* Grid */}
-          {shown.length === 0 ? (
+          {loading ? (
+            <div className="flex items-center justify-center py-16"><Loader2 className="w-6 h-6 animate-spin text-gray-400" /></div>
+          ) : shown.length === 0 ? (
             <div className="bg-white rounded-2xl border border-gray-100 p-12 text-center">
               <Image className="w-10 h-10 text-gray-300 mx-auto mb-3" />
               <p className="text-sm text-gray-400">Tidak ada foto ditemukan</p>

@@ -1,11 +1,12 @@
-﻿import { useState, useRef } from 'react'
-import { Plus, Pencil, Trash2, GraduationCap, Upload, X, ChevronUp, ChevronDown } from 'lucide-react'
+﻿import { useState, useRef, useEffect, useCallback } from 'react'
+import { Plus, Pencil, Trash2, GraduationCap, Upload, X, ChevronUp, ChevronDown, Loader2 } from 'lucide-react'
 import { motion } from 'framer-motion'
 import AdminSidebar from '@/components/admin/AdminSidebar'
 import AdminHeader from '@/components/admin/AdminHeader'
 import ConfirmDialog from '@/components/admin/ConfirmDialog'
 import { PaginationBar, PerPageSelector } from '@/components/PaginationBar'
-import { initialAngkatan, getAngkatanKe } from '@/data/angkatan'
+import { getAngkatanKe } from '@/data/angkatan'
+import { supabase } from '@/lib/supabase'
 
 const CURRENT_YEAR = new Date().getFullYear()
 
@@ -171,16 +172,36 @@ function AngkatanModal({ data, onClose, onSave }) {
   )
 }
 
+function mapAngkatan(row) {
+  return {
+    id: row.id,
+    tahunLulusan: row.tahun_lulus,
+    angkatanKe: row.tahun_lulus - 2005,
+    nama: row.nama_angkatan ?? `Angkatan ${row.tahun_lulus - 2005}`,
+    logo: null,
+  }
+}
+
 export default function AdminAngkatanPage() {
-  const [angkatan, setAngkatan] = useState(initialAngkatan)
+  const [angkatan, setAngkatan] = useState([])
   const [search, setSearch] = useState('')
   const [page, setPage] = useState(1)
   const [perPage, setPerPage] = useState(10)
   const [modal, setModal] = useState(null) // null | { type: 'tambah' } | { type: 'edit', data }
   const [sortDir, setSortDir] = useState('asc') // sort by tahun lulusan
   const [confirm, setConfirm] = useState({ open: false })
+  const [loading, setLoading] = useState(true)
   function askConfirm(opts) { setConfirm({ open: true, ...opts }) }
   function closeConfirm() { setConfirm({ open: false }) }
+
+  const loadData = useCallback(async () => {
+    setLoading(true)
+    const { data } = await supabase.from('angkatan').select('id, tahun_lulus, nama_angkatan').order('tahun_lulus', { ascending: true })
+    setAngkatan((data ?? []).map(mapAngkatan))
+    setLoading(false)
+  }, [])
+
+  useEffect(() => { loadData() }, [loadData])
 
   const filtered = angkatan
     .filter(a => {
@@ -210,12 +231,18 @@ export default function AdminAngkatanPage() {
         : 'Apakah Anda yakin ingin menambahkan angkatan baru ini?',
       confirmLabel: 'Ya, Simpan',
       variant: 'success',
-      onConfirm: () => {
+      onConfirm: async () => {
+        const dbData = {
+          tahun_lulus: formData.tahunLulusan,
+          tahun_masuk: formData.tahunLulusan - 4,
+          nama_angkatan: formData.nama,
+        }
         if (isEdit) {
-          setAngkatan(prev => prev.map(a => a.id === modal.data.id ? { ...a, ...formData } : a))
+          const { error } = await supabase.from('angkatan').update(dbData).eq('id', modal.data.id)
+          if (!error) setAngkatan(prev => prev.map(a => a.id === modal.data.id ? { ...a, ...formData } : a))
         } else {
-          const newId = Math.max(0, ...angkatan.map(a => a.id)) + 1
-          setAngkatan(prev => [...prev, { id: newId, ...formData }])
+          const { data, error } = await supabase.from('angkatan').insert(dbData).select('id').single()
+          if (!error && data) setAngkatan(prev => [...prev, { id: data.id, ...formData }])
         }
         setModal(null)
         closeConfirm()
@@ -229,7 +256,11 @@ export default function AdminAngkatanPage() {
       message: 'Apakah Anda yakin ingin menghapus data angkatan ini? Tindakan ini tidak dapat dibatalkan.',
       confirmLabel: 'Ya, Hapus',
       variant: 'danger',
-      onConfirm: () => { setAngkatan(prev => prev.filter(a => a.id !== id)); closeConfirm() },
+      onConfirm: async () => {
+        await supabase.from('angkatan').delete().eq('id', id)
+        setAngkatan(prev => prev.filter(a => a.id !== id))
+        closeConfirm()
+      },
     })
   }
 
@@ -276,9 +307,9 @@ export default function AdminAngkatanPage() {
           <div className="grid grid-cols-2 sm:grid-cols-4 gap-4 mb-6">
             {[
               { label: 'Total Angkatan', value: angkatan.length, color: '#1A5C38' },
-              { label: 'Angkatan Terbaru', value: `${Math.max(...angkatan.map(a => a.angkatanKe))}`, color: '#F0A500' },
-              { label: 'Tahun Pertama', value: Math.min(...angkatan.map(a => a.tahunLulusan)), color: '#0A2415' },
-              { label: 'Tahun Terakhir', value: Math.max(...angkatan.map(a => a.tahunLulusan)), color: '#2A7A4F' },
+              { label: 'Angkatan Terbaru', value: angkatan.length ? `${Math.max(...angkatan.map(a => a.angkatanKe))}` : '—', color: '#F0A500' },
+              { label: 'Tahun Pertama', value: angkatan.length ? Math.min(...angkatan.map(a => a.tahunLulusan)) : '—', color: '#0A2415' },
+              { label: 'Tahun Terakhir', value: angkatan.length ? Math.max(...angkatan.map(a => a.tahunLulusan)) : '—', color: '#2A7A4F' },
             ].map(({ label, value, color }) => (
               <div key={label} className="bg-white rounded-xl border border-gray-100 px-4 py-4">
                 <p className="text-xs text-gray-400 mb-1">{label}</p>
@@ -320,7 +351,9 @@ export default function AdminAngkatanPage() {
                   </tr>
                 </thead>
                 <tbody>
-                  {paged.length === 0 ? (
+                  {loading ? (
+                    <tr><td colSpan={6} className="text-center py-16"><Loader2 className="w-6 h-6 animate-spin text-gray-400 mx-auto" /></td></tr>
+                  ) : paged.length === 0 ? (
                     <tr>
                       <td colSpan={6} className="text-center py-16 text-gray-400">
                         <GraduationCap className="w-8 h-8 mx-auto mb-2 opacity-30" />

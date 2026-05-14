@@ -1,10 +1,10 @@
-import { useState } from 'react'
-import { Bell, Check, CheckCheck, Trash2, Shield, Newspaper, CalendarDays, Users, AlertCircle } from 'lucide-react'
+import { useState, useEffect, useCallback } from 'react'
+import { Bell, Check, CheckCheck, Trash2, Shield, Newspaper, CalendarDays, Users, AlertCircle, Loader2 } from 'lucide-react'
 import { motion } from 'framer-motion'
 import AdminSidebar from '../../components/admin/AdminSidebar'
 import AdminHeader from '../../components/admin/AdminHeader'
 import ConfirmDialog from '../../components/admin/ConfirmDialog'
-import { initialNotif } from '../../data/notifikasi'
+import { supabase } from '@/lib/supabase'
 
 const TIPE_CONFIG = {
   verifikasi: { icon: Shield,       color: '#1A5C38', bg: '#F0FDF4', label: 'Verifikasi' },
@@ -14,11 +14,46 @@ const TIPE_CONFIG = {
   sistem:     { icon: AlertCircle,  color: '#6B7280', bg: '#F9FAFB', label: 'Sistem' },
 }
 
+function formatWaktu(iso) {
+  if (!iso) return '—'
+  const d = new Date(iso)
+  const diff = Math.floor((Date.now() - d) / 1000)
+  if (diff < 60) return 'Baru saja'
+  if (diff < 3600) return `${Math.floor(diff / 60)} menit lalu`
+  if (diff < 86400) return `${Math.floor(diff / 3600)} jam lalu`
+  return d.toLocaleDateString('id-ID', { day: 'numeric', month: 'short', year: 'numeric' })
+}
+
+function mapNotif(row) {
+  return {
+    id: row.id,
+    judul: row.judul,
+    pesan: row.pesan ?? '',
+    tipe: row.tipe ?? 'sistem',
+    dibaca: row.is_dibaca,
+    waktu: formatWaktu(row.created_at),
+  }
+}
+
 export default function AdminNotifikasiPage() {
-  const [notif, setNotif] = useState(initialNotif)
+  const [notif, setNotif] = useState([])
   const [filter, setFilter] = useState('semua')
   const [filterTipe, setFilterTipe] = useState('semua')
   const [confirm, setConfirm] = useState({ open: false })
+  const [loading, setLoading] = useState(true)
+
+  const loadData = useCallback(async () => {
+    setLoading(true)
+    const { data } = await supabase
+      .from('notifikasi')
+      .select('id, judul, pesan, tipe, is_dibaca, created_at')
+      .order('created_at', { ascending: false })
+      .limit(100)
+    setNotif((data ?? []).map(mapNotif))
+    setLoading(false)
+  }, [])
+
+  useEffect(() => { loadData() }, [loadData])
 
   function askConfirm(opts) { setConfirm({ open: true, ...opts }) }
   function closeConfirm() { setConfirm({ open: false }) }
@@ -31,15 +66,20 @@ export default function AdminNotifikasiPage() {
     return matchStatus && matchTipe
   })
 
-  function markRead(id) {
+  async function markRead(id) {
+    await supabase.from('notifikasi').update({ is_dibaca: true }).eq('id', id)
     setNotif(n => n.map(x => x.id === id ? { ...x, dibaca: true } : x))
   }
 
-  function markAllRead() {
+  async function markAllRead() {
+    const unreadIds = notif.filter(n => !n.dibaca).map(n => n.id)
+    if (unreadIds.length === 0) return
+    await supabase.from('notifikasi').update({ is_dibaca: true }).in('id', unreadIds)
     setNotif(n => n.map(x => ({ ...x, dibaca: true })))
   }
 
-  function deleteNotif(id) {
+  async function deleteNotif(id) {
+    await supabase.from('notifikasi').delete().eq('id', id)
     setNotif(n => n.filter(x => x.id !== id))
   }
 
@@ -116,7 +156,9 @@ export default function AdminNotifikasiPage() {
 
           {/* List */}
           <div className="space-y-2">
-            {filtered.length === 0 ? (
+            {loading ? (
+              <div className="flex items-center justify-center py-16"><Loader2 className="w-6 h-6 animate-spin text-gray-400" /></div>
+            ) : filtered.length === 0 ? (
               <div className="bg-white rounded-2xl border border-gray-100 p-12 text-center">
                 <Bell className="w-10 h-10 text-gray-300 mx-auto mb-3" />
                 <p className="text-sm text-gray-400">Tidak ada notifikasi</p>

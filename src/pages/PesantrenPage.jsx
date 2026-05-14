@@ -1,4 +1,4 @@
-import { useState, useRef } from 'react'
+import { useState, useRef, useEffect } from 'react'
 import { Link } from 'react-router-dom'
 import { motion } from 'framer-motion'
 import {
@@ -11,10 +11,9 @@ import Footer from '@/components/landing/Footer'
 import heroImg from '@/assets/hero.jpg'
 import pimpinanImg from '@/assets/pimpinan.jpg'
 import { fadeUp, fadeLeft, fadeRight, stagger, viewport } from '@/lib/animations'
-import { initialAngkatan } from '@/data/angkatan'
-import { initialOrganisasi } from '@/data/organisasi'
-import { initialGaleri, kategoriGaleri } from '@/data/galeri'
+import { kategoriGaleri } from '@/data/galeri'
 import { initialGuru, getGurPhotoSrc } from '@/data/guru'
+import { supabase } from '@/lib/supabase'
 
 /* ─── Data ─── */
 const timeline = [
@@ -48,16 +47,29 @@ const fasilitas = [
 
 const galeriKategoriList = ['Semua', ...kategoriGaleri.map(k => k.label)]
 
-const galeriAktif = initialGaleri
-  .filter(g => g.aktif)
-  .map((g, i) => ({
-    kategori: kategoriGaleri.find(k => k.value === g.kategori)?.label ?? g.kategori,
-    wide: i % 3 === 0,
-    src: g.url,
-    alt: g.judul,
-    judul: g.judul,
-    id: g.id,
-  }))
+function mapAngkatan(row) {
+  return {
+    id: row.id,
+    tahunLulusan: row.tahun_lulus,
+    angkatanKe: row.tahun_lulus - 2005,
+    nama: row.nama_angkatan ?? `Angkatan ${row.tahun_lulus - 2005}`,
+    logo: null,
+  }
+}
+
+function mapOrganisasi(row) {
+  return {
+    id: row.id,
+    nama: row.nama,
+    namaLengkap: row.kategori ?? row.nama,
+    deskripsi: row.deskripsi ?? '',
+    logo: row.logo_url ?? '',
+    ketua: '',
+    kontak: '',
+    tahunBerdiri: row.tahun_berdiri ?? '—',
+    aktif: row.is_aktif,
+  }
+}
 
 const stats = [
   { value: '6.200+', label: 'Alumni' },
@@ -76,14 +88,41 @@ const kontakInfo = [
 export default function PesantrenPage() {
   const [activeGaleri, setActiveGaleri] = useState('Semua')
   const [form, setForm] = useState({ nama: '', email: '', judul: '', pesan: '' })
+  const [angkatanList, setAngkatanList] = useState([])
+  const [organisasiList, setOrganisasiList] = useState([])
+  const [galeriList, setGaleriList] = useState([])
   const pengasuhScrollRef = useRef(null)
   const orgScrollRef = useRef(null)
+
+  useEffect(() => {
+    let cancelled = false
+    async function loadData() {
+      const [angkatanRes, orgRes, galeriRes] = await Promise.all([
+        supabase.from('angkatan').select('id, tahun_lulus, nama_angkatan').order('tahun_lulus', { ascending: true }),
+        supabase.from('organisasi').select('id, nama, deskripsi, logo_url, kategori, tahun_berdiri, is_aktif').eq('is_aktif', true),
+        supabase.from('galeri').select('id, judul, foto_url, kategori').eq('is_aktif', true).order('created_at', { ascending: false }),
+      ])
+      if (cancelled) return
+      setAngkatanList((angkatanRes.data ?? []).map(mapAngkatan))
+      setOrganisasiList((orgRes.data ?? []).map(mapOrganisasi))
+      setGaleriList((galeriRes.data ?? []).map((row, i) => ({
+        id: row.id,
+        kategori: kategoriGaleri.find(k => k.value === row.kategori)?.label ?? row.kategori ?? 'Lainnya',
+        wide: i % 3 === 0,
+        src: row.foto_url,
+        alt: row.judul,
+        judul: row.judul,
+      })))
+    }
+    loadData()
+    return () => { cancelled = true }
+  }, [])
 
   function scrollPengasuh(dir) { pengasuhScrollRef.current?.scrollBy({ left: dir * 260, behavior: 'smooth' }) }
   function scrollOrg(dir) { orgScrollRef.current?.scrollBy({ left: dir * 320, behavior: 'smooth' }) }
 
   const filteredGaleri =
-    activeGaleri === 'Semua' ? galeriAktif : galeriAktif.filter((g) => g.kategori === activeGaleri)
+    activeGaleri === 'Semua' ? galeriList : galeriList.filter((g) => g.kategori === activeGaleri)
 
   return (
     <div className="overflow-x-hidden">
@@ -385,7 +424,7 @@ export default function PesantrenPage() {
         {/* Marquee baris 1 */}
         <div className="relative mb-4">
           <div className="flex gap-5 animate-marquee-left w-max">
-            {[...initialAngkatan, ...initialAngkatan].map((item, i) => (
+            {[...angkatanList, ...angkatanList].map((item, i) => (
               <div
                 key={`r1-${i}`}
                 className="flex-shrink-0 flex flex-col items-center gap-2 group"
@@ -411,7 +450,7 @@ export default function PesantrenPage() {
         {/* Marquee baris 2 — offset untuk zigzag */}
         <div className="relative">
           <div className="flex gap-5 animate-marquee-left-offset w-max" style={{ marginLeft: '-48px' }}>
-            {[...initialAngkatan.slice(10), ...initialAngkatan.slice(0, 10), ...initialAngkatan.slice(10), ...initialAngkatan.slice(0, 10)].map((item, i) => (
+            {[...angkatanList.slice(10), ...angkatanList.slice(0, 10), ...angkatanList.slice(10), ...angkatanList.slice(0, 10)].map((item, i) => (
               <div
                 key={`r2-${i}`}
                 className="flex-shrink-0 flex flex-col items-center gap-2 group"
@@ -473,7 +512,7 @@ export default function PesantrenPage() {
             className="flex gap-6 overflow-x-auto pb-4 snap-x snap-mandatory scroll-smooth"
             style={{ scrollbarWidth: 'none', msOverflowStyle: 'none' }}
           >
-            {initialOrganisasi.filter(o => o.aktif).map((org) => (
+            {organisasiList.map((org) => (
               <div key={org.id} className="min-w-[280px] max-w-[320px] flex-shrink-0 snap-start bg-white rounded-2xl p-6 border border-gray-100 shadow-sm hover:shadow-md transition-shadow text-center group">
                 <div className="flex justify-center mb-4">
                   {org.logo ? (

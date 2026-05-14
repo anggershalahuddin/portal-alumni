@@ -154,7 +154,7 @@ function mapLowongan(row) {
     judul: row.judul,
     instansi: row.perusahaan,
     lokasi: row.lokasi ?? '—',
-    tipe: row.tipe ?? 'fulltime',
+    tipe: row.tipe ?? 'full-time',
     gaji,
     deskripsi: row.deskripsi ?? '',
     syarat: row.persyaratan ?? [],

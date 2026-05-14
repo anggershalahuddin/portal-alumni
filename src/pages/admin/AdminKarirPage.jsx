@@ -1,10 +1,11 @@
-﻿import { useState } from 'react'
-import { Plus, Trash2, Edit2, Briefcase, X, Check, MapPin, Clock, ChevronDown, ChevronUp, Tag, Layers } from 'lucide-react'
+﻿import { useState, useEffect, useCallback } from 'react'
+import { Plus, Trash2, Edit2, Briefcase, X, Check, MapPin, Clock, ChevronDown, ChevronUp, Tag, Layers, Loader2, AlertCircle } from 'lucide-react'
 import { motion } from 'framer-motion'
 import AdminSidebar from '../../components/admin/AdminSidebar'
 import AdminHeader from '../../components/admin/AdminHeader'
 import ConfirmDialog from '../../components/admin/ConfirmDialog'
-import { initialLowongan, bidangLowongan as seedBidang, tipeLowongan } from '../../data/lowongan'
+import { bidangLowongan as seedBidang, tipeLowongan } from '../../data/lowongan'
+import { supabase } from '@/lib/supabase'
 
 function KelolaBidangModal({ bidangs, onClose, onAdd, onDelete }) {
   const [newLabel, setNewLabel] = useState('')
@@ -57,9 +58,9 @@ function LowonganModal({ item, onClose, onSave, bidangs }) {
   const today = new Date().toISOString().split('T')[0]
   const [form, setForm] = useState(
     item ?? {
-      judul: '', instansi: '', tipe: 'fulltime', bidang: 'pendidikan',
+      judul: '', instansi: '', tipe: 'full-time', bidang: 'pendidikan',
       lokasi: 'Klapanunggal, Bogor', deskripsi: '', syarat: [''],
-      gaji: '', deadline: '', tanggalPosting: today, tags: [], aktif: true, slug: '',
+      gaji_min: '', gaji_max: '', deadline: '', tanggalPosting: today, tags: [], aktif: true, slug: '',
     }
   )
   const [syaratInput, setSyaratInput] = useState((item?.syarat ?? ['']).join('\n'))
@@ -112,14 +113,18 @@ function LowonganModal({ item, onClose, onSave, bidangs }) {
               </select>
             </div>
           </div>
+          <div>
+            <label className="text-xs font-semibold text-gray-700 mb-1 block">Lokasi</label>
+            <input value={form.lokasi} onChange={e => set('lokasi', e.target.value)} placeholder="cth. Klapanunggal, Bogor" className="w-full px-3 py-2 rounded-xl border border-gray-200 text-sm outline-none focus:border-green-400" />
+          </div>
           <div className="grid grid-cols-2 gap-3">
             <div>
-              <label className="text-xs font-semibold text-gray-700 mb-1 block">Lokasi</label>
-              <input value={form.lokasi} onChange={e => set('lokasi', e.target.value)} placeholder="cth. Klapanunggal, Bogor" className="w-full px-3 py-2 rounded-xl border border-gray-200 text-sm outline-none focus:border-green-400" />
+              <label className="text-xs font-semibold text-gray-700 mb-1 block">Gaji Min (Rp)</label>
+              <input type="number" min="0" value={form.gaji_min} onChange={e => set('gaji_min', e.target.value)} placeholder="cth. 3000000" className="w-full px-3 py-2 rounded-xl border border-gray-200 text-sm outline-none focus:border-green-400" />
             </div>
             <div>
-              <label className="text-xs font-semibold text-gray-700 mb-1 block">Rentang Gaji</label>
-              <input value={form.gaji} onChange={e => set('gaji', e.target.value)} placeholder="cth. Rp 3.000.000 – Rp 4.500.000" className="w-full px-3 py-2 rounded-xl border border-gray-200 text-sm outline-none focus:border-green-400" />
+              <label className="text-xs font-semibold text-gray-700 mb-1 block">Gaji Max (Rp)</label>
+              <input type="number" min="0" value={form.gaji_max} onChange={e => set('gaji_max', e.target.value)} placeholder="cth. 5000000" className="w-full px-3 py-2 rounded-xl border border-gray-200 text-sm outline-none focus:border-green-400" />
             </div>
           </div>
           <div>
@@ -175,6 +180,7 @@ function DetailCard({ item, onEdit, onDelete, onToggle, bidangs }) {
   const tipeLabel = tipeLowongan.find(t => t.value === item.tipe)?.label ?? item.tipe
   const bidangLabel = bidangs.find(b => b.value === item.bidang)?.label ?? item.bidang
   const deadlinePast = item.deadline && new Date(item.deadline) < new Date()
+  const gajiDisplay = item.gaji_min ? `Rp ${(item.gaji_min / 1e6).toFixed(0)}–${(item.gaji_max / 1e6).toFixed(0)} jt/bln` : null
 
   return (
     <div className={`bg-white rounded-2xl border overflow-hidden ${!item.aktif ? 'opacity-70' : ''} ${deadlinePast && item.aktif ? 'border-orange-200' : 'border-gray-100'}`}>
@@ -196,7 +202,7 @@ function DetailCard({ item, onEdit, onDelete, onToggle, bidangs }) {
         </div>
         <div className="flex flex-wrap gap-x-4 gap-y-1 mt-3">
           <div className="flex items-center gap-1 text-[11px] text-gray-500"><MapPin className="w-3 h-3" />{item.lokasi}</div>
-          {item.gaji && <div className="flex items-center gap-1 text-[11px] text-gray-500"><span className="font-semibold">Gaji:</span> {item.gaji}</div>}
+          {gajiDisplay && <div className="flex items-center gap-1 text-[11px] text-gray-500"><span className="font-semibold">Gaji:</span> {gajiDisplay}</div>}
           {item.deadline && <div className="flex items-center gap-1 text-[11px] text-gray-500"><Clock className="w-3 h-3" />Deadline: {new Date(item.deadline).toLocaleDateString('id-ID', { day: 'numeric', month: 'short', year: 'numeric' })}</div>}
         </div>
         {item.tags?.length > 0 && (
@@ -242,8 +248,28 @@ function DetailCard({ item, onEdit, onDelete, onToggle, bidangs }) {
   )
 }
 
+function mapLowongan(row) {
+  return {
+    id: row.id,
+    judul: row.judul ?? '',
+    instansi: row.perusahaan ?? '',
+    tipe: row.tipe ?? 'full-time',
+    bidang: 'pendidikan',
+    lokasi: row.lokasi ?? '',
+    deskripsi: row.deskripsi ?? '',
+    syarat: row.persyaratan ?? [],
+    gaji_min: row.gaji_min ?? '',
+    gaji_max: row.gaji_max ?? '',
+    deadline: row.deadline ?? '',
+    tanggalPosting: row.created_at ? new Date(row.created_at).toISOString().split('T')[0] : '',
+    tags: [],
+    aktif: row.is_aktif,
+    slug: '',
+  }
+}
+
 export default function AdminKarirPage() {
-  const [lowongan, setLowongan] = useState(initialLowongan)
+  const [lowongan, setLowongan] = useState([])
   const [bidangs, setBidangs] = useState(seedBidang)
   const [search, setSearch] = useState('')
   const [filterBidang, setFilterBidang] = useState('semua')
@@ -251,9 +277,25 @@ export default function AdminKarirPage() {
   const [modal, setModal] = useState(null)
   const [bidangModal, setBidangModal] = useState(false)
   const [confirm, setConfirm] = useState({ open: false })
+  const [loading, setLoading] = useState(true)
+  const [error, setError] = useState(null)
 
   function askConfirm(opts) { setConfirm({ open: true, ...opts }) }
   function closeConfirm() { setConfirm({ open: false }) }
+
+  const loadData = useCallback(async () => {
+    setLoading(true)
+    setError(null)
+    const { data, error: err } = await supabase
+      .from('lowongan')
+      .select('id, judul, perusahaan, lokasi, tipe, deskripsi, persyaratan, gaji_min, gaji_max, deadline, is_aktif, created_at')
+      .order('created_at', { ascending: false })
+    if (err) { setError(err.message); setLoading(false); return }
+    setLowongan((data ?? []).map(mapLowongan))
+    setLoading(false)
+  }, [])
+
+  useEffect(() => { loadData() }, [loadData])
 
   const filtered = lowongan.filter(l => {
     const matchSearch = l.judul.toLowerCase().includes(search.toLowerCase()) || l.instansi.toLowerCase().includes(search.toLowerCase())
@@ -271,11 +313,26 @@ export default function AdminKarirPage() {
         : 'Apakah Anda yakin ingin menambahkan lowongan baru ini?',
       confirmLabel: 'Ya, Simpan',
       variant: 'success',
-      onConfirm: () => {
+      onConfirm: async () => {
+        const syarat = (form.syarat ?? []).filter(Boolean)
+        const dbData = {
+          judul: form.judul,
+          perusahaan: form.instansi,
+          lokasi: form.lokasi || null,
+          tipe: form.tipe || null,
+          deskripsi: form.deskripsi || null,
+          persyaratan: syarat,
+          gaji_min: form.gaji_min ? parseInt(form.gaji_min) : null,
+          gaji_max: form.gaji_max ? parseInt(form.gaji_max) : null,
+          deadline: form.deadline || null,
+          is_aktif: form.aktif,
+        }
         if (isEdit) {
-          setLowongan(l => l.map(x => x.id === form.id ? form : x))
+          const { error: err } = await supabase.from('lowongan').update(dbData).eq('id', form.id)
+          if (!err) setLowongan(l => l.map(x => x.id === form.id ? { ...x, ...form } : x))
         } else {
-          setLowongan(l => [...l, { ...form, id: Date.now() }])
+          const { data, error: err } = await supabase.from('lowongan').insert(dbData).select('id').single()
+          if (!err && data) setLowongan(l => [...l, { ...form, id: data.id }])
         }
         setModal(null)
         closeConfirm()
@@ -284,7 +341,15 @@ export default function AdminKarirPage() {
   }
 
   function handleDelete(id) {
-    askConfirm({ title: 'Hapus Lowongan', message: 'Apakah Anda yakin ingin menghapus lowongan ini? Tindakan ini tidak dapat dibatalkan.', confirmLabel: 'Ya, Hapus', variant: 'danger', onConfirm: () => { setLowongan(l => l.filter(x => x.id !== id)); closeConfirm() } })
+    askConfirm({
+      title: 'Hapus Lowongan', message: 'Apakah Anda yakin ingin menghapus lowongan ini? Tindakan ini tidak dapat dibatalkan.',
+      confirmLabel: 'Ya, Hapus', variant: 'danger',
+      onConfirm: async () => {
+        await supabase.from('lowongan').delete().eq('id', id)
+        setLowongan(l => l.filter(x => x.id !== id))
+        closeConfirm()
+      },
+    })
   }
 
   function toggleAktif(id) {
@@ -297,7 +362,11 @@ export default function AdminKarirPage() {
         : 'Lowongan ini akan ditampilkan ke publik. Pastikan data sudah lengkap dan benar sebelum mengaktifkan.',
       confirmLabel: item.aktif ? 'Ya, Nonaktifkan' : 'Ya, Aktifkan',
       variant: item.aktif ? 'danger' : 'success',
-      onConfirm: () => { setLowongan(l => l.map(x => x.id === id ? { ...x, aktif: !x.aktif } : x)); closeConfirm() },
+      onConfirm: async () => {
+        await supabase.from('lowongan').update({ is_aktif: !item.aktif }).eq('id', id)
+        setLowongan(l => l.map(x => x.id === id ? { ...x, aktif: !x.aktif } : x))
+        closeConfirm()
+      },
     })
   }
 
@@ -367,8 +436,17 @@ export default function AdminKarirPage() {
             </div>
           </div>
 
+          {error && (
+            <div className="flex items-center gap-2 px-4 py-3 rounded-xl bg-red-50 border border-red-200 text-red-700 text-sm">
+              <AlertCircle className="w-4 h-4 flex-shrink-0" /><span>{error}</span>
+              <button onClick={loadData} className="ml-auto text-xs font-semibold underline">Coba lagi</button>
+            </div>
+          )}
+
           {/* List */}
-          {filtered.length === 0 ? (
+          {loading ? (
+            <div className="flex items-center justify-center py-16"><Loader2 className="w-6 h-6 animate-spin text-gray-400" /></div>
+          ) : filtered.length === 0 ? (
             <div className="bg-white rounded-2xl border border-gray-100 p-12 text-center">
               <Briefcase className="w-10 h-10 text-gray-300 mx-auto mb-3" />
               <p className="text-sm text-gray-400">Tidak ada lowongan ditemukan</p>

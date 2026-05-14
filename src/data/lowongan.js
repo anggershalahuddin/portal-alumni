@@ -8,10 +8,11 @@ export const bidangLowongan = [
 ]
 
 export const tipeLowongan = [
-  { value: 'fulltime', label: 'Full Time' },
-  { value: 'parttime', label: 'Part Time' },
-  { value: 'kontrak', label: 'Kontrak' },
+  { value: 'full-time', label: 'Full Time' },
+  { value: 'part-time', label: 'Part Time' },
+  { value: 'remote', label: 'Remote' },
   { value: 'magang', label: 'Magang' },
+  { value: 'freelance', label: 'Freelance' },
 ]
 
 export const initialLowongan = [

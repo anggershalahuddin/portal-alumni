@@ -1,11 +1,11 @@
-﻿import { useState } from 'react'
-import { Plus, Trash2, Edit2, Building2, X, Check, Users, Mail, Calendar } from 'lucide-react'
+﻿import { useState, useEffect, useCallback } from 'react'
+import { Plus, Trash2, Edit2, Building2, X, Check, Users, Mail, Calendar, Loader2 } from 'lucide-react'
 import { motion } from 'framer-motion'
 import AdminSidebar from '../../components/admin/AdminSidebar'
 import AdminHeader from '../../components/admin/AdminHeader'
 import ImageUploadBox from '../../components/admin/ImageUploadBox'
 import ConfirmDialog from '../../components/admin/ConfirmDialog'
-import { initialOrganisasi } from '../../data/organisasi'
+import { supabase } from '@/lib/supabase'
 
 function OrganisasiModal({ item, onClose, onSave }) {
   const isEdit = !!item?.id
@@ -76,15 +76,42 @@ function OrganisasiModal({ item, onClose, onSave }) {
   )
 }
 
+function mapOrganisasi(row) {
+  return {
+    id: row.id,
+    nama: row.nama,
+    namaLengkap: row.kategori ?? row.nama,
+    deskripsi: row.deskripsi ?? '',
+    logo: row.logo_url ?? '',
+    ketua: '',
+    kontak: '',
+    tahunBerdiri: row.tahun_berdiri ?? new Date().getFullYear(),
+    aktif: row.is_aktif,
+  }
+}
+
 export default function AdminOrganisasiPage() {
-  const [organisasi, setOrganisasi] = useState(initialOrganisasi)
+  const [organisasi, setOrganisasi] = useState([])
   const [search, setSearch] = useState('')
   const [modal, setModal] = useState(null)
   const [filterAktif, setFilterAktif] = useState('semua')
   const [confirm, setConfirm] = useState({ open: false })
+  const [loading, setLoading] = useState(true)
 
   function askConfirm(opts) { setConfirm({ open: true, ...opts }) }
   function closeConfirm() { setConfirm({ open: false }) }
+
+  const loadData = useCallback(async () => {
+    setLoading(true)
+    const { data } = await supabase
+      .from('organisasi')
+      .select('id, nama, deskripsi, logo_url, kategori, tahun_berdiri, is_aktif')
+      .order('id', { ascending: true })
+    setOrganisasi((data ?? []).map(mapOrganisasi))
+    setLoading(false)
+  }, [])
+
+  useEffect(() => { loadData() }, [loadData])
 
   const filtered = organisasi.filter(o => {
     const matchSearch = o.nama.toLowerCase().includes(search.toLowerCase()) || o.namaLengkap.toLowerCase().includes(search.toLowerCase())
@@ -101,11 +128,20 @@ export default function AdminOrganisasiPage() {
         : 'Apakah Anda yakin ingin menambahkan organisasi baru ini?',
       confirmLabel: 'Ya, Simpan',
       variant: 'success',
-      onConfirm: () => {
+      onConfirm: async () => {
+        const dbData = {
+          nama: form.nama,
+          deskripsi: form.deskripsi || null,
+          logo_url: form.logo || null,
+          tahun_berdiri: form.tahunBerdiri ? parseInt(form.tahunBerdiri) : null,
+          is_aktif: form.aktif,
+        }
         if (isEdit) {
-          setOrganisasi(o => o.map(x => x.id === form.id ? form : x))
+          const { error } = await supabase.from('organisasi').update(dbData).eq('id', form.id)
+          if (!error) setOrganisasi(o => o.map(x => x.id === form.id ? { ...x, ...form } : x))
         } else {
-          setOrganisasi(o => [...o, { ...form, id: Date.now() }])
+          const { data, error } = await supabase.from('organisasi').insert(dbData).select('id').single()
+          if (!error && data) setOrganisasi(o => [...o, { ...form, id: data.id }])
         }
         setModal(null)
         closeConfirm()
@@ -114,13 +150,30 @@ export default function AdminOrganisasiPage() {
   }
 
   function handleDelete(id) {
-    askConfirm({ title: 'Hapus Organisasi', message: 'Apakah Anda yakin ingin menghapus organisasi ini? Data tidak dapat dipulihkan kembali.', confirmLabel: 'Ya, Hapus', variant: 'danger', onConfirm: () => { setOrganisasi(o => o.filter(x => x.id !== id)); closeConfirm() } })
+    askConfirm({
+      title: 'Hapus Organisasi', message: 'Apakah Anda yakin ingin menghapus organisasi ini? Data tidak dapat dipulihkan kembali.',
+      confirmLabel: 'Ya, Hapus', variant: 'danger',
+      onConfirm: async () => {
+        await supabase.from('organisasi').delete().eq('id', id)
+        setOrganisasi(o => o.filter(x => x.id !== id))
+        closeConfirm()
+      },
+    })
   }
 
   function toggleAktif(id) {
     const item = organisasi.find(x => x.id === id)
     if (!item) return
-    askConfirm({ title: item.aktif ? 'Nonaktifkan Organisasi' : 'Aktifkan Organisasi', message: item.aktif ? 'Organisasi ini akan ditandai nonaktif. Lanjutkan?' : 'Organisasi ini akan ditandai aktif dan tampil di portal. Lanjutkan?', confirmLabel: 'Ya, Lanjutkan', variant: 'warning', onConfirm: () => { setOrganisasi(o => o.map(x => x.id === id ? { ...x, aktif: !x.aktif } : x)); closeConfirm() } })
+    askConfirm({
+      title: item.aktif ? 'Nonaktifkan Organisasi' : 'Aktifkan Organisasi',
+      message: item.aktif ? 'Organisasi ini akan ditandai nonaktif. Lanjutkan?' : 'Organisasi ini akan ditandai aktif dan tampil di portal. Lanjutkan?',
+      confirmLabel: 'Ya, Lanjutkan', variant: 'warning',
+      onConfirm: async () => {
+        await supabase.from('organisasi').update({ is_aktif: !item.aktif }).eq('id', id)
+        setOrganisasi(o => o.map(x => x.id === id ? { ...x, aktif: !x.aktif } : x))
+        closeConfirm()
+      },
+    })
   }
 
   return (
@@ -179,7 +232,9 @@ export default function AdminOrganisasiPage() {
           </div>
 
           {/* Cards */}
-          {filtered.length === 0 ? (
+          {loading ? (
+            <div className="flex items-center justify-center py-16"><Loader2 className="w-6 h-6 animate-spin text-gray-400" /></div>
+          ) : filtered.length === 0 ? (
             <div className="bg-white rounded-2xl border border-gray-100 p-12 text-center">
               <Building2 className="w-10 h-10 text-gray-300 mx-auto mb-3" />
               <p className="text-sm text-gray-400">Tidak ada organisasi ditemukan</p>
