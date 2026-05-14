@@ -11,8 +11,11 @@ import AdminSidebar from '@/components/admin/AdminSidebar'
 import AdminHeader from '@/components/admin/AdminHeader'
 import { PaginationBar, PerPageSelector } from '@/components/PaginationBar'
 import { getAvatarColor, getInitials, bidangList } from '@/data/alumni'
-import { initialAngkatan } from '@/data/angkatan'
 import { supabase } from '@/lib/supabase'
+
+function mapAngkatan(row) {
+  return { id: row.id, tahunLulusan: row.tahun_lulus, angkatanKe: row.tahun_lulus - 2005, nama: row.nama_angkatan ?? `Angkatan ${row.tahun_lulus - 2005}` }
+}
 
 // ── Helpers ──────────────────────────────────────────────────────────────────
 
@@ -348,6 +351,7 @@ function DetailModal({ alumni, detail, angkatanInfo, onClose }) {
 
 export default function AdminDataAlumniPage() {
   const [enriched, setEnriched]       = useState([])
+  const [angkatanList, setAngkatanList] = useState([])
   const [pageLoading, setPageLoading] = useState(true)
   const [loadError, setLoadError]     = useState(null)
 
@@ -376,8 +380,8 @@ export default function AdminDataAlumniPage() {
 
       const ids = profiles.map((p) => p.id)
 
-      // alumni_profiles + all sub-tables in parallel
-      const [apRes, keahlianRes, bahasaRes, pekerjaanRes, pendidikanRes, lembagaRes] =
+      // alumni_profiles + all sub-tables + angkatan in parallel
+      const [apRes, keahlianRes, bahasaRes, pekerjaanRes, pendidikanRes, lembagaRes, angkatanRes] =
         await Promise.all([
           supabase.from('alumni_profiles').select('*').in('id', ids),
           supabase.from('keahlian_alumni').select('*').in('alumni_id', ids),
@@ -385,7 +389,11 @@ export default function AdminDataAlumniPage() {
           supabase.from('pekerjaan').select('*').in('alumni_id', ids),
           supabase.from('pendidikan').select('*').in('alumni_id', ids),
           supabase.from('lembaga_alumni').select('*').in('alumni_id', ids),
+          supabase.from('angkatan').select('id, tahun_lulus, nama_angkatan').order('tahun_lulus'),
         ])
+
+      const fetchedAngkatan = (angkatanRes.data ?? []).map(mapAngkatan)
+      setAngkatanList(fetchedAngkatan)
 
       const apAll        = apRes.data ?? []
       const keahlianAll  = keahlianRes.data ?? []
@@ -450,7 +458,7 @@ export default function AdminDataAlumniPage() {
             })),
         }
 
-        const angkatanInfo = initialAngkatan.find((x) => x.tahunLulusan === p.angkatan) ?? null
+        const angkatanInfo = fetchedAngkatan.find((x) => x.tahunLulusan === p.angkatan) ?? null
 
         return { alumni, detail, angkatanInfo }
       })
@@ -604,7 +612,7 @@ export default function AdminDataAlumniPage() {
                 >
                   <option value="">Semua Angkatan</option>
                   {angkatanOptions.map(y => {
-                    const ag = initialAngkatan.find(a => a.tahunLulusan === y)
+                    const ag = angkatanList.find(a => a.tahunLulusan === y)
                     return <option key={y} value={y}>{y} {ag ? `(Angkatan ${ag.angkatanKe})` : ''}</option>
                   })}
                 </select>

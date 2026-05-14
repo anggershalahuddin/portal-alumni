@@ -11,9 +11,12 @@ import {
 import Navbar from '@/components/landing/Navbar'
 import Footer from '@/components/landing/Footer'
 import { getAvatarColor, getInitials } from '@/data/alumni'
-import { initialAngkatan } from '@/data/angkatan'
 import { fadeUp } from '@/lib/animations'
 import { supabase } from '@/lib/supabase'
+
+function mapAngkatan(row) {
+  return { id: row.id, tahunLulusan: row.tahun_lulus, angkatanKe: row.tahun_lulus - 2005, nama: row.nama_angkatan ?? `Angkatan ${row.tahun_lulus - 2005}` }
+}
 
 // ── Brand SVG Icons ───────────────────────────────────────────────────────────
 function IconInstagram({ size = 16 }) {
@@ -163,6 +166,7 @@ export default function AlumniProfilePage() {
   const [alumni, setAlumni]             = useState(null)
   const [detail, setDetail]             = useState(null)
   const [angkatanInfo, setAngkatanInfo] = useState(null)
+  const [angkatanList, setAngkatanList] = useState([])
   const [alumniSerupa, setAlumniSerupa] = useState([])
   const [loading, setLoading]           = useState(true)
 
@@ -187,7 +191,7 @@ export default function AlumniProfilePage() {
           .eq('id', id)
           .maybeSingle()
 
-        const [keahlianRes, bahasaRes, pekerjaanRes, pendidikanRes, lembagaRes, berkasRes] =
+        const [keahlianRes, bahasaRes, pekerjaanRes, pendidikanRes, lembagaRes, berkasRes, angkatanRes] =
           await Promise.all([
             supabase.from('keahlian_alumni').select('nama').eq('alumni_id', id),
             supabase.from('bahasa_alumni').select('nama').eq('alumni_id', id),
@@ -195,7 +199,10 @@ export default function AlumniProfilePage() {
             supabase.from('pendidikan').select('*').eq('alumni_id', id),
             supabase.from('lembaga_alumni').select('*').eq('alumni_id', id),
             supabase.from('berkas_alumni').select('nama, tipe, ukuran, kategori, file_url').eq('alumni_id', id),
+            supabase.from('angkatan').select('id, tahun_lulus, nama_angkatan').order('tahun_lulus'),
           ])
+
+        const fetchedAngkatan = (angkatanRes.data ?? []).map(mapAngkatan)
 
         if (cancelled) return
 
@@ -252,7 +259,7 @@ export default function AlumniProfilePage() {
           })),
         }
 
-        const angkInfo = initialAngkatan.find((a) => a.tahunLulusan === p.angkatan) ?? null
+        const angkInfo = fetchedAngkatan.find((a) => a.tahunLulusan === p.angkatan) ?? null
 
         // Similar alumni: same angkatan or same bidang
         const { data: similar } = await supabase
@@ -287,6 +294,7 @@ export default function AlumniProfilePage() {
           setAlumni(alumniObj)
           setDetail(detailObj)
           setAngkatanInfo(angkInfo)
+          setAngkatanList(fetchedAngkatan)
           setAlumniSerupa(simAlumni)
         }
       } catch (err) {
@@ -841,7 +849,7 @@ export default function AlumniProfilePage() {
                           </p>
                           <p className="text-[10px] text-gray-400">
                             {(() => {
-                              const ag = initialAngkatan.find(x => x.tahunLulusan === a.angkatan)
+                              const ag = angkatanList.find(x => x.tahunLulusan === a.angkatan)
                               return ag ? `Angkatan ${ag.angkatanKe} · ${ag.tahunLulusan} · ${ag.nama}` : `Angkatan ${a.angkatan}`
                             })()}
                           </p>

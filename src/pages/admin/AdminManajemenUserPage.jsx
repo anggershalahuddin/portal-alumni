@@ -10,7 +10,7 @@ import AdminSidebar from '../../components/admin/AdminSidebar'
 import AdminHeader from '../../components/admin/AdminHeader'
 import ConfirmDialog from '../../components/admin/ConfirmDialog'
 import { PaginationBar, PerPageSelector } from '../../components/PaginationBar'
-import { initialAngkatan, getAngkatanKe } from '../../data/angkatan'
+import { getAngkatanKe } from '../../data/angkatan'
 import { ALL_PERMISSIONS, DEFAULT_PERMISSIONS } from '../../data/adminMenus'
 import { supabase } from '@/lib/supabase'
 
@@ -147,8 +147,7 @@ function EditUserModal({ user, onClose, onSave }) {
   }, [])
 
   const inputCls = 'w-full px-4 py-2.5 rounded-xl border border-gray-200 text-sm outline-none focus:border-green-500 transition-colors'
-  const angkatanInfo = initialAngkatan.find(a => a.tahunLulusan === Number(form.angkatan))
-  const angkatanKe = angkatanInfo ? angkatanInfo.angkatanKe : getAngkatanKe(form.angkatan)
+  const angkatanKe = getAngkatanKe(form.angkatan)
 
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center p-4">

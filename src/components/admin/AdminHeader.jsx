@@ -6,8 +6,17 @@ import {
   User, Settings, LogOut,
 } from 'lucide-react'
 import { motion, AnimatePresence } from 'framer-motion'
-import { initialNotif } from '../../data/notifikasi'
 import { useAuth } from '../../context/AuthContext'
+import { supabase } from '@/lib/supabase'
+
+function formatWaktu(iso) {
+  if (!iso) return '—'
+  const diff = Math.floor((Date.now() - new Date(iso)) / 1000)
+  if (diff < 60) return 'Baru saja'
+  if (diff < 3600) return `${Math.floor(diff / 60)} menit lalu`
+  if (diff < 86400) return `${Math.floor(diff / 3600)} jam lalu`
+  return new Date(iso).toLocaleDateString('id-ID', { day: 'numeric', month: 'short' })
+}
 
 const TIPE_CONFIG = {
   verifikasi: { Icon: Shield,       color: '#1A5C38', bg: '#F0FDF4' },
@@ -146,7 +155,7 @@ export default function AdminHeader({ searchValue = '', onSearchChange, searchPl
   const { user, signOut } = useAuth()
   const navigate = useNavigate()
 
-  const [notif, setNotif] = useState(initialNotif)
+  const [notif, setNotif] = useState([])
   const [showBell, setShowBell] = useState(false)
   const [showProfile, setShowProfile] = useState(false)
 
@@ -154,6 +163,21 @@ export default function AdminHeader({ searchValue = '', onSearchChange, searchPl
   const profileRef = useRef(null)
 
   const unread = notif.filter((n) => !n.dibaca).length
+
+  useEffect(() => {
+    supabase
+      .from('notifikasi')
+      .select('id, judul, pesan, tipe, is_dibaca, created_at')
+      .order('created_at', { ascending: false })
+      .limit(20)
+      .then(({ data }) => {
+        setNotif((data ?? []).map(row => ({
+          id: row.id, judul: row.judul, pesan: row.pesan ?? '',
+          tipe: row.tipe ?? 'sistem', dibaca: row.is_dibaca,
+          waktu: formatWaktu(row.created_at),
+        })))
+      })
+  }, [])
 
   useEffect(() => {
     function handler(e) {
@@ -164,11 +188,15 @@ export default function AdminHeader({ searchValue = '', onSearchChange, searchPl
     return () => document.removeEventListener('mousedown', handler)
   }, [])
 
-  function markRead(id) {
+  async function markRead(id) {
+    await supabase.from('notifikasi').update({ is_dibaca: true }).eq('id', id)
     setNotif((n) => n.map((x) => (x.id === id ? { ...x, dibaca: true } : x)))
   }
 
-  function markAllRead() {
+  async function markAllRead() {
+    const ids = notif.filter(n => !n.dibaca).map(n => n.id)
+    if (ids.length === 0) return
+    await supabase.from('notifikasi').update({ is_dibaca: true }).in('id', ids)
     setNotif((n) => n.map((x) => ({ ...x, dibaca: true })))
   }
 

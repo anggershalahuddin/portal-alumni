@@ -1,11 +1,42 @@
+import { useState, useEffect } from 'react'
 import { motion } from 'framer-motion'
 import { ChevronRight } from 'lucide-react'
 import pimpinanImg from '@/assets/pimpinan.jpg'
-import { initialPengasuh } from '@/data/landingContent'
+import { supabase } from '@/lib/supabase'
 import { fadeLeft, fadeRight, fadeUp, viewport } from '@/lib/animations'
 
+function mapPimpinan(row) {
+  return {
+    id: row.id,
+    nama: [row.nama, row.gelar].filter(Boolean).join(', '),
+    jabatan: row.jabatan ?? '',
+    pesan: row.pesan ?? '',
+    foto: row.foto_url ?? null,
+    aktif: row.is_aktif,
+    judul: 'Menjaga Warisan Luhur di Era',
+    judulAksen: 'Disrupsi Digital',
+    deskripsi: null,
+  }
+}
+
 export default function Pimpinan() {
-  const p = initialPengasuh.find(x => x.aktif) ?? initialPengasuh[0]
+  const [p, setP] = useState(null)
+
+  useEffect(() => {
+    let cancelled = false
+    supabase
+      .from('pimpinan')
+      .select('id, nama, gelar, jabatan, pesan, foto_url, is_aktif, urutan')
+      .eq('is_aktif', true)
+      .order('urutan', { ascending: true })
+      .limit(1)
+      .then(({ data }) => {
+        if (!cancelled && data?.[0]) setP(mapPimpinan(data[0]))
+      })
+    return () => { cancelled = true }
+  }, [])
+
+  if (!p) return null
   const fotoSrc = p.foto || pimpinanImg
 
   return (

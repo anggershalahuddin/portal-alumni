@@ -1,12 +1,43 @@
-import { useRef } from 'react'
+import { useState, useEffect, useRef } from 'react'
 import { motion } from 'framer-motion'
 import { ChevronLeft, ChevronRight } from 'lucide-react'
-import { initialTestimonials } from '@/data/landingContent'
+import { supabase } from '@/lib/supabase'
 import { fadeUp, viewport } from '@/lib/animations'
+
+function mapTestimoni(row) {
+  const words = (row.nama ?? '').split(' ').filter(Boolean)
+  const initials = words.length >= 2
+    ? (words[0][0] + words[words.length - 1][0]).toUpperCase()
+    : (words[0]?.[0] ?? 'A').toUpperCase()
+  return {
+    id: row.id,
+    name: row.nama ?? '',
+    batch: row.angkatan ?? '',
+    role: row.jabatan ?? '',
+    quote: row.isi ?? '',
+    foto: row.foto_url ?? null,
+    initials,
+    color: '#1A5C38',
+    aktif: row.is_aktif,
+  }
+}
 
 export default function Testimonials() {
   const scrollRef = useRef(null)
-  const active = initialTestimonials.filter(t => t.aktif)
+  const [active, setActive] = useState([])
+
+  useEffect(() => {
+    let cancelled = false
+    supabase
+      .from('testimoni')
+      .select('id, nama, angkatan, jabatan, isi, foto_url, is_aktif, urutan')
+      .eq('is_aktif', true)
+      .order('urutan', { ascending: true })
+      .then(({ data }) => {
+        if (!cancelled) setActive((data ?? []).map(mapTestimoni))
+      })
+    return () => { cancelled = true }
+  }, [])
 
   function scroll(dir) {
     scrollRef.current?.scrollBy({ left: dir * 320, behavior: 'smooth' })

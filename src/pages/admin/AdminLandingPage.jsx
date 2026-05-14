@@ -1,12 +1,45 @@
-﻿import { useState } from 'react'
-import { Plus, Pencil, Trash2, X, Check, Eye, EyeOff, Quote, Users, Star, Target, GraduationCap } from 'lucide-react'
+﻿import { useState, useEffect, useCallback } from 'react'
+import { Plus, Pencil, Trash2, X, Check, Eye, EyeOff, Quote, Users, Star, Target, GraduationCap, Loader2 } from 'lucide-react'
 import { motion } from 'framer-motion'
 import AdminSidebar from '../../components/admin/AdminSidebar'
 import AdminHeader from '../../components/admin/AdminHeader'
 import ConfirmDialog from '../../components/admin/ConfirmDialog'
 import ImageUploadBox from '../../components/admin/ImageUploadBox'
-import { initialTestimonials, initialPengasuh, initialMilestones, initialTentangKami } from '../../data/landingContent'
+import { initialMilestones, initialTentangKami } from '../../data/landingContent'
 import { initialGuru } from '../../data/guru'
+import { supabase } from '@/lib/supabase'
+
+function mapTestimoni(row) {
+  const words = (row.nama ?? '').split(' ').filter(Boolean)
+  const initials = words.length >= 2
+    ? (words[0][0] + words[words.length - 1][0]).toUpperCase()
+    : (words[0]?.[0] ?? 'A').toUpperCase()
+  return {
+    id: row.id,
+    name: row.nama ?? '',
+    batch: row.angkatan ?? '',
+    role: row.jabatan ?? '',
+    quote: row.isi ?? '',
+    foto: row.foto_url ?? null,
+    initials,
+    color: '#1A5C38',
+    aktif: row.is_aktif,
+  }
+}
+
+function mapPimpinanAdmin(row) {
+  return {
+    id: row.id,
+    nama: row.nama ?? '',
+    jabatan: row.jabatan ?? '',
+    pesan: row.pesan ?? '',
+    foto: row.foto_url ?? null,
+    aktif: row.is_aktif,
+    judul: 'Menjaga Warisan Luhur di Era',
+    judulAksen: 'Disrupsi Digital',
+    deskripsi: null,
+  }
+}
 
 // ── Reusable helpers ─────────────────────────────────────────────────────────
 function SectionHeader({ title, subtitle }) {
@@ -295,11 +328,13 @@ export default function AdminLandingPage() {
   const [search, setSearch] = useState('')
 
   // Testimoni state
-  const [testimonials, setTestimonials] = useState(initialTestimonials)
+  const [testimonials, setTestimonials] = useState([])
+  const [loadingTestimoni, setLoadingTestimoni] = useState(true)
   const [testimoniModal, setTestimoniModal] = useState(null) // null | {} | item
 
   // Pengasuh (pesan pimpinan) state — single record
-  const [pengasuh, setPengasuh] = useState(initialPengasuh)
+  const [pengasuh, setPengasuh] = useState([])
+  const [loadingPengasuh, setLoadingPengasuh] = useState(true)
   const [pengasuhModal, setPengasuhModal] = useState(null)
 
   // Guru state — multiple records for PesantrenPage
@@ -314,6 +349,29 @@ export default function AdminLandingPage() {
   const [tentang, setTentang] = useState(initialTentangKami)
   const [editingMisi, setEditingMisi] = useState(false)
   const [misiDraft, setMisiDraft] = useState(initialTentangKami.misi.join('\n'))
+
+  const loadTestimonials = useCallback(async () => {
+    setLoadingTestimoni(true)
+    const { data } = await supabase
+      .from('testimoni')
+      .select('id, nama, angkatan, jabatan, isi, foto_url, is_aktif, urutan')
+      .order('urutan', { ascending: true })
+    setTestimonials((data ?? []).map(mapTestimoni))
+    setLoadingTestimoni(false)
+  }, [])
+
+  const loadPengasuh = useCallback(async () => {
+    setLoadingPengasuh(true)
+    const { data } = await supabase
+      .from('pimpinan')
+      .select('id, nama, jabatan, pesan, foto_url, is_aktif, urutan')
+      .order('urutan', { ascending: true })
+    setPengasuh((data ?? []).map(mapPimpinanAdmin))
+    setLoadingPengasuh(false)
+  }, [])
+
+  useEffect(() => { loadTestimonials() }, [loadTestimonials])
+  useEffect(() => { loadPengasuh() }, [loadPengasuh])
 
   // Confirm
   const [confirm, setConfirm] = useState({ open: false })
@@ -330,11 +388,21 @@ export default function AdminLandingPage() {
         : 'Apakah Anda yakin ingin menambahkan testimoni baru ini?',
       confirmLabel: 'Ya, Simpan',
       variant: 'success',
-      onConfirm: () => {
+      onConfirm: async () => {
+        const payload = {
+          nama: form.name,
+          angkatan: form.batch,
+          jabatan: form.role,
+          isi: form.quote,
+          foto_url: form.foto ?? null,
+          is_aktif: form.aktif,
+        }
         if (isEdit) {
-          setTestimonials(prev => prev.map(t => t.id === form.id ? form : t))
+          await supabase.from('testimoni').update(payload).eq('id', form.id)
+          setTestimonials(prev => prev.map(t => t.id === form.id ? { ...form } : t))
         } else {
-          setTestimonials(prev => [...prev, { ...form, id: Date.now() }])
+          const { data } = await supabase.from('testimoni').insert(payload).select().single()
+          if (data) setTestimonials(prev => [...prev, mapTestimoni(data)])
         }
         setTestimoniModal(null)
         closeConfirm()
@@ -343,11 +411,18 @@ export default function AdminLandingPage() {
   }
 
   function deleteTestimoni(id) {
-    askConfirm({ title: 'Hapus Testimoni', message: 'Apakah Anda yakin ingin menghapus testimoni ini?', confirmLabel: 'Ya, Hapus', variant: 'danger', onConfirm: () => { setTestimonials(prev => prev.filter(t => t.id !== id)); closeConfirm() } })
+    askConfirm({ title: 'Hapus Testimoni', message: 'Apakah Anda yakin ingin menghapus testimoni ini?', confirmLabel: 'Ya, Hapus', variant: 'danger', onConfirm: async () => {
+      await supabase.from('testimoni').delete().eq('id', id)
+      setTestimonials(prev => prev.filter(t => t.id !== id))
+      closeConfirm()
+    }})
   }
 
-  function toggleTestimoni(id) {
-    setTestimonials(prev => prev.map(t => t.id === id ? { ...t, aktif: !t.aktif } : t))
+  async function toggleTestimoni(id) {
+    const t = testimonials.find(x => x.id === id)
+    if (!t) return
+    await supabase.from('testimoni').update({ is_aktif: !t.aktif }).eq('id', id)
+    setTestimonials(prev => prev.map(x => x.id === id ? { ...x, aktif: !x.aktif } : x))
   }
 
   // Handlers — Pengasuh (single record, edit only)
@@ -357,8 +432,15 @@ export default function AdminLandingPage() {
       message: 'Apakah Anda yakin ingin menyimpan perubahan ini?',
       confirmLabel: 'Ya, Simpan',
       variant: 'success',
-      onConfirm: () => {
-        setPengasuh(prev => prev.map(p => p.id === form.id ? form : p))
+      onConfirm: async () => {
+        await supabase.from('pimpinan').update({
+          nama: form.nama,
+          jabatan: form.jabatan,
+          pesan: form.pesan,
+          foto_url: form.foto ?? null,
+          is_aktif: form.aktif,
+        }).eq('id', form.id)
+        setPengasuh(prev => prev.map(p => p.id === form.id ? { ...form } : p))
         setPengasuhModal(null)
         closeConfirm()
       },
@@ -489,8 +571,11 @@ export default function AdminLandingPage() {
                   <Plus className="w-4 h-4" /> Tambah Testimoni
                 </button>
               </div>
+              {loadingTestimoni && (
+                <div className="flex items-center justify-center py-12"><Loader2 className="w-5 h-5 animate-spin text-gray-400" /></div>
+              )}
               <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-4">
-                {testimonials.map(t => (
+                {!loadingTestimoni && testimonials.map(t => (
                   <div key={t.id} className={`bg-white rounded-2xl p-5 border border-gray-100 ${!t.aktif ? 'opacity-60' : ''}`}>
                     <div className="flex items-start gap-3 mb-3">
                       <div className="w-10 h-10 rounded-full flex-shrink-0 overflow-hidden">
@@ -528,6 +613,7 @@ export default function AdminLandingPage() {
 
           {/* ── Tab: Pesan Pimpinan ── */}
           {activeTab === 'pengasuh' && (() => {
+            if (loadingPengasuh) return <div className="flex items-center justify-center py-12"><Loader2 className="w-5 h-5 animate-spin text-gray-400" /></div>
             const p = pengasuh[0]
             if (!p) return null
             return (
