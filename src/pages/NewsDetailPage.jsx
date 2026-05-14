@@ -1,10 +1,38 @@
+import { useState, useEffect } from 'react'
 import { useParams, Link, useNavigate } from 'react-router-dom'
 import { motion } from 'framer-motion'
-import { Calendar, Clock, Eye, MessageCircle, ArrowLeft, ArrowUpRight, Lock, Tag } from 'lucide-react'
-import { getNewsBySlug, getRelatedNews, getCategoryStyle } from '@/data/news'
+import { Calendar, Clock, ArrowLeft, ArrowUpRight, Lock, Tag, Loader2 } from 'lucide-react'
+import { getCategoryStyle, getCategoryLabel } from '@/data/news'
 import { fadeUp, viewport } from '@/lib/animations'
 import Navbar from '@/components/landing/Navbar'
 import Footer from '@/components/landing/Footer'
+import { supabase } from '@/lib/supabase'
+
+function formatTanggal(iso) {
+  if (!iso) return '—'
+  return new Date(iso).toLocaleDateString('id-ID', { day: 'numeric', month: 'short', year: 'numeric' })
+}
+
+function getInitials(name) {
+  if (!name) return 'A'
+  return name.trim().split(/\s+/).slice(0, 2).map((w) => w[0].toUpperCase()).join('')
+}
+
+function parseKonten(text) {
+  if (!text) return []
+  try {
+    const parsed = JSON.parse(text)
+    if (Array.isArray(parsed)) return parsed
+  } catch {}
+  return text.split(/\n\n+/).filter(Boolean).map((t) => ({ type: 'paragraph', text: t.trim() }))
+}
+
+function estimateReadTime(text) {
+  if (!text) return '1 menit'
+  const words = text.trim().split(/\s+/).length
+  const minutes = Math.max(1, Math.round(words / 200))
+  return `${minutes} menit`
+}
 
 function ShareButton({ label, color, icon }) {
   return (
@@ -20,9 +48,7 @@ function ShareButton({ label, color, icon }) {
 
 function ContentBlock({ block }) {
   if (block.type === 'paragraph') {
-    return (
-      <p className="text-gray-700 leading-relaxed text-base mb-5">{block.text}</p>
-    )
+    return <p className="text-gray-700 leading-relaxed text-base mb-5">{block.text}</p>
   }
   if (block.type === 'quote') {
     return (
@@ -52,8 +78,122 @@ function ContentBlock({ block }) {
 export default function NewsDetailPage() {
   const { slug } = useParams()
   const navigate = useNavigate()
-  const article = getNewsBySlug(slug)
-  const related = getRelatedNews(slug, 3)
+
+  const [article, setArticle] = useState(null)
+  const [related, setRelated] = useState([])
+  const [loading, setLoading] = useState(true)
+
+  useEffect(() => {
+    let cancelled = false
+
+    async function fetchArticle() {
+      setLoading(true)
+      setArticle(null)
+      setRelated([])
+
+      const { data: row } = await supabase
+        .from('berita')
+        .select('*, profiles(nama_lengkap)')
+        .eq('slug', slug)
+        .eq('status', 'published')
+        .maybeSingle()
+
+      if (cancelled) return
+
+      if (!row) {
+        setLoading(false)
+        return
+      }
+
+      const contentBlocks = parseKonten(row.konten)
+      const plainText = contentBlocks.map((b) => b.text ?? '').join(' ')
+      const authorName = row.profiles?.nama_lengkap ?? 'Redaksi IKA'
+
+      const mapped = {
+        id: row.id,
+        slug: row.slug,
+        title: row.judul,
+        excerpt: row.ringkasan ?? '',
+        image: row.foto_url || 'https://images.unsplash.com/photo-1523050854058-8df90110c9f1?auto=format&fit=crop&w=1400&q=80',
+        category: row.kategori ?? '',
+        categoryLabel: getCategoryLabel(row.kategori ?? ''),
+        tags: row.tag ?? [],
+        date: formatTanggal(row.published_at),
+        author: authorName,
+        authorInitials: getInitials(authorName),
+        readTime: estimateReadTime(plainText),
+        content: contentBlocks,
+      }
+
+      setArticle(mapped)
+
+      const { data: relatedRows } = await supabase
+        .from('berita')
+        .select('slug, judul, ringkasan, foto_url, kategori, published_at')
+        .eq('status', 'published')
+        .eq('kategori', row.kategori)
+        .neq('slug', slug)
+        .order('published_at', { ascending: false })
+        .limit(3)
+
+      if (cancelled) return
+
+      let relatedList = (relatedRows ?? []).map((r) => ({
+        slug: r.slug,
+        title: r.judul,
+        image: r.foto_url || 'https://images.unsplash.com/photo-1523050854058-8df90110c9f1?auto=format&fit=crop&w=800&q=80',
+        category: r.kategori ?? '',
+        categoryLabel: getCategoryLabel(r.kategori ?? ''),
+        date: formatTanggal(r.published_at),
+      }))
+
+      if (relatedList.length < 3) {
+        const { data: extras } = await supabase
+          .from('berita')
+          .select('slug, judul, ringkasan, foto_url, kategori, published_at')
+          .eq('status', 'published')
+          .neq('slug', slug)
+          .neq('kategori', row.kategori)
+          .order('published_at', { ascending: false })
+          .limit(3 - relatedList.length)
+
+        if (!cancelled && extras) {
+          relatedList = relatedList.concat(
+            extras.map((r) => ({
+              slug: r.slug,
+              title: r.judul,
+              image: r.foto_url || 'https://images.unsplash.com/photo-1523050854058-8df90110c9f1?auto=format&fit=crop&w=800&q=80',
+              category: r.kategori ?? '',
+              categoryLabel: getCategoryLabel(r.kategori ?? ''),
+              date: formatTanggal(r.published_at),
+            }))
+          )
+        }
+      }
+
+      if (!cancelled) setRelated(relatedList)
+      setLoading(false)
+    }
+
+    fetchArticle()
+    return () => { cancelled = true }
+  }, [slug])
+
+  function copyLink() {
+    navigator.clipboard.writeText(window.location.href)
+  }
+
+  if (loading) {
+    return (
+      <div className="min-h-screen bg-[#F8FAF9]">
+        <Navbar />
+        <div className="flex items-center justify-center" style={{ minHeight: 'calc(100vh - 64px)' }}>
+          <Loader2 className="w-10 h-10 animate-spin text-[#1A5C38]" />
+        </div>
+        <Footer />
+      </div>
+    )
+  }
 
   if (!article) {
     return (
@@ -68,10 +208,6 @@ export default function NewsDetailPage() {
     )
   }
 
-  function copyLink() {
-    navigator.clipboard.writeText(window.location.href)
-  }
-
   return (
     <div className="min-h-screen bg-[#F8FAF9]">
       <Navbar />
@@ -80,14 +216,13 @@ export default function NewsDetailPage() {
       <div className="pt-16 relative">
         <div className="h-[420px] sm:h-[520px] relative overflow-hidden">
           <img
-            src={article.imageWide}
+            src={article.image}
             alt={article.title}
             className="w-full h-full object-cover"
           />
           <div className="absolute inset-0 bg-gradient-to-t from-[#061410]/95 via-[#0A2415]/60 to-transparent" />
 
           <div className="absolute bottom-0 left-0 right-0 px-4 sm:px-8 pb-10 max-w-4xl mx-auto w-full">
-            {/* Breadcrumb */}
             <nav className="flex items-center gap-2 text-xs text-white/50 mb-4">
               <Link to="/" className="hover:text-white/80 transition-colors">Beranda</Link>
               <span>/</span>
@@ -119,12 +254,6 @@ export default function NewsDetailPage() {
               <span className="flex items-center gap-1">
                 <Clock className="w-3.5 h-3.5" /> {article.readTime} baca
               </span>
-              <span className="flex items-center gap-1">
-                <Eye className="w-3.5 h-3.5" /> {article.views.toLocaleString('id-ID')} dilihat
-              </span>
-              <span className="flex items-center gap-1">
-                <MessageCircle className="w-3.5 h-3.5" /> {article.comments} komentar
-              </span>
             </div>
           </div>
         </div>
@@ -139,7 +268,6 @@ export default function NewsDetailPage() {
             <p className="text-gray-400 text-xs font-medium mb-1 writing-mode-vertical" style={{ writingMode: 'vertical-rl', transform: 'rotate(180deg)', letterSpacing: '0.1em' }}>
               BAGIKAN
             </p>
-            {/* Facebook */}
             <ShareButton
               label="Bagikan ke Facebook"
               color="#1877F2"
@@ -149,7 +277,6 @@ export default function NewsDetailPage() {
                 </svg>
               }
             />
-            {/* Twitter/X */}
             <ShareButton
               label="Bagikan ke Twitter"
               color="#000000"
@@ -159,7 +286,6 @@ export default function NewsDetailPage() {
                 </svg>
               }
             />
-            {/* WhatsApp */}
             <ShareButton
               label="Bagikan ke WhatsApp"
               color="#25D366"
@@ -169,7 +295,6 @@ export default function NewsDetailPage() {
                 </svg>
               }
             />
-            {/* Copy link */}
             <button
               onClick={copyLink}
               className="w-10 h-10 rounded-xl flex items-center justify-center text-gray-600 bg-gray-100 hover:bg-gray-200 transition-colors"
@@ -214,17 +339,19 @@ export default function NewsDetailPage() {
             </div>
 
             {/* Tags */}
-            <div className="flex flex-wrap items-center gap-2 mt-8 pt-6 border-t border-gray-100">
-              <Tag className="w-4 h-4 text-gray-400" />
-              {article.tags.map((tag) => (
-                <span
-                  key={tag}
-                  className="px-3 py-1 text-xs bg-[#F8FAF9] text-gray-600 rounded-full border border-gray-100"
-                >
-                  {tag}
-                </span>
-              ))}
-            </div>
+            {article.tags.length > 0 && (
+              <div className="flex flex-wrap items-center gap-2 mt-8 pt-6 border-t border-gray-100">
+                <Tag className="w-4 h-4 text-gray-400" />
+                {article.tags.map((tag) => (
+                  <span
+                    key={tag}
+                    className="px-3 py-1 text-xs bg-[#F8FAF9] text-gray-600 rounded-full border border-gray-100"
+                  >
+                    {tag}
+                  </span>
+                ))}
+              </div>
+            )}
 
             {/* Back */}
             <div className="mt-8">
@@ -239,10 +366,8 @@ export default function NewsDetailPage() {
 
             {/* Comments section */}
             <div className="mt-10 bg-white rounded-2xl border border-gray-100 overflow-hidden">
-              <div className="px-6 py-4 border-b border-gray-100 flex items-center justify-between">
-                <h3 className="font-bold text-[#0A2415] text-base">
-                  Komentar ({article.comments})
-                </h3>
+              <div className="px-6 py-4 border-b border-gray-100">
+                <h3 className="font-bold text-[#0A2415] text-base">Komentar</h3>
               </div>
               <div className="px-6 py-10 flex flex-col items-center text-center">
                 <div className="w-12 h-12 rounded-full bg-[#F8FAF9] border border-gray-100 flex items-center justify-center mb-3">
@@ -311,10 +436,6 @@ export default function NewsDetailPage() {
                   <span className="text-gray-400">Waktu baca</span>
                   <span className="text-[#0A2415] font-medium">{article.readTime}</span>
                 </div>
-                <div className="flex justify-between items-center">
-                  <span className="text-gray-400">Dilihat</span>
-                  <span className="text-[#0A2415] font-medium">{article.views.toLocaleString('id-ID')}</span>
-                </div>
               </div>
             </div>
           </aside>
@@ -340,7 +461,7 @@ export default function NewsDetailPage() {
                   to={`/berita/${item.slug}`}
                   className="group bg-white border border-gray-100 rounded-xl overflow-hidden hover:shadow-xl hover:-translate-y-1 transition-all duration-300"
                 >
-                  <div className="h-40 relative overflow-hidden">
+                  <div className="h-40 relative overflow-hidden bg-gray-100">
                     <img
                       src={item.image}
                       alt={item.title}

@@ -3,11 +3,13 @@ import { motion } from 'framer-motion'
 import { Users, Newspaper, CalendarDays, TrendingUp, Clock, Image, Briefcase, ArrowUpRight } from 'lucide-react'
 import AdminSidebar from '../../components/admin/AdminSidebar'
 import AdminHeader from '../../components/admin/AdminHeader'
-import { news } from '../../data/news'
-import { agendaData } from '../../data/agenda'
-import { TOTAL_ALUMNI, TOTAL_VERIFIED, getInitials } from '../../data/alumni'
-import { initialGaleri } from '../../data/galeri'
-import { initialLowongan } from '../../data/lowongan'
+import { getInitials } from '../../data/alumni'
+import { supabase } from '@/lib/supabase'
+
+function formatTanggal(iso) {
+  if (!iso) return '—'
+  return new Date(iso).toLocaleDateString('id-ID', { day: 'numeric', month: 'short' })
+}
 
 const MONTHLY = [
   { label: 'Jan', value: 45 }, { label: 'Feb', value: 52 }, { label: 'Mar', value: 48 },
@@ -16,24 +18,13 @@ const MONTHLY = [
   { label: 'Okt', value: 91 }, { label: 'Nov', value: 67 }, { label: 'Des', value: 58 },
 ]
 
-const recentVerifikasi = [
-  { id: 1, name: 'Ahmad Fauzi',     angkatan: 2015, status: 'menunggu',  tanggal: '12 Okt' },
-  { id: 2, name: 'Siti Maryam',     angkatan: 2018, status: 'menunggu',  tanggal: '11 Okt' },
-  { id: 3, name: 'Budi Santoso',    angkatan: 2012, status: 'disetujui', tanggal: '10 Okt' },
-  { id: 4, name: 'Nurul Hidayah',   angkatan: 2020, status: 'menunggu',  tanggal: '10 Okt' },
-  { id: 5, name: 'Fatimah Az-Zahra',angkatan: 2019, status: 'ditolak',   tanggal: '08 Okt' },
-]
-
-const pendingVerifikasi = TOTAL_ALUMNI - TOTAL_VERIFIED
-const recentBerita = news.slice(0, 3).map(n => ({ judul: n.title, tanggal: n.date }))
-
-const statCards = [
-  { label: 'Total Alumni',       value: TOTAL_ALUMNI,                                color: '#1A5C38', light: '#F0FDF4', icon: Users,        suffix: '' },
-  { label: 'Pending Verifikasi', value: pendingVerifikasi,                            color: '#D97706', light: '#FFFBEB', icon: Clock,        suffix: '' },
-  { label: 'Total Berita',       value: news.length,                                  color: '#7C3AED', light: '#FAF5FF', icon: Newspaper,    suffix: '' },
-  { label: 'Total Agenda',       value: agendaData.length,                            color: '#0E7490', light: '#ECFEFF', icon: CalendarDays, suffix: '' },
-  { label: 'Foto Galeri',        value: initialGaleri.filter(g => g.aktif).length,    color: '#DB2777', light: '#FDF2F8', icon: Image,        suffix: '' },
-  { label: 'Lowongan Aktif',     value: initialLowongan.filter(l => l.aktif).length,  color: '#0369A1', light: '#F0F9FF', icon: Briefcase,    suffix: '' },
+const STAT_META = [
+  { label: 'Total Alumni',       key: 'alumni',   color: '#1A5C38', light: '#F0FDF4', icon: Users        },
+  { label: 'Pending Verifikasi', key: 'pending',  color: '#D97706', light: '#FFFBEB', icon: Clock        },
+  { label: 'Total Berita',       key: 'berita',   color: '#7C3AED', light: '#FAF5FF', icon: Newspaper    },
+  { label: 'Total Agenda',       key: 'agenda',   color: '#0E7490', light: '#ECFEFF', icon: CalendarDays },
+  { label: 'Foto Galeri',        key: 'galeri',   color: '#DB2777', light: '#FDF2F8', icon: Image        },
+  { label: 'Lowongan Aktif',     key: 'lowongan', color: '#0369A1', light: '#F0F9FF', icon: Briefcase    },
 ]
 
 // ── Animated counter ────────────────────────────────────────────────────────
@@ -140,6 +131,50 @@ const fadeUp = {
 // ── Page ─────────────────────────────────────────────────────────────────────
 export default function AdminDashboardPage() {
   const [search, setSearch] = useState('')
+  const [stats, setStats] = useState({ alumni: 0, pending: 0, berita: 0, agenda: 0, galeri: 0, lowongan: 0 })
+  const [recentBerita, setRecentBerita] = useState([])
+  const [recentVerifikasi, setRecentVerifikasi] = useState([])
+
+  useEffect(() => {
+    async function loadDashboard() {
+      const [
+        { count: alumniCount },
+        { count: pendingCount },
+        { count: beritaCount },
+        { count: agendaCount },
+        { count: galeriCount },
+        { count: lowonganCount },
+        { data: latestBerita },
+        { data: latestVerifikasi },
+      ] = await Promise.all([
+        supabase.from('profiles').select('id', { count: 'exact', head: true }).eq('role', 'alumni'),
+        supabase.from('profiles').select('id', { count: 'exact', head: true }).eq('status', 'menunggu'),
+        supabase.from('berita').select('id', { count: 'exact', head: true }),
+        supabase.from('agenda').select('id', { count: 'exact', head: true }),
+        supabase.from('galeri').select('id', { count: 'exact', head: true }),
+        supabase.from('lowongan').select('id', { count: 'exact', head: true }).eq('is_aktif', true),
+        supabase.from('berita').select('judul, published_at').eq('status', 'published').order('published_at', { ascending: false }).limit(3),
+        supabase.from('profiles').select('id, nama_lengkap, angkatan, status, updated_at').in('status', ['menunggu', 'disetujui', 'ditolak']).order('updated_at', { ascending: false }).limit(5),
+      ])
+      setStats({
+        alumni: alumniCount ?? 0,
+        pending: pendingCount ?? 0,
+        berita: beritaCount ?? 0,
+        agenda: agendaCount ?? 0,
+        galeri: galeriCount ?? 0,
+        lowongan: lowonganCount ?? 0,
+      })
+      setRecentBerita((latestBerita ?? []).map(b => ({ judul: b.judul, tanggal: formatTanggal(b.published_at) })))
+      setRecentVerifikasi((latestVerifikasi ?? []).map(v => ({
+        id: v.id,
+        name: v.nama_lengkap ?? '—',
+        angkatan: v.angkatan ?? '—',
+        status: v.status,
+        tanggal: formatTanggal(v.updated_at),
+      })))
+    }
+    loadDashboard()
+  }, [])
 
   return (
     <div className="flex min-h-screen" style={{ backgroundColor: '#F1F5F9' }}>
@@ -168,11 +203,11 @@ export default function AdminDashboardPage() {
 
           {/* Stat cards */}
           <div className="grid grid-cols-2 lg:grid-cols-3 xl:grid-cols-6 gap-4">
-            {statCards.map(({ label, value, icon, color, light }, i) => (
+            {STAT_META.map(({ label, key, icon, color, light }, i) => (
               <StatCard
                 key={label}
                 label={label}
-                value={value}
+                value={stats[key]}
                 icon={icon}
                 color={color}
                 light={light}

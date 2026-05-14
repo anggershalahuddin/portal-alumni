@@ -1,11 +1,12 @@
-﻿import { useState, useEffect } from 'react'
-import { Plus, Pencil, Trash2, X, Download, MapPin, Calendar, Users, Tag } from 'lucide-react'
+﻿import { useState, useEffect, useCallback } from 'react'
+import { Plus, Pencil, Trash2, X, Download, MapPin, Calendar, Users, Tag, Loader2, AlertCircle } from 'lucide-react'
 import { motion } from 'framer-motion'
 import AdminSidebar from '../../components/admin/AdminSidebar'
 import AdminHeader from '../../components/admin/AdminHeader'
 import ConfirmDialog from '../../components/admin/ConfirmDialog'
 import ImageUploadBox from '../../components/admin/ImageUploadBox'
 import { PaginationBar, PerPageSelector } from '../../components/PaginationBar'
+import { supabase } from '@/lib/supabase'
 
 const STATUS_AGENDA = ['Akan Datang', 'Berlangsung', 'Selesai', 'Dibatalkan']
 
@@ -28,6 +29,55 @@ const initialTags = [
   { id: 'sosial',   label: 'Bakti Sosial',          bg: '#F97316', text: '#fff' },
   { id: 'olahraga', label: 'Olahraga & Seni',       bg: '#A855F7', text: '#fff' },
 ]
+
+function deriveStatus(row) {
+  if (!row.is_aktif) return 'Dibatalkan'
+  const now = new Date()
+  const mulai = new Date(row.tanggal_mulai)
+  const selesai = row.tanggal_selesai ? new Date(row.tanggal_selesai) : null
+  if (mulai > now) return 'Akan Datang'
+  if (selesai && selesai < now) return 'Selesai'
+  if (!selesai && mulai < now) return 'Selesai'
+  return 'Berlangsung'
+}
+
+function formatTanggal(iso) {
+  if (!iso) return '—'
+  return new Date(iso).toLocaleDateString('id-ID', { day: '2-digit', month: 'short', year: 'numeric' })
+}
+
+function formatWaktu(iso) {
+  if (!iso) return ''
+  return new Date(iso).toLocaleTimeString('id-ID', { hour: '2-digit', minute: '2-digit' }) + ' WIB'
+}
+
+function mapAgendaRow(row) {
+  return {
+    id: row.id,
+    nama: row.judul,
+    tanggal: formatTanggal(row.tanggal_mulai),
+    waktu: formatWaktu(row.tanggal_mulai),
+    lokasi: row.lokasi ?? '—',
+    lokasiDetail: row.lokasi ?? '',
+    mapsUrl: '',
+    kapasitas: 0,
+    terdaftar: 0,
+    status: deriveStatus(row),
+    kategori: row.kategori ?? '',
+    htm: row.link_registrasi ? 'Lihat tautan' : 'Gratis',
+    statusPendaftaran: row.link_registrasi ? 'Lihat tautan pendaftaran' : 'Terbuka untuk Umum Alumni',
+    hasSertifikat: false,
+    pembicara: [],
+    deskripsi: row.deskripsi ?? '',
+    publishedBy: 'IKA Daarul Mughni',
+    thumbnail: row.foto_url ?? '',
+    imageHero: row.foto_url ?? '',
+    pamflet: '',
+    link_registrasi: row.link_registrasi ?? '',
+    is_aktif: row.is_aktif ?? true,
+    tanggal_mulai_raw: row.tanggal_mulai,
+  }
+}
 
 const initialAgenda = [
   {
@@ -527,17 +577,38 @@ function AgendaModal({ agenda, tags, onClose, onSave }) {
 
 // ── Main Page ──────────────────────────────────────────────────────────────────
 export default function AdminAgendaPage() {
-  const [agenda, setAgenda] = useState(initialAgenda)
+  const [agenda, setAgenda] = useState([])
+  const [loading, setLoading] = useState(true)
+  const [error, setError] = useState(null)
   const [tags, setTags] = useState(initialTags)
   const [search, setSearch] = useState('')
   const [filterStatus, setFilterStatus] = useState('')
-  const [modal, setModal] = useState(null)       // null | 'tambah' | agendaObj
+  const [modal, setModal] = useState(null)
   const [tagModal, setTagModal] = useState(false)
   const [page, setPage] = useState(1)
   const [perPage, setPerPage] = useState(6)
   const [confirm, setConfirm] = useState({ open: false })
   function askConfirm(opts) { setConfirm({ open: true, ...opts }) }
   function closeConfirm() { setConfirm({ open: false }) }
+
+  const loadData = useCallback(async () => {
+    setLoading(true)
+    setError(null)
+    try {
+      const { data, error: err } = await supabase
+        .from('agenda')
+        .select('id, judul, deskripsi, lokasi, tanggal_mulai, tanggal_selesai, kategori, foto_url, link_registrasi, is_aktif')
+        .order('tanggal_mulai', { ascending: false })
+      if (err) throw err
+      setAgenda((data ?? []).map(mapAgendaRow))
+    } catch (e) {
+      setError(e.message ?? 'Gagal memuat data agenda')
+    } finally {
+      setLoading(false)
+    }
+  }, [])
+
+  useEffect(() => { loadData() }, [loadData])
 
   const filtered = agenda.filter((a) => {
     const q = search.toLowerCase()
@@ -560,24 +631,30 @@ export default function AdminAgendaPage() {
         : 'Apakah Anda yakin ingin menambahkan agenda baru ini?',
       confirmLabel: 'Ya, Simpan',
       variant: 'success',
-      onConfirm: () => {
+      onConfirm: async () => {
+        const tanggalMulai = form.tanggal
+          ? new Date(form.tanggal + (form.waktu ? `T${form.waktu.replace('.', ':').slice(0, 5)}` : 'T00:00')).toISOString()
+          : new Date().toISOString()
+        const payload = {
+          judul: form.nama,
+          deskripsi: form.deskripsi || null,
+          lokasi: form.lokasi || null,
+          tanggal_mulai: tanggalMulai,
+          kategori: form.kategori || null,
+          foto_url: form.thumbnail || null,
+          link_registrasi: form.mapsUrl || null,
+          is_aktif: form.status !== 'Dibatalkan',
+        }
         if (!isEdit) {
-          setAgenda((prev) => [{
-            id: Date.now(),
-            ...form,
-            kapasitas: Number(form.kapasitas) || 0,
-            terdaftar: 0,
-            tanggal: form.tanggal || 'TBD',
-          }, ...prev])
+          const { error: err } = await supabase.from('agenda').insert(payload)
+          if (err) { alert('Gagal menyimpan: ' + err.message); closeConfirm(); return }
         } else {
-          setAgenda((prev) => prev.map((a) =>
-            a.id === modal.id
-              ? { ...a, ...form, kapasitas: Number(form.kapasitas) || a.kapasitas }
-              : a
-          ))
+          const { error: err } = await supabase.from('agenda').update(payload).eq('id', modal.id)
+          if (err) { alert('Gagal menyimpan: ' + err.message); closeConfirm(); return }
         }
         setModal(null)
         closeConfirm()
+        loadData()
       },
     })
   }
@@ -588,7 +665,12 @@ export default function AdminAgendaPage() {
       message: 'Apakah Anda yakin ingin menghapus agenda ini? Tindakan ini tidak dapat dibatalkan.',
       confirmLabel: 'Ya, Hapus',
       variant: 'danger',
-      onConfirm: () => { setAgenda((prev) => prev.filter((a) => a.id !== id)); closeConfirm() },
+      onConfirm: async () => {
+        const { error: err } = await supabase.from('agenda').delete().eq('id', id)
+        if (err) { alert('Gagal menghapus: ' + err.message) }
+        closeConfirm()
+        loadData()
+      },
     })
   }
 
@@ -661,6 +743,21 @@ export default function AdminAgendaPage() {
             </div>
           </div>
 
+          {/* Error banner */}
+          {error && (
+            <div className="flex items-center gap-3 bg-red-50 border border-red-200 text-red-700 rounded-xl px-4 py-3 text-sm">
+              <AlertCircle className="w-4 h-4 flex-shrink-0" />
+              <span>{error}</span>
+              <button onClick={loadData} className="ml-auto font-bold hover:underline">Coba lagi</button>
+            </div>
+          )}
+
+          {loading ? (
+            <div className="flex justify-center items-center py-16">
+              <Loader2 className="w-7 h-7 animate-spin text-[#1A5C38]" />
+            </div>
+          ) : (
+          <>
           {/* Cards */}
           <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-4">
             {paged.map((a) => {
@@ -719,7 +816,9 @@ export default function AdminAgendaPage() {
 
           {filtered.length === 0 && (
             <div className="py-12 text-center bg-white rounded-2xl border border-gray-100">
-              <p className="text-sm text-gray-400">Tidak ada agenda yang ditemukan.</p>
+              <p className="text-sm text-gray-400">
+                {agenda.length === 0 ? 'Belum ada agenda tersedia.' : 'Tidak ada agenda yang ditemukan.'}
+              </p>
             </div>
           )}
 
@@ -728,6 +827,8 @@ export default function AdminAgendaPage() {
             <div className="flex items-center justify-center pt-2">
               <PaginationBar page={page} totalPages={totalPages} onPage={setPage} />
             </div>
+          )}
+          </>
           )}
         </motion.div>
 

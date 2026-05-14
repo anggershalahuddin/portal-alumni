@@ -1,16 +1,64 @@
-import { useState, useMemo, useEffect } from 'react'
+import { useState, useMemo, useEffect, useCallback } from 'react'
 import { Link } from 'react-router-dom'
 import { motion } from 'framer-motion'
 import {
   Calendar, Clock, MapPin, Users, ChevronLeft, ChevronRight,
-  X, Info, ExternalLink, BadgeCheck, ZoomIn, Search,
+  X, Info, ExternalLink, BadgeCheck, ZoomIn, Search, Loader2,
 } from 'lucide-react'
 import Navbar from '@/components/landing/Navbar'
 import Footer from '@/components/landing/Footer'
-import { agendaData, agendaKategori, agendaLokasi, kategoriStyle } from '@/data/agenda'
+import { agendaKategori, agendaLokasi, kategoriStyle } from '@/data/agenda'
 import { getAvatarColor, getInitials } from '@/data/alumni'
 import { PaginationBar, PerPageSelector } from '@/components/PaginationBar'
 import { fadeUp, stagger } from '@/lib/animations'
+import { supabase } from '@/lib/supabase'
+
+const FALLBACK_IMAGE = 'https://images.unsplash.com/photo-1540575467063-178a50c2df87?auto=format&fit=crop&w=600&q=80'
+
+function inferLokasiKategori(lokasi) {
+  if (!lokasi) return 'luar'
+  const l = lokasi.toLowerCase()
+  if (l.includes('zoom') || l.includes('webinar') || l.includes('online') || l.includes('virtual')) return 'online'
+  if (l.includes('pondok') || l.includes('pesantren') || l.includes('daarul') || l.includes('aula') || l.includes('masjid') || l.includes('kampus') || l.includes('lapangan')) return 'pondok'
+  return 'luar'
+}
+
+function mapAgenda(row) {
+  const tgl = new Date(row.tanggal_mulai)
+  const dayNames = ['Minggu','Senin','Selasa','Rabu','Kamis','Jumat','Sabtu']
+  const monthShort = ['Jan','Feb','Mar','Apr','Mei','Jun','Jul','Agu','Sep','Okt','Nov','Des']
+  const iso = tgl.toISOString().slice(0, 10)
+  const tanggalLabel = `${dayNames[tgl.getDay()]}, ${tgl.getDate()} ${monthShort[tgl.getMonth()]} ${tgl.getFullYear()}`
+  const waktu = tgl.toLocaleTimeString('id-ID', { hour: '2-digit', minute: '2-digit' }) + ' WIB'
+  const kat = row.kategori ?? ''
+  const katObj = agendaKategori.find(k => k.value === kat)
+  return {
+    id: row.id,
+    title: row.judul,
+    kategori: kat,
+    kategoriLabel: katObj?.label?.split(' & ')[0] ?? kat,
+    kategoriLabelPanjang: katObj?.label ?? kat,
+    tanggalISO: iso,
+    tanggalLabel,
+    waktu,
+    lokasiSingkat: row.lokasi ?? '—',
+    lokasiDetail: row.lokasi ?? '',
+    lokasiKategori: inferLokasiKategori(row.lokasi),
+    mapsUrl: '',
+    image: row.foto_url || FALLBACK_IMAGE,
+    imageHero: row.foto_url || FALLBACK_IMAGE.replace('w=600', 'w=1200'),
+    excerpt: row.deskripsi ?? '',
+    deskripsi: (row.deskripsi ?? '').split('\n\n').filter(Boolean).length
+      ? (row.deskripsi ?? '').split('\n\n').filter(Boolean)
+      : [row.deskripsi ?? ''],
+    status: row.link_registrasi ? 'Terbuka untuk Umum Alumni' : 'Terbuka untuk Umum',
+    htm: row.link_registrasi ? 'Lihat Tautan' : 'Gratis',
+    hasSertifikat: false,
+    pembicara: [],
+    pamflet: null,
+    publishedBy: 'IKA Daarul Mughni',
+  }
+}
 
 const MONTH_NAMES = [
   'Januari', 'Februari', 'Maret', 'April', 'Mei', 'Juni',
@@ -398,6 +446,8 @@ function EventModal({ event, onClose }) {
 }
 
 export default function AgendaPage() {
+  const [agendaList, setAgendaList] = useState([])
+  const [loadingAgenda, setLoadingAgenda] = useState(true)
   const [selectedDate, setSelectedDate] = useState(null)
   const [filterKategori, setFilterKategori] = useState('semua')
   const [filterLokasi, setFilterLokasi] = useState('semua')
@@ -406,10 +456,25 @@ export default function AgendaPage() {
   const [perPage, setPerPage] = useState(4)
   const [openEvent, setOpenEvent] = useState(null)
 
-  const eventDates = agendaData.map(e => e.tanggalISO)
+  const loadAgenda = useCallback(async () => {
+    setLoadingAgenda(true)
+    try {
+      const { data } = await supabase
+        .from('agenda')
+        .select('id, judul, deskripsi, lokasi, tanggal_mulai, kategori, foto_url, link_registrasi')
+        .eq('is_aktif', true)
+        .order('tanggal_mulai', { ascending: true })
+      setAgendaList((data ?? []).map(mapAgenda))
+    } catch {}
+    finally { setLoadingAgenda(false) }
+  }, [])
+
+  useEffect(() => { loadAgenda() }, [loadAgenda])
+
+  const eventDates = agendaList.map(e => e.tanggalISO)
 
   const filtered = useMemo(() => {
-    let result = agendaData
+    let result = agendaList
 
     if (selectedDate) {
       result = result.filter(e => isSameDay(selectedDate, e.tanggalISO))
@@ -429,7 +494,7 @@ export default function AgendaPage() {
     }
 
     return result
-  }, [selectedDate, filterKategori, filterLokasi, search])
+  }, [agendaList, selectedDate, filterKategori, filterLokasi, search])
 
   const totalPages = Math.ceil(filtered.length / perPage)
   const paged = filtered.slice((page - 1) * perPage, page * perPage)
@@ -595,7 +660,11 @@ export default function AgendaPage() {
               )}
 
               {/* Agenda list */}
-              {paged.length === 0 ? (
+              {loadingAgenda ? (
+                <div className="flex justify-center items-center py-20">
+                  <Loader2 className="w-8 h-8 animate-spin text-[#1A5C38]" />
+                </div>
+              ) : paged.length === 0 ? (
                 <div className="text-center py-20 text-gray-400">
                   <Calendar className="w-12 h-12 mx-auto mb-3 opacity-25" />
                   <p className="text-base font-medium text-gray-500 mb-1">Tidak ada acara ditemukan</p>

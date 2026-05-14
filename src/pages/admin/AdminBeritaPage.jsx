@@ -1,12 +1,36 @@
-﻿import { useState, useEffect } from 'react'
-import { Plus, Pencil, Trash2, X, Download, Tag } from 'lucide-react'
+﻿import { useState, useEffect, useCallback } from 'react'
+import { Plus, Pencil, Trash2, X, Download, Tag, Loader2, AlertCircle } from 'lucide-react'
 import { motion } from 'framer-motion'
 import AdminSidebar from '../../components/admin/AdminSidebar'
 import AdminHeader from '../../components/admin/AdminHeader'
 import ConfirmDialog from '../../components/admin/ConfirmDialog'
 import ImageUploadBox from '../../components/admin/ImageUploadBox'
 import { PaginationBar, PerPageSelector } from '../../components/PaginationBar'
-import { categories as initialKategoriData, news } from '../../data/news'
+import { categories as initialKategoriData } from '../../data/news'
+import { supabase } from '@/lib/supabase'
+import { useAuth } from '@/context/AuthContext'
+
+const STATUS_DB_TO_UI = { published: 'Terbit', draft: 'Menunggu Verifikasi Admin', archived: 'Diarsipkan' }
+const STATUS_UI_TO_DB = { 'Terbit': 'published', 'Menunggu Verifikasi Admin': 'draft', 'Diarsipkan': 'archived' }
+
+function generateSlug(judul) {
+  return judul.toLowerCase()
+    .normalize('NFD').replace(/[̀-ͯ]/g, '')
+    .replace(/\s+/g, '-')
+    .replace(/[^a-z0-9-]/g, '')
+    .replace(/-+/g, '-').replace(/^-|-$/g, '')
+    + '-' + Date.now().toString(36)
+}
+
+function formatTanggal(iso) {
+  if (!iso) return '—'
+  return new Date(iso).toLocaleDateString('id-ID', { day: '2-digit', month: 'short', year: 'numeric' })
+}
+
+function getInitials(name) {
+  if (!name) return 'A'
+  return name.trim().split(/\s+/).slice(0, 2).map((w) => w[0].toUpperCase()).join('')
+}
 
 const STATUS_LIST = ['Terbit', 'Menunggu Verifikasi Admin', 'Diarsipkan']
 
@@ -31,19 +55,6 @@ const WARNA_KATEGORI = [
 const seedKategoris = initialKategoriData
   .filter(c => c.value !== 'semua')
   .map(c => ({ id: c.value, label: c.label, bg: c.bg, text: c.text, border: c.border }))
-
-const initialBerita = news.map((n, i) => ({
-  id: i + 1,
-  judul: n.title,
-  kategori: n.category,
-  status: 'Terbit',
-  penulis: n.author,
-  penulisSingkatan: n.authorInitials,
-  tanggal: n.date,
-  excerpt: n.excerpt,
-  tags: n.tags || [],
-  content: n.content || [],
-}))
 
 function SectionLabel({ children }) {
   return <p className="text-xs font-bold text-gray-400 uppercase tracking-wider">{children}</p>
@@ -488,11 +499,14 @@ function BeritaModal({ berita, kategoris, onClose, onSave }) {
 
 // ── Main Page ──────────────────────────────────────────────────────────────────
 export default function AdminBeritaPage() {
-  const [berita, setBerita] = useState(initialBerita)
+  const { profile } = useAuth()
+  const [berita, setBerita] = useState([])
+  const [loading, setLoading] = useState(true)
+  const [error, setError] = useState(null)
   const [kategoris, setKategoris] = useState(seedKategoris)
   const [search, setSearch] = useState('')
   const [filterStatus, setFilterStatus] = useState('')
-  const [modal, setModal] = useState(null)        // null | 'tambah' | beritaObj
+  const [modal, setModal] = useState(null)
   const [kategoriModal, setKategoriModal] = useState(false)
   const [confirm, setConfirm] = useState({ open: false })
 
@@ -500,6 +514,43 @@ export default function AdminBeritaPage() {
   function closeConfirm() { setConfirm({ open: false }) }
   const [page, setPage] = useState(1)
   const [perPage, setPerPage] = useState(10)
+
+  const loadData = useCallback(async () => {
+    setLoading(true)
+    setError(null)
+    try {
+      const { data, error: err } = await supabase
+        .from('berita')
+        .select('id, judul, slug, ringkasan, konten, foto_url, kategori, tag, status, published_at, author_id, profiles(nama_lengkap)')
+        .order('created_at', { ascending: false })
+      if (err) throw err
+      setBerita((data ?? []).map((row) => {
+        let content = []
+        try { const p = JSON.parse(row.konten); if (Array.isArray(p)) content = p } catch {}
+        const authorName = row.profiles?.nama_lengkap ?? ''
+        return {
+          id: row.id,
+          judul: row.judul,
+          slug: row.slug,
+          kategori: row.kategori ?? '',
+          status: STATUS_DB_TO_UI[row.status] ?? 'Menunggu Verifikasi Admin',
+          penulis: authorName,
+          penulisSingkatan: getInitials(authorName),
+          tanggal: formatTanggal(row.published_at),
+          excerpt: row.ringkasan ?? '',
+          thumbnail: row.foto_url ?? '',
+          tags: row.tag ?? [],
+          content,
+        }
+      }))
+    } catch (e) {
+      setError(e.message ?? 'Gagal memuat data berita')
+    } finally {
+      setLoading(false)
+    }
+  }, [])
+
+  useEffect(() => { loadData() }, [loadData])
 
   const filtered = berita.filter((b) => {
     const q = search.toLowerCase()
@@ -522,28 +573,50 @@ export default function AdminBeritaPage() {
         : 'Apakah Anda yakin ingin menambahkan berita baru ini?',
       confirmLabel: 'Ya, Simpan',
       variant: 'success',
-      onConfirm: () => {
-        const now = new Date()
+      onConfirm: async () => {
+        const dbStatus = STATUS_UI_TO_DB[form.status] ?? 'draft'
+        const publishedAt = form.tanggal
+          ? new Date(form.tanggal).toISOString()
+          : (dbStatus === 'published' ? new Date().toISOString() : null)
+        const payload = {
+          judul: form.judul,
+          ringkasan: form.excerpt,
+          konten: JSON.stringify(form.content ?? []),
+          foto_url: form.thumbnail || null,
+          kategori: form.kategori || null,
+          tag: form.tags ?? [],
+          status: dbStatus,
+          published_at: publishedAt,
+          author_id: profile?.id ?? null,
+        }
         if (!isEdit) {
-          setBerita(prev => [{
-            id: Date.now(),
-            ...form,
-            penulis: form.penulis || 'Admin',
-            tanggal: form.tanggal
-              ? new Date(form.tanggal).toLocaleDateString('id-ID', { day: '2-digit', month: 'short', year: 'numeric' })
-              : now.toLocaleDateString('id-ID', { day: '2-digit', month: 'short', year: 'numeric' }),
-          }, ...prev])
+          payload.slug = generateSlug(form.judul)
+          const { error: err } = await supabase.from('berita').insert(payload)
+          if (err) { alert('Gagal menyimpan: ' + err.message); closeConfirm(); return }
         } else {
-          setBerita(prev => prev.map(b => b.id === modal.id ? { ...b, ...form } : b))
+          const { error: err } = await supabase.from('berita').update(payload).eq('id', modal.id)
+          if (err) { alert('Gagal menyimpan: ' + err.message); closeConfirm(); return }
         }
         setModal(null)
         closeConfirm()
+        loadData()
       },
     })
   }
 
-  function handleDelete(id) {
-    askConfirm({ title: 'Hapus Berita', message: 'Apakah Anda yakin ingin menghapus berita ini? Tindakan ini tidak dapat dibatalkan.', confirmLabel: 'Ya, Hapus', variant: 'danger', onConfirm: () => { setBerita(prev => prev.filter(b => b.id !== id)); closeConfirm() } })
+  async function handleDelete(id) {
+    askConfirm({
+      title: 'Hapus Berita',
+      message: 'Apakah Anda yakin ingin menghapus berita ini? Tindakan ini tidak dapat dibatalkan.',
+      confirmLabel: 'Ya, Hapus',
+      variant: 'danger',
+      onConfirm: async () => {
+        const { error: err } = await supabase.from('berita').delete().eq('id', id)
+        if (err) { alert('Gagal menghapus: ' + err.message) }
+        closeConfirm()
+        loadData()
+      },
+    })
   }
 
   return (
@@ -607,8 +680,23 @@ export default function AdminBeritaPage() {
             </div>
           </div>
 
+          {/* Error banner */}
+          {error && (
+            <div className="flex items-center gap-3 bg-red-50 border border-red-200 text-red-700 rounded-xl px-4 py-3 text-sm">
+              <AlertCircle className="w-4 h-4 flex-shrink-0" />
+              <span>{error}</span>
+              <button onClick={loadData} className="ml-auto font-bold hover:underline">Coba lagi</button>
+            </div>
+          )}
+
           {/* Table */}
           <div className="bg-white rounded-2xl border border-gray-100 overflow-hidden">
+            {loading ? (
+              <div className="flex justify-center items-center py-16">
+                <Loader2 className="w-7 h-7 animate-spin text-[#1A5C38]" />
+              </div>
+            ) : (
+            <>
             <table className="w-full">
               <thead>
                 <tr className="bg-gray-50 border-b border-gray-100">
@@ -680,6 +768,8 @@ export default function AdminBeritaPage() {
               <div className="py-12 text-center">
                 <p className="text-sm text-gray-400">Tidak ada berita yang ditemukan.</p>
               </div>
+            )}
+            </>
             )}
           </div>
 

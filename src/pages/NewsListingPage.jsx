@@ -1,13 +1,14 @@
-import { useState } from 'react'
+import { useState, useEffect, useCallback } from 'react'
 import { Link } from 'react-router-dom'
 import { motion } from 'framer-motion'
-import { Search, Calendar, ArrowUpRight, Bell } from 'lucide-react'
+import { Search, Calendar, ArrowUpRight, Bell, Loader2, AlertCircle } from 'lucide-react'
 import logoUrl from '@/assets/Logo DM Fix.jpg'
-import { news, categories, popularTags, getCategoryStyle } from '@/data/news'
+import { categories, popularTags, getCategoryStyle, getCategoryLabel } from '@/data/news'
 import { PaginationBar, PerPageSelector } from '@/components/PaginationBar'
 import { fadeUp, stagger, viewport } from '@/lib/animations'
 import Navbar from '@/components/landing/Navbar'
 import Footer from '@/components/landing/Footer'
+import { supabase } from '@/lib/supabase'
 
 const sidebarAgenda = [
   { day: '20', month: 'DES', title: 'Reuni Akbar Dasawarsa', location: 'Auditorium Utama Pondok' },
@@ -15,14 +16,65 @@ const sidebarAgenda = [
   { day: '05', month: 'MAR', title: 'Haul Guru & Doa Bersama', location: "Masjid Jami' Sa'ad Mughni" },
 ]
 
+function formatTanggal(iso) {
+  if (!iso) return '—'
+  return new Date(iso).toLocaleDateString('id-ID', { day: 'numeric', month: 'short', year: 'numeric' })
+}
+
+function getInitials(name) {
+  if (!name) return 'A'
+  return name.trim().split(/\s+/).slice(0, 2).map((w) => w[0].toUpperCase()).join('')
+}
+
+function mapBerita(row) {
+  return {
+    slug: row.slug,
+    category: row.kategori ?? '',
+    categoryLabel: getCategoryLabel(row.kategori ?? ''),
+    title: row.judul,
+    excerpt: row.ringkasan ?? '',
+    image: row.foto_url || 'https://images.unsplash.com/photo-1523050854058-8df90110c9f1?auto=format&fit=crop&w=800&q=80',
+    date: formatTanggal(row.published_at),
+    author: row.profiles?.nama_lengkap ?? 'Redaksi IKA',
+    authorInitials: getInitials(row.profiles?.nama_lengkap ?? 'Redaksi IKA'),
+    tags: row.tag ?? [],
+  }
+}
+
 export default function NewsListingPage() {
+  const [newsList, setNewsList] = useState([])
+  const [loading, setLoading] = useState(true)
+  const [error, setError] = useState(null)
   const [activeCategory, setActiveCategory] = useState('semua')
   const [search, setSearch] = useState('')
   const [page, setPage] = useState(1)
   const [perPage, setPerPage] = useState(6)
   const [email, setEmail] = useState('')
 
-  const filtered = news.filter((n) => {
+  const loadNews = useCallback(async () => {
+    setLoading(true)
+    setError(null)
+    try {
+      const { data, error: err } = await supabase
+        .from('berita')
+        .select('slug, judul, ringkasan, foto_url, kategori, tag, published_at, profiles(nama_lengkap)')
+        .eq('status', 'published')
+        .order('published_at', { ascending: false })
+
+      if (err) throw err
+      setNewsList((data ?? []).map(mapBerita))
+    } catch (e) {
+      setError(e.message ?? 'Gagal memuat berita')
+    } finally {
+      setLoading(false)
+    }
+  }, [])
+
+  useEffect(() => {
+    loadNews()
+  }, [loadNews])
+
+  const filtered = newsList.filter((n) => {
     const matchCat = activeCategory === 'semua' || n.category === activeCategory
     const matchSearch =
       search === '' ||
@@ -51,11 +103,8 @@ export default function NewsListingPage() {
         style={{ background: 'linear-gradient(135deg, #061410 0%, #0A2415 50%, #1A5C38 100%)' }}
       >
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-14">
-          {/* Breadcrumb */}
           <nav className="flex items-center gap-2 text-xs text-white/50 mb-6">
-            <Link to="/" className="hover:text-white/80 transition-colors">
-              Beranda
-            </Link>
+            <Link to="/" className="hover:text-white/80 transition-colors">Beranda</Link>
             <span>/</span>
             <span className="text-white/80">Berita</span>
           </nav>
@@ -121,10 +170,26 @@ export default function NewsListingPage() {
 
           {/* Articles grid */}
           <div>
-            {paged.length === 0 ? (
+            {error && (
+              <div className="flex items-center gap-3 bg-red-50 border border-red-200 text-red-700 rounded-xl px-4 py-3 mb-6 text-sm">
+                <AlertCircle className="w-4 h-4 flex-shrink-0" />
+                <span>{error}</span>
+                <button onClick={loadNews} className="ml-auto font-bold hover:underline">Coba lagi</button>
+              </div>
+            )}
+
+            {loading ? (
+              <div className="flex justify-center items-center py-24">
+                <Loader2 className="w-8 h-8 animate-spin text-[#1A5C38]" />
+              </div>
+            ) : paged.length === 0 ? (
               <div className="text-center py-20 text-gray-400">
-                <p className="text-lg font-medium mb-1">Tidak ada berita ditemukan</p>
-                <p className="text-sm">Coba ubah filter atau kata kunci pencarian.</p>
+                <p className="text-lg font-medium mb-1">
+                  {newsList.length === 0 ? 'Belum ada berita tersedia' : 'Tidak ada berita ditemukan'}
+                </p>
+                <p className="text-sm">
+                  {newsList.length === 0 ? 'Nantikan berita terbaru kami.' : 'Coba ubah filter atau kata kunci pencarian.'}
+                </p>
               </div>
             ) : (
               <motion.div
@@ -142,7 +207,7 @@ export default function NewsListingPage() {
                     className="group bg-white border border-gray-100 rounded-xl overflow-hidden hover:shadow-xl hover:-translate-y-1 transition-all duration-300"
                   >
                     <Link to={`/berita/${item.slug}`}>
-                      <div className="h-44 relative overflow-hidden">
+                      <div className="h-44 relative overflow-hidden bg-gray-100">
                         <img
                           src={item.image}
                           alt={item.title}
@@ -181,10 +246,10 @@ export default function NewsListingPage() {
             )}
 
             {/* Pagination */}
-            {filtered.length > 0 && (
+            {!loading && filtered.length > 0 && (
               <div className="mt-10 flex flex-col items-center gap-3">
                 <div className="flex items-center gap-6">
-                  <PerPageSelector value={perPage} options={[6, 12, 18]} onChange={n => { setPerPage(n); setPage(1) }} />
+                  <PerPageSelector value={perPage} options={[6, 12, 18]} onChange={(n) => { setPerPage(n); setPage(1) }} />
                   <span className="text-xs text-gray-400">{startIdx}–{endIdx} dari {filtered.length} artikel</span>
                 </div>
                 <PaginationBar page={page} totalPages={totalPages} onPage={setPage} />
@@ -201,25 +266,27 @@ export default function NewsListingPage() {
                 <span className="w-1 h-4 bg-[#F0A500] rounded-full inline-block" />
                 Berita Terpopuler
               </h3>
-              <div className="space-y-4">
-                {news.slice(0, 4).map((item, i) => (
-                  <Link
-                    key={item.slug}
-                    to={`/berita/${item.slug}`}
-                    className="flex gap-3 group"
-                  >
-                    <span className="text-2xl font-bold text-gray-100 leading-none w-6 flex-shrink-0 select-none">
-                      {String(i + 1).padStart(2, '0')}
-                    </span>
-                    <div>
-                      <p className="text-[#0A2415] text-xs font-bold leading-snug group-hover:text-[#1A5C38] transition-colors line-clamp-2">
-                        {item.title}
-                      </p>
-                      <p className="text-gray-400 text-xs mt-1">{item.date}</p>
-                    </div>
-                  </Link>
-                ))}
-              </div>
+              {loading ? (
+                <div className="flex justify-center py-4">
+                  <Loader2 className="w-5 h-5 animate-spin text-gray-300" />
+                </div>
+              ) : (
+                <div className="space-y-4">
+                  {newsList.slice(0, 4).map((item, i) => (
+                    <Link key={item.slug} to={`/berita/${item.slug}`} className="flex gap-3 group">
+                      <span className="text-2xl font-bold text-gray-100 leading-none w-6 flex-shrink-0 select-none">
+                        {String(i + 1).padStart(2, '0')}
+                      </span>
+                      <div>
+                        <p className="text-[#0A2415] text-xs font-bold leading-snug group-hover:text-[#1A5C38] transition-colors line-clamp-2">
+                          {item.title}
+                        </p>
+                        <p className="text-gray-400 text-xs mt-1">{item.date}</p>
+                      </div>
+                    </Link>
+                  ))}
+                </div>
+              )}
             </div>
 
             {/* Upcoming agenda */}
