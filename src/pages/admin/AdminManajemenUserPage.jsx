@@ -1,9 +1,9 @@
-import { useState, useRef, useEffect } from 'react'
+import { useState, useRef, useEffect, useCallback } from 'react'
 import {
   CheckCircle, Users, Shield, Search,
   Download, ChevronDown,
   MoreHorizontal, UserPlus, X, Pencil, Trash2,
-  Lock, Key, Eye, EyeOff,
+  Lock, Key, Eye, EyeOff, AlertCircle,
 } from 'lucide-react'
 import { motion } from 'framer-motion'
 import AdminSidebar from '../../components/admin/AdminSidebar'
@@ -12,10 +12,36 @@ import ConfirmDialog from '../../components/admin/ConfirmDialog'
 import { PaginationBar, PerPageSelector } from '../../components/PaginationBar'
 import { initialAngkatan, getAngkatanKe } from '../../data/angkatan'
 import { ALL_PERMISSIONS, DEFAULT_PERMISSIONS } from '../../data/adminMenus'
+import { supabase } from '@/lib/supabase'
 
 // ── Constants ────────────────────────────────────────────────────────────────
 
 const PERAN_OPTIONS = ['Super Admin', 'Admin', 'Editor', 'Alumni']
+
+const ROLE_TO_PERAN = {
+  super_admin: 'Super Admin',
+  admin:       'Admin',
+  editor:      'Editor',
+  alumni:      'Alumni',
+  user:        'Alumni',
+}
+
+const PERAN_TO_ROLE = {
+  'Super Admin': 'super_admin',
+  'Admin':       'admin',
+  'Editor':      'editor',
+  'Alumni':      'alumni',
+}
+
+function formatLastLogin(iso) {
+  if (!iso) return '-'
+  const d = new Date(iso)
+  const now = new Date()
+  const diffDays = Math.floor((now - d) / 86400000)
+  if (diffDays === 0) return `Hari ini, ${d.toLocaleTimeString('id-ID', { hour: '2-digit', minute: '2-digit' })}`
+  if (diffDays === 1) return 'Kemarin'
+  return d.toLocaleDateString('id-ID', { day: 'numeric', month: 'short', year: 'numeric' })
+}
 
 const PERAN_STYLE = {
   'Super Admin': { bg: '#FFF1F2', text: '#BE123C', border: '#FECDD3' },
@@ -24,23 +50,6 @@ const PERAN_STYLE = {
   'Alumni':      { bg: '#F0FDFF', text: '#0E7490', border: '#BAE6FD' },
 }
 
-// ── Mock Data ────────────────────────────────────────────────────────────────
-
-const initialUsers = [
-  { id: 0,  name: 'Administrator',   email: 'superadmin@daarulmughni.ac.id', phone: '0811-0000-0000', angkatan: 2005, peran: 'Super Admin', aktif: true,  lastLogin: 'Hari ini, 09:15', avatar: '', profesi: 'Pengelola Portal', kota: 'Bogor', permissions: ALL_PERMISSIONS.map(p => p.id) },
-  { id: 1,  name: 'Ahmad Fauzi',     email: 'ahmad.fauzi@email.com',         phone: '0812-1111-2222', angkatan: 2015, peran: 'Alumni',      aktif: true,  lastLogin: '10 Okt 2023, 14:20', avatar: 'https://images.unsplash.com/photo-1607990281513-2c110a25bd8c?auto=format&fit=crop&w=48&h=48&q=80&crop=faces', profesi: 'Software Engineer', kota: 'Jakarta', permissions: [] },
-  { id: 2,  name: 'Siti Aminah',     email: 'siti.aminah@email.com',         phone: '0813-2233-4455', angkatan: 2018, peran: 'Editor',      aktif: true,  lastLogin: '12 Okt 2023, 08:45', avatar: 'https://images.unsplash.com/photo-1573496359142-b8d87734a5a2?auto=format&fit=crop&w=48&h=48&q=80&crop=faces', profesi: 'Jurnalis', kota: 'Bogor', permissions: ['dashboard', 'berita', 'agenda'] },
-  { id: 3,  name: 'Budi Santoso',    email: 'budi.santoso@email.com',        phone: '0814-3344-5566', angkatan: 2012, peran: 'Admin',       aktif: true,  lastLogin: '13 Okt 2023, 11:10', avatar: 'https://images.unsplash.com/photo-1507003211169-0a1dd7228f2d?auto=format&fit=crop&w=48&h=48&q=80&crop=faces', profesi: 'Guru', kota: 'Sukabumi', permissions: ['dashboard', 'berita', 'agenda', 'verifikasi'] },
-  { id: 4,  name: 'Dewi Lestari',    email: 'dewi.lestari@email.com',        phone: '0815-4455-6677', angkatan: 2020, peran: 'Alumni',      aktif: false, lastLogin: '01 Sep 2023, 16:00', avatar: 'https://images.unsplash.com/photo-1531123897727-8f129e1688ce?auto=format&fit=crop&w=48&h=48&q=80&crop=faces', profesi: 'Mahasiswa', kota: 'Bandung', permissions: [] },
-  { id: 5,  name: 'Rian Hidayat',    email: 'rian.hidayat@email.com',        phone: '0816-5566-7788', angkatan: 2017, peran: 'Alumni',      aktif: true,  lastLogin: '11 Okt 2023, 19:45', avatar: 'https://images.unsplash.com/photo-1560250097-0b93528c311a?auto=format&fit=crop&w=48&h=48&q=80&crop=faces', profesi: 'Wirausaha', kota: 'Depok', permissions: [] },
-  { id: 6,  name: 'Nurul Hidayah',   email: 'nurul.hid@email.com',           phone: '0817-6677-8899', angkatan: 2020, peran: 'Alumni',      aktif: true,  lastLogin: '09 Okt 2023, 10:30', avatar: 'https://images.unsplash.com/photo-1589156229687-496a31ad1d1f?auto=format&fit=crop&w=48&h=48&q=80&crop=faces', profesi: 'Mahasiswa', kota: 'Bogor', permissions: [] },
-  { id: 7,  name: 'Fatimah Az-Zahra',email: 'fatimah.az@email.com',          phone: '0818-7788-9900', angkatan: 2019, peran: 'Alumni',      aktif: true,  lastLogin: '08 Okt 2023, 07:15', avatar: 'https://images.unsplash.com/photo-1573496359142-b8d87734a5a2?auto=format&fit=crop&w=48&h=48&q=80&crop=faces', profesi: 'Pendidik', kota: 'Cianjur', permissions: [] },
-  { id: 8,  name: 'Hasan Basri',     email: 'hasan.b@email.com',             phone: '0819-8899-0011', angkatan: 2010, peran: 'Alumni',      aktif: false, lastLogin: '20 Agu 2023, 09:00', avatar: 'https://images.unsplash.com/photo-1506794778202-cad84cf45f1d?auto=format&fit=crop&w=48&h=48&q=80&crop=faces', profesi: 'Pengusaha', kota: 'Bekasi', permissions: [] },
-  { id: 9,  name: 'Zahra Putri',     email: 'zahra.p@email.com',             phone: '0820-9900-1122', angkatan: 2022, peran: 'Alumni',      aktif: true,  lastLogin: '07 Okt 2023, 16:00', avatar: 'https://images.unsplash.com/photo-1531123897727-8f129e1688ce?auto=format&fit=crop&w=48&h=48&q=80&crop=faces', profesi: 'Mahasiswa', kota: 'Bogor', permissions: [] },
-  { id: 10, name: 'Irfan Hakim',     email: 'irfan.h@email.com',             phone: '0821-0011-2233', angkatan: 2014, peran: 'Editor',      aktif: true,  lastLogin: '06 Okt 2023, 12:45', avatar: 'https://images.unsplash.com/photo-1607990281513-2c110a25bd8c?auto=format&fit=crop&w=48&h=48&q=80&crop=faces', profesi: 'Desainer Grafis', kota: 'Jakarta', permissions: ['dashboard', 'berita'] },
-  { id: 11, name: 'Mira Santika',    email: 'mira.s@email.com',              phone: '0822-1122-3344', angkatan: 2016, peran: 'Alumni',      aktif: true,  lastLogin: '05 Okt 2023, 11:20', avatar: 'https://images.unsplash.com/photo-1573496359142-b8d87734a5a2?auto=format&fit=crop&w=48&h=48&q=80&crop=faces', profesi: 'Dokter', kota: 'Bandung', permissions: [] },
-  { id: 12, name: 'Doni Pratama',    email: 'doni.p@email.com',              phone: '0823-2233-4455', angkatan: 2013, peran: 'Alumni',      aktif: false, lastLogin: '10 Jul 2023, 08:00', avatar: 'https://images.unsplash.com/photo-1560250097-0b93528c311a?auto=format&fit=crop&w=48&h=48&q=80&crop=faces', profesi: 'Advokat', kota: 'Jakarta', permissions: [] },
-]
 
 // ── Helper Components ────────────────────────────────────────────────────────
 
@@ -454,18 +463,73 @@ function TambahUserModal({ onClose, onSave }) {
 // ── Main Page ────────────────────────────────────────────────────────────────
 
 export default function AdminManajemenUserPage() {
-  const [users, setUsers] = useState(initialUsers)
-  const [modal, setModal] = useState(null)   // { type: 'edit'|'permission'|'tambah', user? }
-  const [selected, setSelected] = useState([])
-  const [search, setSearch] = useState('')
-  const [filterPeran, setFilterPeran] = useState('')
-  const [filterAktif, setFilterAktif] = useState('')
-  const [page, setPage] = useState(1)
+  const [users, setUsers]           = useState([])
+  const [pageLoading, setPageLoading] = useState(true)
+  const [loadError, setLoadError]   = useState(null)
+  const [modal, setModal]           = useState(null)
+  const [selected, setSelected]     = useState([])
+  const [search, setSearch]         = useState('')
+  const [filterPeran, setFilterPeran]   = useState('')
+  const [filterAktif, setFilterAktif]   = useState('')
+  const [page, setPage]       = useState(1)
   const [perPage, setPerPage] = useState(10)
   const [openMenuId, setOpenMenuId] = useState(null)
-  const [confirm, setConfirm] = useState({ open: false })
+  const [confirm, setConfirm]       = useState({ open: false })
   function askConfirm(opts) { setConfirm({ open: true, ...opts }) }
-  function closeConfirm() { setConfirm({ open: false }) }
+  function closeConfirm()   { setConfirm({ open: false }) }
+
+  /* ── Load all profiles from Supabase ── */
+  const loadData = useCallback(async () => {
+    setPageLoading(true)
+    setLoadError(null)
+    try {
+      const { data: profiles, error: profErr } = await supabase
+        .from('profiles')
+        .select('id, nama_lengkap, email, no_hp, angkatan, role, status, domisili, is_active, permissions, updated_at')
+        .order('created_at', { ascending: false })
+
+      if (profErr) throw profErr
+
+      const ids = (profiles ?? []).map((p) => p.id)
+      const { data: apRows } = await supabase
+        .from('alumni_profiles')
+        .select('id, profesi')
+        .in('id', ids)
+
+      const apMap = {}
+      ;(apRows ?? []).forEach((ap) => { apMap[ap.id] = ap })
+
+      const usersData = (profiles ?? []).map((p) => {
+        const peran = ROLE_TO_PERAN[p.role] ?? 'Alumni'
+        const isSA  = p.role === 'super_admin'
+        return {
+          id:          p.id,
+          name:        p.nama_lengkap || p.email,
+          email:       p.email,
+          phone:       p.no_hp ?? '',
+          angkatan:    p.angkatan,
+          peran,
+          aktif:       isSA ? true : (p.is_active ?? true),
+          lastLogin:   formatLastLogin(p.updated_at),
+          avatar:      '',
+          profesi:     apMap[p.id]?.profesi ?? '',
+          kota:        p.domisili ?? '',
+          permissions: isSA
+            ? ALL_PERMISSIONS.map((pm) => pm.id)
+            : (p.permissions ?? DEFAULT_PERMISSIONS[peran] ?? []),
+        }
+      })
+
+      setUsers(usersData)
+    } catch (err) {
+      console.error('Error loading users:', err)
+      setLoadError(err.message)
+    } finally {
+      setPageLoading(false)
+    }
+  }, [])
+
+  useEffect(() => { loadData() }, [loadData])
 
   /* Filter */
   const filtered = users.filter(u => {
@@ -501,9 +565,9 @@ export default function AdminManajemenUserPage() {
     )
   }
 
-  /* Actions */
+  /* ── Actions ── */
   function toggleAktif(id) {
-    const u = users.find(x => x.id === id)
+    const u = users.find((x) => x.id === id)
     if (!u) return
     askConfirm({
       title: u.aktif ? 'Nonaktifkan Akun' : 'Aktifkan Akun',
@@ -512,8 +576,13 @@ export default function AdminManajemenUserPage() {
         : `Akun ${u.name} akan diaktifkan kembali. Lanjutkan?`,
       confirmLabel: u.aktif ? 'Ya, Nonaktifkan' : 'Ya, Aktifkan',
       variant: u.aktif ? 'danger' : 'success',
-      onConfirm: () => {
-        setUsers(prev => prev.map(x => x.id === id ? { ...x, aktif: !x.aktif } : x))
+      onConfirm: async () => {
+        const { error } = await supabase
+          .from('profiles')
+          .update({ is_active: !u.aktif })
+          .eq('id', id)
+        if (error) { console.error(error); closeConfirm(); return }
+        setUsers((prev) => prev.map((x) => x.id === id ? { ...x, aktif: !x.aktif } : x))
         setOpenMenuId(null)
         closeConfirm()
       },
@@ -521,15 +590,17 @@ export default function AdminManajemenUserPage() {
   }
 
   function deleteUser(id) {
-    const u = users.find(x => x.id === id)
+    const u = users.find((x) => x.id === id)
     askConfirm({
       title: 'Hapus User',
       message: `Apakah Anda yakin ingin menghapus akun ${u?.name ?? 'ini'}? Tindakan ini tidak dapat dibatalkan.`,
       confirmLabel: 'Ya, Hapus',
       variant: 'danger',
-      onConfirm: () => {
-        setUsers(prev => prev.filter(x => x.id !== id))
-        setSelected(prev => prev.filter(i => i !== id))
+      onConfirm: async () => {
+        const { error } = await supabase.from('profiles').delete().eq('id', id)
+        if (error) { console.error(error); closeConfirm(); return }
+        setUsers((prev) => prev.filter((x) => x.id !== id))
+        setSelected((prev) => prev.filter((i) => i !== id))
         setOpenMenuId(null)
         closeConfirm()
       },
@@ -542,8 +613,24 @@ export default function AdminManajemenUserPage() {
       message: 'Apakah Anda yakin ingin menyimpan perubahan data user ini?',
       confirmLabel: 'Ya, Simpan',
       variant: 'success',
-      onConfirm: () => {
-        setUsers(prev => prev.map(u => u.id === id ? { ...u, ...form, permissions: form.peran !== u.peran ? DEFAULT_PERMISSIONS[form.peran] : u.permissions } : u))
+      onConfirm: async () => {
+        const newRole = PERAN_TO_ROLE[form.peran] ?? 'alumni'
+        const { error } = await supabase
+          .from('profiles')
+          .update({
+            nama_lengkap: form.name,
+            no_hp:        form.phone,
+            angkatan:     Number(form.angkatan),
+            role:         newRole,
+          })
+          .eq('id', id)
+        if (error) { console.error(error); closeConfirm(); return }
+        const currentUser = users.find((u) => u.id === id)
+        const newPerms = form.peran !== currentUser?.peran
+          ? (DEFAULT_PERMISSIONS[form.peran] ?? [])
+          : currentUser?.permissions ?? []
+        setUsers((prev) => prev.map((u) => u.id === id
+          ? { ...u, ...form, permissions: newPerms } : u))
         setModal(null)
         closeConfirm()
       },
@@ -556,8 +643,13 @@ export default function AdminManajemenUserPage() {
       message: 'Apakah Anda yakin ingin menyimpan perubahan izin akses user ini?',
       confirmLabel: 'Ya, Simpan',
       variant: 'success',
-      onConfirm: () => {
-        setUsers(prev => prev.map(u => u.id === id ? { ...u, permissions: perms } : u))
+      onConfirm: async () => {
+        const { error } = await supabase
+          .from('profiles')
+          .update({ permissions: perms })
+          .eq('id', id)
+        if (error) { console.error(error); closeConfirm(); return }
+        setUsers((prev) => prev.map((u) => u.id === id ? { ...u, permissions: perms } : u))
         setModal(null)
         closeConfirm()
       },
@@ -565,24 +657,20 @@ export default function AdminManajemenUserPage() {
   }
 
   function addUser(form) {
+    // Creating auth users from the frontend requires service_role key.
+    // This creates a local entry only until a backend invite flow is implemented.
     askConfirm({
       title: 'Tambah User Baru',
-      message: 'Apakah Anda yakin ingin menambahkan user baru ini ke dalam sistem?',
-      confirmLabel: 'Ya, Tambah',
+      message: 'Catatan: user ini hanya ditambahkan secara lokal. Untuk akun permanen, gunakan fitur undang via email.',
+      confirmLabel: 'Tambah Lokal',
       variant: 'success',
       onConfirm: () => {
-        setUsers(prev => [{
-          id: Date.now(),
-          name: form.name,
-          email: form.email,
-          phone: form.phone || '',
-          angkatan: Number(form.angkatan),
-          peran: form.peran,
-          aktif: true,
-          lastLogin: '—',
-          avatar: '',
-          profesi: form.profesi || '',
-          kota: form.kota || '',
+        setUsers((prev) => [{
+          id: 'local-' + Date.now(),
+          name: form.name, email: form.email, phone: form.phone || '',
+          angkatan: Number(form.angkatan), peran: form.peran,
+          aktif: true, lastLogin: '-', avatar: '',
+          profesi: form.profesi || '', kota: form.kota || '',
           permissions: DEFAULT_PERMISSIONS[form.peran] || [],
         }, ...prev])
         setModal(null)
@@ -591,17 +679,28 @@ export default function AdminManajemenUserPage() {
     })
   }
 
-  /* Bulk Actions */
+  /* ── Bulk Actions ── */
   function bulkSetAktif(val) {
+    const nonSAIds = selected.filter((id) => {
+      const u = users.find((x) => x.id === id)
+      return u && u.peran !== 'Super Admin'
+    })
     askConfirm({
       title: val ? 'Aktifkan Akun Terpilih' : 'Nonaktifkan Akun Terpilih',
       message: val
-        ? `Aktifkan ${selected.length} akun yang dipilih? Semua akun akan dapat login kembali.`
-        : `Nonaktifkan ${selected.length} akun yang dipilih? Akun tidak dapat login hingga diaktifkan kembali.`,
+        ? `Aktifkan ${nonSAIds.length} akun yang dipilih?`
+        : `Nonaktifkan ${nonSAIds.length} akun yang dipilih?`,
       confirmLabel: val ? 'Ya, Aktifkan' : 'Ya, Nonaktifkan',
       variant: val ? 'success' : 'warning',
-      onConfirm: () => {
-        setUsers(prev => prev.map(u => selected.includes(u.id) && u.peran !== 'Super Admin' ? { ...u, aktif: val } : u))
+      onConfirm: async () => {
+        const { error } = await supabase
+          .from('profiles')
+          .update({ is_active: val })
+          .in('id', nonSAIds)
+        if (error) { console.error(error); closeConfirm(); return }
+        setUsers((prev) => prev.map((u) =>
+          nonSAIds.includes(u.id) ? { ...u, aktif: val } : u
+        ))
         setSelected([])
         closeConfirm()
       },
@@ -609,17 +708,34 @@ export default function AdminManajemenUserPage() {
   }
 
   function bulkDelete() {
+    const deletableIds = selected.filter((id) => {
+      const u = users.find((x) => x.id === id)
+      return u && u.peran !== 'Super Admin'
+    })
     askConfirm({
-      title: `Hapus ${selected.length} User`,
-      message: `Apakah Anda yakin ingin menghapus ${selected.length} user yang dipilih? Tindakan ini tidak dapat dibatalkan.`,
+      title: `Hapus ${deletableIds.length} User`,
+      message: `Apakah Anda yakin ingin menghapus ${deletableIds.length} user yang dipilih? Tindakan ini tidak dapat dibatalkan.`,
       confirmLabel: 'Ya, Hapus Semua',
       variant: 'danger',
-      onConfirm: () => {
-        setUsers(prev => prev.filter(u => !selected.includes(u.id) || u.peran === 'Super Admin'))
+      onConfirm: async () => {
+        const { error } = await supabase.from('profiles').delete().in('id', deletableIds)
+        if (error) { console.error(error); closeConfirm(); return }
+        setUsers((prev) => prev.filter((u) => !deletableIds.includes(u.id)))
         setSelected([])
         closeConfirm()
       },
     })
+  }
+
+  if (pageLoading) {
+    return (
+      <div className="flex min-h-screen" style={{ backgroundColor: '#F1F5F9' }}>
+        <AdminSidebar active="users" />
+        <div className="flex-1 flex items-center justify-center">
+          <div className="w-8 h-8 border-4 border-green-600 border-t-transparent rounded-full animate-spin" />
+        </div>
+      </div>
+    )
   }
 
   return (
@@ -662,12 +778,21 @@ export default function AdminManajemenUserPage() {
             </div>
           </div>
 
+          {/* Error banner */}
+          {loadError && (
+            <div className="flex items-center gap-2 px-4 py-3 rounded-xl bg-red-50 border border-red-200 text-sm text-red-700">
+              <AlertCircle className="w-4 h-4 flex-shrink-0" />
+              {loadError}
+              <button onClick={loadData} className="ml-auto underline text-xs">Coba lagi</button>
+            </div>
+          )}
+
           {/* Stat Cards */}
           <div className="grid grid-cols-3 gap-4">
             {[
               { icon: Users,       iconBg: '#F0FDFF', iconColor: '#0E7490', value: users.length, label: 'Total User' },
               { icon: CheckCircle, iconBg: '#F0FDF4', iconColor: '#22C55E', value: totalAktif,   label: 'User Aktif' },
-              { icon: Shield,      iconBg: '#FFF7ED', iconColor: '#F59E0B', value: 42,           label: 'Menunggu Verifikasi' },
+              { icon: Shield,      iconBg: '#FFF7ED', iconColor: '#F59E0B', value: users.filter(u => u.peran === 'Alumni' && u.aktif).length, label: 'Alumni Aktif' },
             ].map((s, i) => {
               const Icon = s.icon
               return (
