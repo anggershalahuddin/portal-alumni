@@ -52,7 +52,14 @@ DROP FUNCTION IF EXISTS public.is_admin_or_above()      CASCADE;
 DROP FUNCTION IF EXISTS public.is_editor_or_above()     CASCADE;
 DROP FUNCTION IF EXISTS public.is_verified_alumni()     CASCADE;
 
--- ─── STORAGE BUCKETS ──────────────────────────────────────────────────
+-- ─── STORAGE ──────────────────────────────────────────────────────────
+-- Hapus objects dulu (FK), baru hapus buckets
+
+DELETE FROM storage.objects
+WHERE bucket_id IN (
+  'alumni-photos', 'berita-images', 'galeri-images',
+  'documents', 'berkas-alumni', 'site-assets'
+);
 
 DELETE FROM storage.buckets
 WHERE id IN (
