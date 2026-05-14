@@ -1,11 +1,13 @@
 import { useState, useRef } from 'react'
-import { Link } from 'react-router-dom'
+import { Link, useNavigate } from 'react-router-dom'
 import {
   Eye, EyeOff, CheckCircle,
   ChevronDown, Upload, X, Camera, AlertCircle, Lock,
 } from 'lucide-react'
 import heroImg from '../assets/hero.jpg'
 import logoUrl from '@/assets/Logo DM Fix.jpg'
+import { useAuth } from '@/context/AuthContext'
+import { supabase } from '@/lib/supabase'
 
 const ANGKATAN_LIST = Array.from({ length: 2026 - 2006 + 1 }, (_, i) => 2006 + i)
 
@@ -201,6 +203,9 @@ function DocSlot({ slot, file, onSelect, onRemove }) {
 }
 
 export default function DaftarPage() {
+  const navigate = useNavigate()
+  const { signUp } = useAuth()
+
   const [form, setForm] = useState({
     nama: '', email: '', hp: '', angkatan: '',
     tempatLahir: '', tanggalLahir: '',
@@ -211,6 +216,8 @@ export default function DaftarPage() {
   const [showPass, setShowPass] = useState(false)
   const [showKonfirmasi, setShowKonfirmasi] = useState(false)
   const [submitted, setSubmitted] = useState(false)
+  const [loading, setLoading] = useState(false)
+  const [error, setError] = useState('')
 
   const set = (key) => (e) => setForm((prev) => ({ ...prev, [key]: e.target.value }))
 
@@ -224,9 +231,61 @@ export default function DaftarPage() {
     form.domisili && form.bidang && form.alamat &&
     passwordOk && konfirmasiOk && docsOk
 
-  function handleSubmit(e) {
+  async function handleSubmit(e) {
     e.preventDefault()
-    if (isValid) setSubmitted(true)
+    if (!isValid) return
+    setLoading(true)
+    setError('')
+
+    // 1. Daftar akun — trigger handle_new_user() akan buat row di public.profiles
+    const { data, error: signUpErr } = await signUp({
+      email:       form.email,
+      password:    form.password,
+      namaLengkap: form.nama,
+      noHp:        form.hp,
+      angkatan:    form.angkatan,
+      tempatLahir: form.tempatLahir,
+      tanggalLahir: form.tanggalLahir,
+      domisili:    form.domisili,
+      bidang:      form.bidang,
+      alamat:      form.alamat,
+    })
+
+    if (signUpErr) {
+      setLoading(false)
+      setError(
+        signUpErr.message === 'User already registered'
+          ? 'Email ini sudah terdaftar. Silakan masuk atau gunakan email lain.'
+          : signUpErr.message,
+      )
+      return
+    }
+
+    // 2. Upload foto bukti ke bucket 'documents' (hanya jika sesi tersedia)
+    const userId  = data.user?.id
+    const session = data.session
+
+    if (session && userId && docs.bukti) {
+      const ext      = docs.bukti.name.split('.').pop().toLowerCase()
+      const filePath = `${userId}/foto_bukti.${ext}`
+
+      const { error: uploadErr } = await supabase.storage
+        .from('documents')
+        .upload(filePath, docs.bukti, { contentType: docs.bukti.type, upsert: true })
+
+      if (!uploadErr) {
+        // 3. Simpan referensi ke tabel dokumen_verifikasi
+        await supabase.from('dokumen_verifikasi').insert({
+          user_id:    userId,
+          jenis:      'foto_bukti',
+          file_url:   filePath,
+          auto_hapus: true,
+        })
+      }
+    }
+
+    setLoading(false)
+    setSubmitted(true)
   }
 
   // ── Success screen ─────────────────────────────────────────────────────
@@ -490,14 +549,23 @@ export default function DaftarPage() {
               </div>
             </div>
 
+            {/* Error */}
+            {error && (
+              <div className="mt-4 flex items-center gap-2 p-3 rounded-xl bg-red-50 border border-red-200">
+                <AlertCircle className="w-4 h-4 text-red-500 flex-shrink-0" />
+                <p className="text-xs text-red-600">{error}</p>
+              </div>
+            )}
+
             {/* Submit */}
             <button
               type="submit"
-              disabled={!isValid}
-              className="w-full mt-5 py-3 rounded-xl text-sm font-bold text-white transition-all hover:opacity-90 disabled:opacity-40 disabled:cursor-not-allowed"
+              disabled={!isValid || loading}
+              className="w-full mt-5 py-3 rounded-xl text-sm font-bold text-white transition-all hover:opacity-90 disabled:opacity-40 disabled:cursor-not-allowed flex items-center justify-center gap-2"
               style={{ backgroundColor: '#1A5C38' }}
             >
-              Kirim Pendaftaran
+              {loading && <span className="w-4 h-4 border-2 border-white border-t-transparent rounded-full animate-spin" />}
+              {loading ? 'Mendaftarkan...' : 'Kirim Pendaftaran'}
             </button>
           </form>
 

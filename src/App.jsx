@@ -2,6 +2,8 @@ import { BrowserRouter, Routes, Route, Navigate } from 'react-router-dom'
 import ScrollToTop from './components/ScrollToTop'
 import { AuthProvider } from './context/AuthContext'
 import ProtectedAdminRoute from './components/admin/ProtectedAdminRoute'
+import ProtectedRoute from './components/ProtectedRoute'
+import GuestRoute from './components/GuestRoute'
 
 import LandingPage from './pages/LandingPage'
 import NewsListingPage from './pages/NewsListingPage'
@@ -49,10 +51,10 @@ function App() {
           <Route path="/direktori" element={<AlumniDirectoryPage />} />
           <Route path="/direktori/:id" element={<AlumniProfilePage />} />
           <Route path="/agenda" element={<AgendaPage />} />
-          <Route path="/masuk" element={<LoginPage />} />
+          <Route path="/masuk" element={<GuestRoute><LoginPage /></GuestRoute>} />
           <Route path="/pesantren" element={<PesantrenPage />} />
-          <Route path="/dashboard" element={<AlumniDashboardPage />} />
-          <Route path="/daftar" element={<DaftarPage />} />
+          <Route path="/dashboard" element={<ProtectedRoute><AlumniDashboardPage /></ProtectedRoute>} />
+          <Route path="/daftar" element={<GuestRoute><DaftarPage /></GuestRoute>} />
           <Route path="/karir" element={<KarirPage />} />
           <Route path="/faq" element={<FaqPage />} />
           <Route path="/kontak" element={<KontakPage />} />

@@ -3,6 +3,7 @@ import { Link, useNavigate } from 'react-router-dom'
 import { Mail, Lock, Eye, EyeOff, Shield, AlertCircle } from 'lucide-react'
 import heroImg from '@/assets/hero.jpg'
 import { useAuth } from '@/context/AuthContext'
+import { supabase } from '@/lib/supabase'
 
 const ADMIN_ROLES = ['super_admin', 'admin', 'editor']
 
@@ -20,22 +21,39 @@ export default function LoginPage() {
     setError('')
     setLoading(true)
     const { data, error: err } = await signIn({ email, password })
-    setLoading(false)
     if (err) {
+      setLoading(false)
       setError(
         err.message === 'Invalid login credentials'
           ? 'Email atau kata sandi salah.'
-          : err.message
+          : err.message === 'Email not confirmed'
+          ? 'Email belum dikonfirmasi. Cek inbox Anda.'
+          : err.message,
       )
       return
     }
-    // Arahkan berdasarkan role dari profile
-    const role = data?.user?.user_metadata?.role ?? null
-    if (ADMIN_ROLES.includes(role)) {
-      navigate('/admin/dashboard')
-    } else {
-      navigate('/dashboard')
+
+    // Role ada di public.profiles, bukan user_metadata — fetch langsung
+    const userId = data.user?.id
+    let redirectTo = '/dashboard'
+    if (userId) {
+      const { data: prof } = await supabase
+        .from('profiles')
+        .select('role, status')
+        .eq('id', userId)
+        .single()
+
+      const role   = prof?.role   ?? null
+      const status = prof?.status ?? null
+
+      if (ADMIN_ROLES.includes(role)) {
+        redirectTo = '/admin/dashboard'
+      } else if (status === 'menunggu' || status === 'ditolak') {
+        redirectTo = `/verifikasi-status?status=${status}`
+      }
     }
+    setLoading(false)
+    navigate(redirectTo)
   }
 
   async function handleGoogle() {

@@ -7,6 +7,7 @@ import {
   Upload, FileText, RefreshCw, MessageSquare, Phone,
   Mail, ChevronRight, AlertTriangle, Send, X, Loader2,
 } from 'lucide-react'
+import { useAuth } from '@/context/AuthContext'
 
 // ── Komponen upload slot dokumen ───────────────────────────────────────────────
 function DocSlot({ label, icon: Icon, file, onPick, onRemove }) {
@@ -46,6 +47,12 @@ function DocSlot({ label, icon: Icon, file, onPick, onRemove }) {
 export default function VerifikasiStatusPage() {
   const [params] = useSearchParams()
   const navigate = useNavigate()
+  const { signOut } = useAuth()
+
+  async function handleLogout() {
+    await signOut()
+    navigate('/masuk')
+  }
 
   // Status bisa 'menunggu' atau 'ditolak' — diset dari URL param saat redirect setelah login
   const status = params.get('status') === 'ditolak' ? 'ditolak' : 'menunggu'
@@ -94,7 +101,7 @@ export default function VerifikasiStatusPage() {
               <p className="text-[10px] text-[#1A5C38] font-semibold leading-none mt-0.5">Daarul Mughni</p>
             </div>
           </Link>
-          <button onClick={() => navigate('/masuk')} className="flex items-center gap-1.5 text-sm font-semibold text-gray-500 hover:text-red-500 transition-colors">
+          <button onClick={handleLogout} className="flex items-center gap-1.5 text-sm font-semibold text-gray-500 hover:text-red-500 transition-colors">
             <LogOut className="w-4 h-4" /> Keluar
           </button>
         </div>
@@ -216,7 +223,7 @@ export default function VerifikasiStatusPage() {
                 </div>
               </div>
 
-              <button onClick={() => navigate('/masuk')} className="w-full flex items-center justify-center gap-2 py-3 rounded-xl border border-gray-200 bg-white text-sm font-semibold text-gray-600 hover:bg-gray-50 transition-colors">
+              <button onClick={handleLogout} className="w-full flex items-center justify-center gap-2 py-3 rounded-xl border border-gray-200 bg-white text-sm font-semibold text-gray-600 hover:bg-gray-50 transition-colors">
                 <LogOut className="w-4 h-4" /> Kembali ke Halaman Login
               </button>
             </motion.div>
@@ -351,7 +358,7 @@ export default function VerifikasiStatusPage() {
                 </div>
               </div>
 
-              <button onClick={() => navigate('/masuk')} className="w-full flex items-center justify-center gap-2 py-3 rounded-xl border border-gray-200 bg-white text-sm font-semibold text-gray-600 hover:bg-gray-50 transition-colors">
+              <button onClick={handleLogout} className="w-full flex items-center justify-center gap-2 py-3 rounded-xl border border-gray-200 bg-white text-sm font-semibold text-gray-600 hover:bg-gray-50 transition-colors">
                 <LogOut className="w-4 h-4" /> Kembali ke Halaman Login
               </button>
             </motion.div>
