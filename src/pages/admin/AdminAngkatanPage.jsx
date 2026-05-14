@@ -203,7 +203,7 @@ export default function AdminAngkatanPage() {
 
   const loadData = useCallback(async () => {
     setLoading(true)
-    const { data } = await supabase.from('angkatan').select('id, tahun_lulus, nama_angkatan, logo_url').order('tahun_lulus', { ascending: true })
+    const { data } = await supabase.from('angkatan').select('*').order('tahun_lulus', { ascending: true })
     setAngkatan((data ?? []).map(mapAngkatan))
     setLoading(false)
   }, [])
