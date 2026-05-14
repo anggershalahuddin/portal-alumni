@@ -53,7 +53,7 @@ function mapAngkatan(row) {
     tahunLulusan: row.tahun_lulus,
     angkatanKe: row.tahun_lulus - 2005,
     nama: row.nama_angkatan ?? `Angkatan ${row.tahun_lulus - 2005}`,
-    logo: null,
+    logo: row.logo_url ?? null,
   }
 }
 
@@ -100,7 +100,7 @@ export default function PesantrenPage() {
     let cancelled = false
     async function loadData() {
       const [angkatanRes, orgRes, galeriRes, guruRes] = await Promise.all([
-        supabase.from('angkatan').select('id, tahun_lulus, nama_angkatan').order('tahun_lulus', { ascending: true }),
+        supabase.from('angkatan').select('id, tahun_lulus, nama_angkatan, logo_url').order('tahun_lulus', { ascending: true }),
         supabase.from('organisasi').select('id, nama, singkatan, deskripsi, logo_url, tahun_berdiri, ketua, kontak, is_aktif').eq('is_aktif', true),
         supabase.from('galeri').select('id, judul, foto_url, kategori').eq('is_aktif', true).order('created_at', { ascending: false }),
         supabase.from('guru').select('id, nama, jabatan, deskripsi, foto_url, is_pengasuh').eq('is_aktif', true).order('urutan', { ascending: true }),
