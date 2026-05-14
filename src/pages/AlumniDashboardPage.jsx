@@ -1080,9 +1080,9 @@ export default function AlumniDashboardPage() {
         if (form.fotoFile) {
           const ext = form.fotoFile.name.split('.').pop().toLowerCase()
           const filePath = `${user.id}/avatar.${ext}`
-          const { error: upErr } = await supabase.storage.from('avatars').upload(filePath, form.fotoFile, { upsert: true })
+          const { error: upErr } = await supabase.storage.from('alumni-photos').upload(filePath, form.fotoFile, { upsert: true })
           if (!upErr) {
-            const { data: urlData } = supabase.storage.from('avatars').getPublicUrl(filePath)
+            const { data: urlData } = supabase.storage.from('alumni-photos').getPublicUrl(filePath)
             fotoUrl = urlData.publicUrl
           }
         }

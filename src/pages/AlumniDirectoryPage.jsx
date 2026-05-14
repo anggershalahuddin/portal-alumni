@@ -79,23 +79,29 @@ export default function AlumniDirectoryPage() {
   const loadAlumni = useCallback(async () => {
     setListLoading(true)
     try {
+      // Query profiles yang punya alumni_profiles — tidak filter by role agar admin yg juga alumni bisa tampil
       const { data: profiles } = await supabase
         .from('profiles')
-        .select('id, nama_lengkap, angkatan, bidang, domisili, status')
-        .eq('role', 'alumni')
+        .select('id, nama_lengkap, angkatan, bidang, domisili, status, foto_url, alumni_profiles!inner(id, user_id)')
         .eq('status', 'disetujui')
         .order('created_at', { ascending: false })
 
       if (!profiles?.length) { setAlumniList([]); return }
 
-      const ids = profiles.map((p) => p.id)
-      const [apRes, keahlianRes] = await Promise.all([
-        supabase.from('alumni_profiles').select('id, profesi, perusahaan').in('id', ids),
-        supabase.from('keahlian_alumni').select('alumni_id, nama').in('alumni_id', ids),
+      const userIds = profiles.map((p) => p.id)
+      const apIds   = profiles.map((p) => p.alumni_profiles?.[0]?.id).filter(Boolean)
+
+      const [pekerjaanRes, keahlianRes] = await Promise.all([
+        supabase.from('pekerjaan').select('alumni_id, posisi, perusahaan').in('alumni_id', apIds).eq('is_current', true).limit(1),
+        supabase.from('keahlian_alumni').select('alumni_id, nama').in('alumni_id', apIds),
       ])
 
-      const apMap = {}
-      ;(apRes.data ?? []).forEach((ap) => { apMap[ap.id] = ap })
+      // Map by alumni_profiles.id
+      const apIdByUserId = {}
+      profiles.forEach((p) => { if (p.alumni_profiles?.[0]) apIdByUserId[p.id] = p.alumni_profiles[0].id })
+
+      const pekerjaanMap = {}
+      ;(pekerjaanRes.data ?? []).forEach((pek) => { pekerjaanMap[pek.alumni_id] = pek })
 
       const keahlianMap = {}
       ;(keahlianRes.data ?? []).forEach((k) => {
@@ -103,19 +109,22 @@ export default function AlumniDirectoryPage() {
         keahlianMap[k.alumni_id].push(k.nama)
       })
 
-      const result = profiles.map((p) => ({
-        id:         p.id,
-        name:       p.nama_lengkap || '-',
-        angkatan:   p.angkatan,
-        bidang:     p.bidang ?? '',
-        profesi:    apMap[p.id]?.profesi ?? '',
-        perusahaan: apMap[p.id]?.perusahaan ?? '',
-        domisili:   p.domisili ?? '',
-        wilayah:    p.domisili ?? '',
-        keahlian:   keahlianMap[p.id] ?? [],
-        isVerified: true,
-        avatar:     null,
-      }))
+      const result = profiles.map((p) => {
+        const apId = apIdByUserId[p.id]
+        return {
+          id:         p.id,
+          name:       p.nama_lengkap || '-',
+          angkatan:   p.angkatan,
+          bidang:     p.bidang ?? '',
+          profesi:    apId ? (pekerjaanMap[apId]?.posisi ?? '') : '',
+          perusahaan: apId ? (pekerjaanMap[apId]?.perusahaan ?? '') : '',
+          domisili:   p.domisili ?? '',
+          wilayah:    p.domisili ?? '',
+          keahlian:   apId ? (keahlianMap[apId] ?? []) : [],
+          isVerified: true,
+          avatar:     p.foto_url ?? null,
+        }
+      })
 
       setAlumniList(result)
     } catch (err) {
