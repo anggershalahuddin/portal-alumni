@@ -1,38 +1,35 @@
-import { useState, useEffect } from 'react'
+import { useState, useEffect, useCallback } from 'react'
 import { Link } from 'react-router-dom'
 import {
   CheckCircle, XCircle,
   Users, Download, ChevronDown,
   ChevronLeft, ChevronRight, FileText, X, Clock,
-  AlertCircle, Filter, Trash2, Eye, ZoomIn,
+  AlertCircle, Filter, Trash2, ZoomIn,
 } from 'lucide-react'
 import { motion } from 'framer-motion'
 import AdminSidebar from '../../components/admin/AdminSidebar'
 import AdminHeader from '../../components/admin/AdminHeader'
 import ConfirmDialog from '../../components/admin/ConfirmDialog'
+import { supabase } from '@/lib/supabase'
 
 /* ─── Helpers ─── */
 const getAngkatanKe = (year) => year - 2005
 const TAHUN_LIST = Array.from({ length: 2026 - 2006 + 1 }, (_, i) => 2006 + i)
 const PER_PAGE = 5
 
-/* ─── Mock Data ─── */
-const mkBerkas = (hasKTP, hasIjazah, hasSurat) => [
-  { label: 'Kartu Tanda Penduduk (KTP)',     key: 'ktp',    uploaded: hasKTP,    url: hasKTP    ? 'https://images.unsplash.com/photo-1586281380349-632531db7ed4?auto=format&fit=crop&w=600&h=400&q=80' : null },
-  { label: 'Ijazah Pondok Pesantren',         key: 'ijazah', uploaded: hasIjazah, url: hasIjazah ? 'https://images.unsplash.com/photo-1517842645767-c639042777db?auto=format&fit=crop&w=600&h=400&q=80' : null },
-  { label: 'Surat Keterangan Alumni',         key: 'surat',  uploaded: hasSurat,  url: hasSurat  ? 'https://images.unsplash.com/photo-1554224155-6726b3ff858f?auto=format&fit=crop&w=600&h=400&q=80' : null },
-  { label: 'Pas Foto 3×4',                   key: 'foto',   uploaded: true,      url: null },
-]
+const JENIS_LABEL = {
+  foto_bukti:   'Foto Bukti Diri',
+  ktp:          'Kartu Tanda Penduduk (KTP)',
+  ijazah:       'Ijazah Pondok Pesantren',
+  surat:        'Surat Keterangan Alumni',
+}
 
-const initialAlumni = [
-  { id: 1, name: 'Ahmad Fauzi',     email: 'ahmad.fauzi@email.com',  angkatan: 2015, status: 'menunggu', tanggal: '12 Okt 2023', avatar: 'https://images.unsplash.com/photo-1607990281513-2c110a25bd8c?auto=format&fit=crop&w=48&h=48&q=80&crop=faces', rejectionMsg: '', berkas: mkBerkas(true, true, true) },
-  { id: 2, name: 'Siti Maryam',     email: 'siti.m@email.com',        angkatan: 2018, status: 'menunggu', tanggal: '11 Okt 2023', avatar: 'https://images.unsplash.com/photo-1573496359142-b8d87734a5a2?auto=format&fit=crop&w=48&h=48&q=80&crop=faces', rejectionMsg: '', berkas: mkBerkas(true, true, false) },
-  { id: 3, name: 'Rizky Ramadhan',  email: 'rizky.r@email.com',       angkatan: 2012, status: 'ditolak',  tanggal: '10 Okt 2023', avatar: 'https://images.unsplash.com/photo-1560250097-0b93528c311a?auto=format&fit=crop&w=48&h=48&q=80&crop=faces', rejectionMsg: 'Dokumen tidak lengkap — foto ijazah tidak terbaca dan data alamat tidak sesuai dengan KTP.', berkas: mkBerkas(true, false, false) },
-  { id: 4, name: 'Nurul Hidayah',   email: 'nurul.hid@email.com',     angkatan: 2020, status: 'menunggu', tanggal: '10 Okt 2023', avatar: 'https://images.unsplash.com/photo-1531123897727-8f129e1688ce?auto=format&fit=crop&w=48&h=48&q=80&crop=faces', rejectionMsg: '', berkas: mkBerkas(true, true, true) },
-  { id: 5, name: 'Budi Santoso',    email: 'budi.san@email.com',      angkatan: 2014, status: 'menunggu', tanggal: '09 Okt 2023', avatar: 'https://images.unsplash.com/photo-1507003211169-0a1dd7228f2d?auto=format&fit=crop&w=48&h=48&q=80&crop=faces', rejectionMsg: '', berkas: mkBerkas(true, false, true) },
-  { id: 6, name: 'Fatimah Az-Zahra',email: 'fatimah.az@email.com',    angkatan: 2019, status: 'menunggu', tanggal: '08 Okt 2023', avatar: 'https://images.unsplash.com/photo-1589156229687-496a31ad1d1f?auto=format&fit=crop&w=48&h=48&q=80&crop=faces', rejectionMsg: '', berkas: mkBerkas(true, true, true) },
-  { id: 7, name: 'Muhammad Ilham',  email: 'm.ilham@email.com',       angkatan: 2016, status: 'ditolak',  tanggal: '07 Okt 2023', avatar: 'https://images.unsplash.com/photo-1506794778202-cad84cf45f1d?auto=format&fit=crop&w=48&h=48&q=80&crop=faces', rejectionMsg: 'Data tidak sesuai — nama di KTP berbeda dengan data yang didaftarkan.', berkas: mkBerkas(true, true, false) },
-]
+function formatTanggal(iso) {
+  if (!iso) return '-'
+  return new Date(iso).toLocaleDateString('id-ID', {
+    day: 'numeric', month: 'short', year: 'numeric',
+  })
+}
 
 /* ─── Modal: Lihat Berkas ─── */
 function BerkasModal({ alumni, onClose }) {
@@ -62,57 +59,61 @@ function BerkasModal({ alumni, onClose }) {
 
         {/* Body */}
         <div className="overflow-y-auto flex-1 p-6">
-          <div className="grid grid-cols-2 gap-4">
-            {alumni.berkas.map((b) => (
-              <div key={b.key} className="border border-gray-200 rounded-xl overflow-hidden">
-                {/* Label bar */}
-                <div className="flex items-center justify-between px-3 py-2 bg-gray-50 border-b border-gray-100">
-                  <span className="text-xs font-semibold text-gray-700 truncate">{b.label}</span>
+          {alumni.berkas.length === 0 ? (
+            <div className="py-10 text-center text-sm text-gray-400">Tidak ada berkas yang diunggah.</div>
+          ) : (
+            <div className="grid grid-cols-2 gap-4">
+              {alumni.berkas.map((b) => (
+                <div key={b.key} className="border border-gray-200 rounded-xl overflow-hidden">
+                  {/* Label bar */}
+                  <div className="flex items-center justify-between px-3 py-2 bg-gray-50 border-b border-gray-100">
+                    <span className="text-xs font-semibold text-gray-700 truncate">{b.label}</span>
+                    {b.uploaded && b.url ? (
+                      <span className="text-[10px] font-bold text-green-600 bg-green-50 border border-green-200 px-2 py-0.5 rounded-full ml-2 flex-shrink-0">✓ Diunggah</span>
+                    ) : (
+                      <span className="text-[10px] font-bold text-gray-400 bg-gray-100 border border-gray-200 px-2 py-0.5 rounded-full ml-2 flex-shrink-0">Belum</span>
+                    )}
+                  </div>
+
+                  {/* Preview area */}
                   {b.uploaded && b.url ? (
-                    <span className="text-[10px] font-bold text-green-600 bg-green-50 border border-green-200 px-2 py-0.5 rounded-full ml-2 flex-shrink-0">✓ Diunggah</span>
+                    <div className="relative group bg-gray-100">
+                      <img
+                        src={b.url}
+                        alt={b.label}
+                        className="w-full h-36 object-cover"
+                      />
+                      {/* Hover overlay */}
+                      <div className="absolute inset-0 bg-black/40 opacity-0 group-hover:opacity-100 transition-opacity flex items-center justify-center gap-3">
+                        <button
+                          onClick={() => setZoomed(b)}
+                          className="w-9 h-9 rounded-full bg-white/90 flex items-center justify-center text-gray-700 hover:bg-white transition-colors"
+                          title="Perbesar"
+                        >
+                          <ZoomIn className="w-4 h-4" />
+                        </button>
+                        <a
+                          href={b.url}
+                          download
+                          target="_blank"
+                          rel="noreferrer"
+                          className="w-9 h-9 rounded-full bg-white/90 flex items-center justify-center text-gray-700 hover:bg-white transition-colors"
+                          title="Unduh"
+                        >
+                          <Download className="w-4 h-4" />
+                        </a>
+                      </div>
+                    </div>
                   ) : (
-                    <span className="text-[10px] font-bold text-gray-400 bg-gray-100 border border-gray-200 px-2 py-0.5 rounded-full ml-2 flex-shrink-0">Belum</span>
+                    <div className="h-36 flex flex-col items-center justify-center bg-gray-50 gap-2">
+                      <FileText className="w-8 h-8 text-gray-300" />
+                      <p className="text-xs text-gray-400">Belum diunggah</p>
+                    </div>
                   )}
                 </div>
-
-                {/* Preview area */}
-                {b.uploaded && b.url ? (
-                  <div className="relative group bg-gray-100">
-                    <img
-                      src={b.url}
-                      alt={b.label}
-                      className="w-full h-36 object-cover"
-                    />
-                    {/* Hover overlay */}
-                    <div className="absolute inset-0 bg-black/40 opacity-0 group-hover:opacity-100 transition-opacity flex items-center justify-center gap-3">
-                      <button
-                        onClick={() => setZoomed(b)}
-                        className="w-9 h-9 rounded-full bg-white/90 flex items-center justify-center text-gray-700 hover:bg-white transition-colors"
-                        title="Perbesar"
-                      >
-                        <ZoomIn className="w-4 h-4" />
-                      </button>
-                      <a
-                        href={b.url}
-                        download
-                        target="_blank"
-                        rel="noreferrer"
-                        className="w-9 h-9 rounded-full bg-white/90 flex items-center justify-center text-gray-700 hover:bg-white transition-colors"
-                        title="Unduh"
-                      >
-                        <Download className="w-4 h-4" />
-                      </a>
-                    </div>
-                  </div>
-                ) : (
-                  <div className="h-36 flex flex-col items-center justify-center bg-gray-50 gap-2">
-                    <FileText className="w-8 h-8 text-gray-300" />
-                    <p className="text-xs text-gray-400">Belum diunggah</p>
-                  </div>
-                )}
-              </div>
-            ))}
-          </div>
+              ))}
+            </div>
+          )}
         </div>
 
         {/* Footer */}
@@ -357,45 +358,117 @@ function RejectedConfirmModal({ onClose }) {
 
 /* ─── Main Page ─── */
 export default function AdminVerifikasiPage() {
-  const [alumni, setAlumni] = useState(initialAlumni)
-  const [search, setSearch] = useState('')
-  const [filterTahun, setFilterTahun] = useState('')
+  const [alumni, setAlumni]             = useState([])
+  const [pageLoading, setPageLoading]   = useState(true)
+  const [loadError, setLoadError]       = useState(null)
+  const [search, setSearch]             = useState('')
+  const [filterTahun, setFilterTahun]   = useState('')
   const [filterStatus, setFilterStatus] = useState('')
-  const [selected, setSelected] = useState([])
-  const [page, setPage] = useState(1)
+  const [selected, setSelected]         = useState([])
+  const [page, setPage]                 = useState(1)
 
   // Modal states
-  const [rejectTarget, setRejectTarget] = useState(null)
-  const [berkasTarget, setBerkasTarget] = useState(null)
-  const [showSuccess, setShowSuccess] = useState(false)
+  const [rejectTarget, setRejectTarget]             = useState(null)
+  const [berkasTarget, setBerkasTarget]             = useState(null)
+  const [showSuccess, setShowSuccess]               = useState(false)
   const [showRejectedConfirm, setShowRejectedConfirm] = useState(false)
-  const [confirm, setConfirm] = useState({ open: false })
+  const [confirm, setConfirm]                       = useState({ open: false })
   function askConfirm(opts) { setConfirm({ open: true, ...opts }) }
-  function closeConfirm() { setConfirm({ open: false }) }
+  function closeConfirm()   { setConfirm({ open: false }) }
+
+  /* ── Load data from Supabase ── */
+  const loadData = useCallback(async () => {
+    setPageLoading(true)
+    setLoadError(null)
+    try {
+      const { data: profiles, error: profErr } = await supabase
+        .from('profiles')
+        .select('id, nama_lengkap, email, angkatan, status, pesan_admin, created_at')
+        .in('status', ['menunggu', 'ditolak'])
+        .order('created_at', { ascending: false })
+
+      if (profErr) throw profErr
+      if (!profiles?.length) { setAlumni([]); return }
+
+      const ids = profiles.map((p) => p.id)
+      const { data: docs, error: docErr } = await supabase
+        .from('dokumen_verifikasi')
+        .select('*')
+        .in('user_id', ids)
+
+      if (docErr) throw docErr
+
+      // Batch signed URLs from private bucket
+      const signedMap = {}
+      const paths = (docs ?? []).filter((d) => d.file_url).map((d) => d.file_url)
+      if (paths.length > 0) {
+        const { data: signed } = await supabase.storage
+          .from('documents')
+          .createSignedUrls(paths, 3600)
+        ;(signed ?? []).forEach((s) => { if (s.signedUrl) signedMap[s.path] = s.signedUrl })
+      }
+
+      const alumniData = profiles.map((p) => {
+        const userDocs = (docs ?? []).filter((d) => d.user_id === p.id)
+        const berkas = userDocs.map((d) => ({
+          id:       d.id,
+          label:    JENIS_LABEL[d.jenis] ?? d.jenis,
+          key:      d.jenis,
+          uploaded: !!d.file_url,
+          url:      d.file_url ? (signedMap[d.file_url] ?? null) : null,
+          file_url: d.file_url,
+        }))
+        return {
+          id:           p.id,
+          name:         p.nama_lengkap || p.email,
+          email:        p.email,
+          angkatan:     p.angkatan,
+          status:       p.status,
+          tanggal:      formatTanggal(p.created_at),
+          rejectionMsg: p.pesan_admin ?? '',
+          berkas,
+        }
+      })
+
+      setAlumni(alumniData)
+    } catch (err) {
+      console.error('Error loading verifikasi data:', err)
+      setLoadError(err.message)
+    } finally {
+      setPageLoading(false)
+    }
+  }, [])
+
+  useEffect(() => { loadData() }, [loadData])
 
   /* Filter */
   const filtered = alumni.filter((a) => {
     const q = search.toLowerCase()
-    const matchSearch = !q || a.name.toLowerCase().includes(q) || a.email.toLowerCase().includes(q) || String(a.id).includes(q)
-    const matchTahun = !filterTahun || String(a.angkatan) === filterTahun
+    const matchSearch = !q || a.name.toLowerCase().includes(q) || a.email.toLowerCase().includes(q)
+    const matchTahun  = !filterTahun  || String(a.angkatan) === filterTahun
     const matchStatus = !filterStatus || a.status === filterStatus
     return matchSearch && matchTahun && matchStatus
   })
 
-  const totalPages = Math.max(1, Math.ceil(filtered.length / PER_PAGE))
-  const safePage = Math.min(page, totalPages)
-  const paged = filtered.slice((safePage - 1) * PER_PAGE, safePage * PER_PAGE)
+  const totalPages  = Math.max(1, Math.ceil(filtered.length / PER_PAGE))
+  const safePage    = Math.min(page, totalPages)
+  const paged       = filtered.slice((safePage - 1) * PER_PAGE, safePage * PER_PAGE)
   const pendingCount = alumni.filter((a) => a.status === 'menunggu').length
 
-  /* Actions */
+  /* ── Actions ── */
   function handleApprove(id) {
-    const a = alumni.find(x => x.id === id)
+    const a = alumni.find((x) => x.id === id)
     askConfirm({
       title: 'Verifikasi Alumni',
       message: `Apakah Anda yakin ingin memverifikasi ${a?.name ?? 'alumni ini'}? Akun akan segera diaktifkan dan alumni dapat mengakses portal.`,
       confirmLabel: 'Ya, Verifikasi',
       variant: 'success',
-      onConfirm: () => {
+      onConfirm: async () => {
+        const { error } = await supabase
+          .from('profiles')
+          .update({ status: 'disetujui', role: 'alumni' })
+          .eq('id', id)
+        if (error) { console.error(error); closeConfirm(); return }
         setAlumni((prev) => prev.filter((x) => x.id !== id))
         setSelected((prev) => prev.filter((i) => i !== id))
         closeConfirm()
@@ -404,7 +477,12 @@ export default function AdminVerifikasiPage() {
     })
   }
 
-  function handleRejectSubmit(id, alasan) {
+  async function handleRejectSubmit(id, alasan) {
+    const { error } = await supabase
+      .from('profiles')
+      .update({ status: 'ditolak', pesan_admin: alasan })
+      .eq('id', id)
+    if (error) { console.error(error); return }
     setAlumni((prev) =>
       prev.map((a) => a.id === id ? { ...a, status: 'ditolak', rejectionMsg: alasan } : a)
     )
@@ -419,7 +497,12 @@ export default function AdminVerifikasiPage() {
       message: `Apakah Anda yakin ingin memverifikasi ${selected.length} alumni sekaligus? Semua akun yang dipilih akan segera diaktifkan.`,
       confirmLabel: 'Ya, Verifikasi Semua',
       variant: 'success',
-      onConfirm: () => {
+      onConfirm: async () => {
+        const { error } = await supabase
+          .from('profiles')
+          .update({ status: 'disetujui', role: 'alumni' })
+          .in('id', selected)
+        if (error) { console.error(error); closeConfirm(); return }
         setAlumni((prev) => prev.filter((a) => !selected.includes(a.id)))
         setSelected([])
         closeConfirm()
@@ -429,13 +512,17 @@ export default function AdminVerifikasiPage() {
   }
 
   function handleDelete(id) {
-    const a = alumni.find(x => x.id === id)
+    const a = alumni.find((x) => x.id === id)
     askConfirm({
       title: 'Hapus Data Pendaftaran',
       message: `Apakah Anda yakin ingin menghapus data pendaftaran atas nama ${a?.name ?? 'alumni ini'}? Tindakan ini tidak dapat dibatalkan.`,
       confirmLabel: 'Ya, Hapus Data',
       variant: 'danger',
-      onConfirm: () => {
+      onConfirm: async () => {
+        // Remove docs first, then profile row
+        await supabase.from('dokumen_verifikasi').delete().eq('user_id', id)
+        const { error } = await supabase.from('profiles').delete().eq('id', id)
+        if (error) { console.error(error); closeConfirm(); return }
         setAlumni((prev) => prev.filter((x) => x.id !== id))
         setSelected((prev) => prev.filter((i) => i !== id))
         closeConfirm()
@@ -456,10 +543,22 @@ export default function AdminVerifikasiPage() {
   }
 
   const statCards = [
-    { icon: Clock,        iconColor: '#F59E0B', iconBg: '#FEF3C7', trend: '+15%', up: true,  value: pendingCount, label: 'Menunggu Verifikasi',  sub: 'Permintaan baru dalam 24 jam' },
-    { icon: CheckCircle,  iconColor: '#22C55E', iconBg: '#F0FDF4', trend: '+8%',  up: true,  value: 48,           label: 'Terverifikasi Hari Ini', sub: 'Alumni berhasil diaktifkan' },
-    { icon: XCircle,      iconColor: '#EF4444', iconBg: '#FEF2F2', trend: '-2%',  up: false, value: '4.2%',       label: 'Tingkat Penolakan',     sub: 'Dokumen tidak valid/palsu' },
+    { icon: Clock,       iconColor: '#F59E0B', iconBg: '#FEF3C7', trend: '+15%', up: true,  value: pendingCount, label: 'Menunggu Verifikasi',   sub: 'Permintaan baru dalam 24 jam' },
+    { icon: CheckCircle, iconColor: '#22C55E', iconBg: '#F0FDF4', trend: '+8%',  up: true,  value: 48,           label: 'Terverifikasi Hari Ini', sub: 'Alumni berhasil diaktifkan' },
+    { icon: XCircle,     iconColor: '#EF4444', iconBg: '#FEF2F2', trend: '-2%',  up: false, value: '4.2%',       label: 'Tingkat Penolakan',      sub: 'Dokumen tidak valid/palsu' },
   ]
+
+  /* ── Loading screen ── */
+  if (pageLoading) {
+    return (
+      <div className="flex min-h-screen" style={{ backgroundColor: '#F1F5F9' }}>
+        <AdminSidebar active="verifikasi" />
+        <div className="flex-1 flex items-center justify-center">
+          <div className="w-8 h-8 border-4 border-green-600 border-t-transparent rounded-full animate-spin" />
+        </div>
+      </div>
+    )
+  }
 
   return (
     <div className="flex min-h-screen" style={{ backgroundColor: '#F1F5F9' }}>
@@ -515,6 +614,15 @@ export default function AdminVerifikasiPage() {
                 </div>
               </div>
             </div>
+
+            {/* Error banner */}
+            {loadError && (
+              <div className="flex items-center gap-2 px-4 py-3 rounded-xl bg-red-50 border border-red-200 text-sm text-red-700">
+                <AlertCircle className="w-4 h-4 flex-shrink-0" />
+                {loadError}
+                <button onClick={loadData} className="ml-auto underline text-xs">Coba lagi</button>
+              </div>
+            )}
 
             {/* Filters */}
             <div className="flex items-center gap-3 flex-wrap">
@@ -601,11 +709,9 @@ export default function AdminVerifikasiPage() {
                         {/* Alumni */}
                         <td className="px-4 py-4">
                           <div className="flex items-center gap-3">
-                            <img
-                              src={a.avatar}
-                              alt={a.name}
-                              className="w-9 h-9 rounded-full object-cover flex-shrink-0 bg-gray-100"
-                            />
+                            <div className="w-9 h-9 rounded-full flex-shrink-0 bg-green-100 flex items-center justify-center text-xs font-bold text-green-700 uppercase">
+                              {(a.name?.[0] ?? '?')}
+                            </div>
                             <div>
                               <p className="text-sm font-semibold text-gray-900 whitespace-nowrap">{a.name}</p>
                               <p className="text-xs text-gray-400">{a.email}</p>
@@ -615,8 +721,14 @@ export default function AdminVerifikasiPage() {
 
                         {/* Angkatan */}
                         <td className="px-4 py-4">
-                          <p className="text-sm font-semibold text-gray-900">{a.angkatan}</p>
-                          <p className="text-xs text-gray-400">Angkatan Ke-{getAngkatanKe(a.angkatan)}</p>
+                          {a.angkatan ? (
+                            <>
+                              <p className="text-sm font-semibold text-gray-900">{a.angkatan}</p>
+                              <p className="text-xs text-gray-400">Angkatan Ke-{getAngkatanKe(a.angkatan)}</p>
+                            </>
+                          ) : (
+                            <p className="text-sm text-gray-400">-</p>
+                          )}
                         </td>
 
                         {/* Status dengan tooltip */}
@@ -651,7 +763,7 @@ export default function AdminVerifikasiPage() {
                             className="flex items-center gap-1 text-xs font-semibold text-blue-500 hover:text-blue-700 transition-colors whitespace-nowrap"
                           >
                             <FileText className="w-3.5 h-3.5" />
-                            Lihat Berkas
+                            Lihat Berkas {a.berkas.length > 0 && `(${a.berkas.length})`}
                           </button>
                         </td>
 
@@ -693,7 +805,9 @@ export default function AdminVerifikasiPage() {
                       <tr>
                         <td colSpan={7} className="px-4 py-14 text-center">
                           <AlertCircle className="w-8 h-8 text-gray-300 mx-auto mb-2" />
-                          <p className="text-sm text-gray-400">Tidak ada data yang sesuai filter.</p>
+                          <p className="text-sm text-gray-400">
+                            {alumni.length === 0 ? 'Tidak ada pengajuan verifikasi saat ini.' : 'Tidak ada data yang sesuai filter.'}
+                          </p>
                         </td>
                       </tr>
                     )}
@@ -768,9 +882,9 @@ export default function AdminVerifikasiPage() {
               <h4 className="text-xs font-bold text-gray-700 mb-3">Tautan Cepat</h4>
               <div className="space-y-2">
                 {[
-                  { label: 'Manajemen User',        icon: Users,        href: '/admin/users' },
-                  { label: 'Log Aktivitas Admin',    icon: AlertCircle,  href: '/admin/log' },
-                  { label: 'Laporan Masalah',        icon: FileText,     href: '/admin/laporan' },
+                  { label: 'Manajemen User',      icon: Users,       href: '/admin/users' },
+                  { label: 'Log Aktivitas Admin',  icon: AlertCircle, href: '/admin/log' },
+                  { label: 'Laporan Masalah',      icon: FileText,    href: '/admin/laporan' },
                 ].map(({ label, icon: Icon, href }) => (
                   <Link key={label} to={href}
                     className="flex items-center gap-2 py-1.5 text-xs text-gray-600 hover:text-gray-900 transition-colors group">
