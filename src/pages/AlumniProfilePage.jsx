@@ -15,6 +15,60 @@ import { getAlumniDetail } from '@/data/alumniDetail'
 import { initialAngkatan } from '@/data/angkatan'
 import { fadeUp } from '@/lib/animations'
 
+// ── Brand SVG Icons ───────────────────────────────────────────────────────────
+function IconInstagram({ size = 16 }) {
+  return (
+    <svg width={size} height={size} viewBox="0 0 24 24" fill="none">
+      <defs>
+        <radialGradient id="ig-grad" cx="30%" cy="107%" r="150%">
+          <stop offset="0%" stopColor="#ffd600" />
+          <stop offset="20%" stopColor="#ff7a00" />
+          <stop offset="45%" stopColor="#ff0069" />
+          <stop offset="75%" stopColor="#d300c5" />
+          <stop offset="100%" stopColor="#7638fa" />
+        </radialGradient>
+      </defs>
+      <rect width="24" height="24" rx="6" fill="url(#ig-grad)" />
+      <rect x="6.5" y="6.5" width="11" height="11" rx="3.5" stroke="white" strokeWidth="1.5" fill="none" />
+      <circle cx="12" cy="12" r="2.8" stroke="white" strokeWidth="1.5" fill="none" />
+      <circle cx="16.2" cy="7.8" r="0.9" fill="white" />
+    </svg>
+  )
+}
+function IconYouTube({ size = 16 }) {
+  return (
+    <svg width={size} height={size} viewBox="0 0 24 24">
+      <rect width="24" height="24" rx="6" fill="#FF0000" />
+      <path d="M19.6 8.4a2 2 0 0 0-1.4-1.4C16.9 6.6 12 6.6 12 6.6s-4.9 0-6.2.4A2 2 0 0 0 4.4 8.4C4 9.7 4 12 4 12s0 2.3.4 3.6a2 2 0 0 0 1.4 1.4c1.3.4 6.2.4 6.2.4s4.9 0 6.2-.4a2 2 0 0 0 1.4-1.4C20 14.3 20 12 20 12s0-2.3-.4-3.6z" fill="white" />
+      <polygon points="10,9.5 10,14.5 15,12" fill="#FF0000" />
+    </svg>
+  )
+}
+function IconTwitterX({ size = 16 }) {
+  return (
+    <svg width={size} height={size} viewBox="0 0 24 24">
+      <rect width="24" height="24" rx="6" fill="#000" />
+      <path d="M17.5 5h-2.2l-3.3 4.2L8.8 5H4.5l5.5 7L4.5 19h2.2l3.6-4.5L14 19h4.3l-5.8-7.4L17.5 5z" fill="white" />
+    </svg>
+  )
+}
+function IconFacebook({ size = 16 }) {
+  return (
+    <svg width={size} height={size} viewBox="0 0 24 24">
+      <rect width="24" height="24" rx="6" fill="#1877F2" />
+      <path d="M15.5 8H13.5V6.5C13.5 5.95 13.95 5.5 14.5 5.5H15.5V3H13.5C11.84 3 10.5 4.34 10.5 6V8H8.5V11H10.5V21H13.5V11H15.5L16 8H15.5Z" fill="white" />
+    </svg>
+  )
+}
+function IconLinkedIn({ size = 16 }) {
+  return (
+    <svg width={size} height={size} viewBox="0 0 24 24">
+      <rect width="24" height="24" rx="6" fill="#0A66C2" />
+      <path d="M7.5 9.5H5V19H7.5V9.5ZM6.25 8.5C7.08 8.5 7.75 7.83 7.75 7S7.08 5.5 6.25 5.5 4.75 6.17 4.75 7 5.42 8.5 6.25 8.5ZM19 19H16.5V14.25C16.5 13.2 16.48 11.86 15.04 11.86C13.58 11.86 13.36 12.99 13.36 14.17V19H10.86V9.5H13.25V10.7H13.28C13.62 10.06 14.44 9.38 15.67 9.38C18.2 9.38 19 11.04 19 13.2V19Z" fill="white" />
+    </svg>
+  )
+}
+
 const TABS = [
   { key: 'ringkasan', label: 'Ringkasan', icon: Activity },
   { key: 'pengalaman', label: 'Pengalaman & Pendidikan', icon: BookOpen },
@@ -530,14 +584,15 @@ export default function AlumniProfilePage() {
 
                   {/* LinkedIn */}
                   {detail.kontak.linkedin && (
-                    <div className="flex items-center gap-3 py-3">
-                      <Link2 className="w-4 h-4 text-gray-300 flex-shrink-0" />
+                    <a href={`https://${detail.kontak.linkedin}`} target="_blank" rel="noreferrer"
+                      className="flex items-center gap-3 py-3 hover:bg-gray-50 -mx-1 px-1 rounded-lg transition-colors">
+                      <IconLinkedIn size={16} />
                       <div className="flex-1 min-w-0">
                         <p className="text-[10px] font-bold text-gray-400 uppercase tracking-widest">LinkedIn</p>
                         <p className="text-xs text-gray-700 truncate">{detail.kontak.linkedin}</p>
                       </div>
-                      <Globe className="w-4 h-4 text-[#1A5C38] flex-shrink-0" />
-                    </div>
+                      <ExternalLink className="w-3.5 h-3.5 text-gray-300 flex-shrink-0" />
+                    </a>
                   )}
 
                   {/* Website */}
@@ -554,19 +609,17 @@ export default function AlumniProfilePage() {
 
                   {/* Sosial Media */}
                   {[
-                    { key: 'instagram', label: 'Instagram', prefix: '@', color: '#E1306C', bg: '#FDF0F4', href: h => `https://instagram.com/${h.replace('@','')}` },
-                    { key: 'youtube',   label: 'YouTube',   prefix: '',  color: '#FF0000', bg: '#FFF0F0', href: h => h.startsWith('http') ? h : `https://youtube.com/${h}` },
-                    { key: 'twitter',   label: 'Twitter / X', prefix: '@', color: '#000000', bg: '#F4F4F4', href: h => `https://x.com/${h.replace('@','')}` },
-                    { key: 'facebook',  label: 'Facebook',  prefix: '',  color: '#1877F2', bg: '#EEF4FE', href: h => h.startsWith('http') ? h : `https://facebook.com/${h}` },
-                  ].filter(s => detail.kontak[s.key]).map(s => (
-                    <a key={s.key} href={s.href(detail.kontak[s.key])} target="_blank" rel="noreferrer"
+                    { key: 'instagram', label: 'Instagram',  prefix: '@', Icon: IconInstagram, href: h => `https://instagram.com/${h.replace('@','')}` },
+                    { key: 'youtube',   label: 'YouTube',    prefix: '',  Icon: IconYouTube,   href: h => h.startsWith('http') ? h : `https://youtube.com/${h}` },
+                    { key: 'twitter',   label: 'Twitter / X', prefix: '@', Icon: IconTwitterX, href: h => `https://x.com/${h.replace('@','')}` },
+                    { key: 'facebook',  label: 'Facebook',   prefix: '',  Icon: IconFacebook,  href: h => h.startsWith('http') ? h : `https://facebook.com/${h}` },
+                  ].filter(s => detail.kontak[s.key]).map(({ key, label, prefix, Icon, href }) => (
+                    <a key={key} href={href(detail.kontak[key])} target="_blank" rel="noreferrer"
                       className="flex items-center gap-3 py-3 hover:bg-gray-50 -mx-1 px-1 rounded-lg transition-colors">
-                      <div className="w-4 h-4 rounded flex items-center justify-center flex-shrink-0 text-[8px] font-black" style={{ backgroundColor: s.bg, color: s.color }}>
-                        {s.label[0]}
-                      </div>
+                      <Icon size={16} />
                       <div className="flex-1 min-w-0">
-                        <p className="text-[10px] font-bold text-gray-400 uppercase tracking-widest">{s.label}</p>
-                        <p className="text-xs text-gray-700 truncate">{s.prefix}{detail.kontak[s.key]}</p>
+                        <p className="text-[10px] font-bold text-gray-400 uppercase tracking-widest">{label}</p>
+                        <p className="text-xs text-gray-700 truncate">{prefix}{detail.kontak[key]}</p>
                       </div>
                       <ExternalLink className="w-3.5 h-3.5 text-gray-300 flex-shrink-0" />
                     </a>

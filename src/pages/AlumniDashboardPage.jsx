@@ -156,6 +156,43 @@ function MF({ label, children }) {
 
 const inp = 'w-full px-4 py-2.5 rounded-xl border border-gray-200 text-sm outline-none focus:border-[#1A5C38] transition-colors'
 
+function SvgInstagram() {
+  return (
+    <svg width="14" height="14" viewBox="0 0 24 24" fill="none">
+      <defs><radialGradient id="ig2" cx="30%" cy="107%" r="150%"><stop offset="0%" stopColor="#ffd600"/><stop offset="20%" stopColor="#ff7a00"/><stop offset="45%" stopColor="#ff0069"/><stop offset="75%" stopColor="#d300c5"/><stop offset="100%" stopColor="#7638fa"/></radialGradient></defs>
+      <rect width="24" height="24" rx="6" fill="url(#ig2)"/>
+      <rect x="6.5" y="6.5" width="11" height="11" rx="3.5" stroke="white" strokeWidth="1.5" fill="none"/>
+      <circle cx="12" cy="12" r="2.8" stroke="white" strokeWidth="1.5" fill="none"/>
+      <circle cx="16.2" cy="7.8" r="0.9" fill="white"/>
+    </svg>
+  )
+}
+function SvgYouTube() {
+  return (
+    <svg width="14" height="14" viewBox="0 0 24 24">
+      <rect width="24" height="24" rx="6" fill="#FF0000"/>
+      <path d="M19.6 8.4a2 2 0 0 0-1.4-1.4C16.9 6.6 12 6.6 12 6.6s-4.9 0-6.2.4A2 2 0 0 0 4.4 8.4C4 9.7 4 12 4 12s0 2.3.4 3.6a2 2 0 0 0 1.4 1.4c1.3.4 6.2.4 6.2.4s4.9 0 6.2-.4a2 2 0 0 0 1.4-1.4C20 14.3 20 12 20 12s0-2.3-.4-3.6z" fill="white"/>
+      <polygon points="10,9.5 10,14.5 15,12" fill="#FF0000"/>
+    </svg>
+  )
+}
+function SvgTwitterX() {
+  return (
+    <svg width="14" height="14" viewBox="0 0 24 24">
+      <rect width="24" height="24" rx="6" fill="#000"/>
+      <path d="M17.5 5h-2.2l-3.3 4.2L8.8 5H4.5l5.5 7L4.5 19h2.2l3.6-4.5L14 19h4.3l-5.8-7.4L17.5 5z" fill="white"/>
+    </svg>
+  )
+}
+function SvgFacebook() {
+  return (
+    <svg width="14" height="14" viewBox="0 0 24 24">
+      <rect width="24" height="24" rx="6" fill="#1877F2"/>
+      <path d="M15.5 8H13.5V6.5C13.5 5.95 13.95 5.5 14.5 5.5H15.5V3H13.5C11.84 3 10.5 4.34 10.5 6V8H8.5V11H10.5V21H13.5V11H15.5L16 8H15.5Z" fill="white"/>
+    </svg>
+  )
+}
+
 function EditProfilModal({ profil, onSave, onClose }) {
   const [form, setForm] = useState({ ...profil })
   const s = k => e => setForm(p => ({ ...p, [k]: e.target.value }))
@@ -180,24 +217,21 @@ function EditProfilModal({ profil, onSave, onClose }) {
           <div className="border-t border-gray-100 pt-4">
             <p className="text-xs font-bold text-gray-400 uppercase tracking-widest mb-3">Sosial Media</p>
             <div className="space-y-3">
-              <MF label="Instagram">
-                <div className="relative">
-                  <span className="absolute left-3.5 top-1/2 -translate-y-1/2 text-sm text-gray-400">@</span>
-                  <input className={`${inp} pl-8`} value={form.instagram} onChange={s('instagram')} placeholder="username" />
-                </div>
-              </MF>
-              <MF label="YouTube">
-                <input className={inp} value={form.youtube} onChange={s('youtube')} placeholder="@channelname atau youtube.com/c/..." />
-              </MF>
-              <MF label="Twitter / X">
-                <div className="relative">
-                  <span className="absolute left-3.5 top-1/2 -translate-y-1/2 text-sm text-gray-400">@</span>
-                  <input className={`${inp} pl-8`} value={form.twitter} onChange={s('twitter')} placeholder="username" />
-                </div>
-              </MF>
-              <MF label="Facebook">
-                <input className={inp} value={form.facebook} onChange={s('facebook')} placeholder="facebook.com/username" />
-              </MF>
+              {[
+                { key: 'instagram', label: 'Instagram', placeholder: 'username', prefix: '@', icon: <SvgInstagram /> },
+                { key: 'youtube',   label: 'YouTube',   placeholder: '@channelname', prefix: '', icon: <SvgYouTube /> },
+                { key: 'twitter',   label: 'Twitter / X', placeholder: 'username', prefix: '@', icon: <SvgTwitterX /> },
+                { key: 'facebook',  label: 'Facebook',  placeholder: 'username atau URL', prefix: '', icon: <SvgFacebook /> },
+              ].map(({ key, label, placeholder, prefix, icon }) => (
+                <MF key={key} label={
+                  <span className="flex items-center gap-1.5">{icon} {label}</span>
+                }>
+                  <div className="relative">
+                    {prefix && <span className="absolute left-3.5 top-1/2 -translate-y-1/2 text-sm text-gray-400">{prefix}</span>}
+                    <input className={`${inp} ${prefix ? 'pl-8' : ''}`} value={form[key]} onChange={s(key)} placeholder={placeholder} />
+                  </div>
+                </MF>
+              ))}
             </div>
           </div>
           <MF label="Foto Profil">
