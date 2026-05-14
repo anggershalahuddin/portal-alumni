@@ -229,6 +229,99 @@ CREATE POLICY "publikasi: kelola sendiri"
   );
 
 -- =====================================================================
+-- KEAHLIAN, BAHASA, LEMBAGA, BERKAS ALUMNI
+-- Pola sama: publik bisa baca (jika alumni terverifikasi), pemilik bisa kelola
+-- =====================================================================
+
+-- Helper macro untuk cek apakah alumni_id milik user aktif & terverifikasi
+-- (inline, tidak dibuat fungsi karena parameternya dinamis)
+
+-- KEAHLIAN
+ALTER TABLE public.keahlian_alumni ENABLE ROW LEVEL SECURITY;
+
+CREATE POLICY "keahlian: baca publik alumni terverifikasi"
+  ON public.keahlian_alumni FOR SELECT
+  USING (
+    EXISTS (
+      SELECT 1 FROM public.alumni_profiles ap
+      JOIN public.profiles p ON p.id = ap.user_id
+      WHERE ap.id = keahlian_alumni.alumni_id
+        AND (ap.is_publik = true AND p.status = 'disetujui' OR p.id = auth.uid())
+    ) OR public.is_admin_or_above()
+  );
+
+CREATE POLICY "keahlian: kelola sendiri"
+  ON public.keahlian_alumni FOR ALL
+  USING (
+    EXISTS (SELECT 1 FROM public.alumni_profiles ap
+            WHERE ap.id = keahlian_alumni.alumni_id AND ap.user_id = auth.uid())
+    OR public.is_admin_or_above()
+  );
+
+-- BAHASA
+ALTER TABLE public.bahasa_alumni ENABLE ROW LEVEL SECURITY;
+
+CREATE POLICY "bahasa: baca publik alumni terverifikasi"
+  ON public.bahasa_alumni FOR SELECT
+  USING (
+    EXISTS (
+      SELECT 1 FROM public.alumni_profiles ap
+      JOIN public.profiles p ON p.id = ap.user_id
+      WHERE ap.id = bahasa_alumni.alumni_id
+        AND (ap.is_publik = true AND p.status = 'disetujui' OR p.id = auth.uid())
+    ) OR public.is_admin_or_above()
+  );
+
+CREATE POLICY "bahasa: kelola sendiri"
+  ON public.bahasa_alumni FOR ALL
+  USING (
+    EXISTS (SELECT 1 FROM public.alumni_profiles ap
+            WHERE ap.id = bahasa_alumni.alumni_id AND ap.user_id = auth.uid())
+    OR public.is_admin_or_above()
+  );
+
+-- LEMBAGA
+ALTER TABLE public.lembaga_alumni ENABLE ROW LEVEL SECURITY;
+
+CREATE POLICY "lembaga: baca publik alumni terverifikasi"
+  ON public.lembaga_alumni FOR SELECT
+  USING (
+    EXISTS (
+      SELECT 1 FROM public.alumni_profiles ap
+      JOIN public.profiles p ON p.id = ap.user_id
+      WHERE ap.id = lembaga_alumni.alumni_id
+        AND (ap.is_publik = true AND p.status = 'disetujui' OR p.id = auth.uid())
+    ) OR public.is_admin_or_above()
+  );
+
+CREATE POLICY "lembaga: kelola sendiri"
+  ON public.lembaga_alumni FOR ALL
+  USING (
+    EXISTS (SELECT 1 FROM public.alumni_profiles ap
+            WHERE ap.id = lembaga_alumni.alumni_id AND ap.user_id = auth.uid())
+    OR public.is_admin_or_above()
+  );
+
+-- BERKAS (dokumen portofolio — hanya pemilik & admin yang bisa baca)
+ALTER TABLE public.berkas_alumni ENABLE ROW LEVEL SECURITY;
+
+CREATE POLICY "berkas: baca pemilik atau admin"
+  ON public.berkas_alumni FOR SELECT
+  USING (
+    EXISTS (SELECT 1 FROM public.alumni_profiles ap
+            WHERE ap.id = berkas_alumni.alumni_id AND ap.user_id = auth.uid())
+    OR public.is_admin_or_above()
+  );
+
+CREATE POLICY "berkas: kelola sendiri"
+  ON public.berkas_alumni FOR ALL
+  USING (
+    EXISTS (SELECT 1 FROM public.alumni_profiles ap
+            WHERE ap.id = berkas_alumni.alumni_id AND ap.user_id = auth.uid())
+    OR public.is_admin_or_above()
+  );
+
+-- =====================================================================
 -- DOKUMEN VERIFIKASI
 -- =====================================================================
 

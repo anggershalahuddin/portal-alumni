@@ -18,16 +18,24 @@ Jalankan file SQL berikut secara berurutan di **Supabase Dashboard → SQL Edito
 ```
 auth.users (Supabase built-in)
     │
-    └── profiles (role, status verifikasi, foto)
+    └── profiles (role, status verifikasi, biodata registrasi)
+            │     ├── no_hp, angkatan, domisili, bidang  [publik]
+            │     └── tempat_lahir, tanggal_lahir, alamat_lengkap  [admin-only]
             │
-            └── alumni_profiles (profil lengkap alumni)
-                    ├── pendidikan       (riwayat pendidikan)
-                    ├── pekerjaan        (riwayat karir)
+            └── alumni_profiles (profil lengkap alumni terverifikasi)
+                    ├── linkedin_url, website_url
+                    ├── instagram_url, youtube_url, twitter_url, facebook_url
+                    ├── pendidikan
+                    ├── pekerjaan
                     ├── sertifikasi
-                    └── publikasi
+                    ├── publikasi
+                    ├── keahlian_alumni    (skills)
+                    ├── bahasa_alumni      (languages)
+                    ├── lembaga_alumni     (bisnis/organisasi milik alumni)
+                    └── berkas_alumni      (CV, sertifikat, company profile)
 
 angkatan              ← referensi tahun masuk/lulus
-dokumen_verifikasi    ← KTP, ijazah, foto (private bucket)
+dokumen_verifikasi    ← foto bukti alumni [auto-delete setelah diverifikasi]
 
 berita                ← konten, author FK → profiles
 agenda                ← kegiatan, organizer FK → profiles
@@ -60,13 +68,14 @@ log_aktivitas         ← audit trail admin
 
 ## Storage Buckets
 
-| Bucket | Akses | Ukuran max | Tipe file |
-|--------|-------|-----------|-----------|
-| `alumni-photos` | Public read | 5 MB | JPEG, PNG, WebP |
-| `berita-images` | Public read | 10 MB | JPEG, PNG, WebP |
-| `galeri-images` | Public read | 10 MB | JPEG, PNG, WebP |
-| `documents` | **Private** | 10 MB | JPEG, PNG, WebP, PDF |
-| `site-assets` | Public read | 10 MB | JPEG, PNG, WebP, SVG |
+| Bucket | Akses | Ukuran max | Tipe file | Keterangan |
+|--------|-------|-----------|-----------|-----------|
+| `alumni-photos` | Public read | 5 MB | JPEG, WebP | Foto profil alumni |
+| `berita-images` | Public read | 10 MB | JPEG, PNG, WebP | Gambar artikel berita |
+| `galeri-images` | Public read | 10 MB | JPEG, PNG, WebP | Foto dokumentasi |
+| `documents` | **Private** | 2 MB | JPEG, WebP | Foto bukti alumni (auto-delete setelah verifikasi) |
+| `berkas-alumni` | **Private** | 5 MB | PDF, JPEG, WebP | Dokumen portofolio alumni (CV, sertifikat, dsb.) |
+| `site-assets` | Public read | 10 MB | JPEG, PNG, WebP, SVG | Aset situs & pimpinan |
 
 Folder struktur upload: `{bucket}/{user_id}/{filename}`
 

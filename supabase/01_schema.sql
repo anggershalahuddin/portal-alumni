@@ -34,6 +34,20 @@ CREATE TYPE public.publikasi_jenis AS ENUM (
   'artikel', 'buku', 'penelitian', 'opini', 'lainnya'
 );
 
+CREATE TYPE public.lembaga_jenis AS ENUM (
+  'Perusahaan (PT/CV/UD)',
+  'Pesantren / Lembaga Pendidikan',
+  'Yayasan / Lembaga Sosial',
+  'Toko / UMKM',
+  'Koperasi',
+  'Lainnya'
+);
+
+CREATE TYPE public.berkas_kategori AS ENUM (
+  'CV / Resume', 'Ijazah', 'Sertifikat',
+  'Foto / Scan', 'Company Profile', 'Lainnya'
+);
+
 -- ─── HELPER FUNCTION: auto-update updated_at ──────────────────────────
 
 CREATE OR REPLACE FUNCTION public.set_updated_at()
@@ -54,6 +68,15 @@ CREATE TABLE public.profiles (
   pesan_admin     TEXT,                     -- catatan/alasan dari admin (verifikasi/penolakan)
   nama_lengkap    TEXT,
   foto_url        TEXT,
+  -- Biodata dari form pendaftaran
+  no_hp           TEXT,
+  angkatan        SMALLINT,                 -- tahun angkatan (raw), FK ke angkatan ada di alumni_profiles
+  domisili        TEXT,                     -- kota domisili — ditampilkan publik
+  bidang          TEXT,                     -- bidang/profesi — ditampilkan publik
+  -- Data internal (hanya admin yang lihat, tidak ditampilkan publik)
+  tempat_lahir    TEXT,
+  tanggal_lahir   DATE,
+  alamat_lengkap  TEXT,
   created_at      TIMESTAMPTZ NOT NULL DEFAULT now(),
   updated_at      TIMESTAMPTZ NOT NULL DEFAULT now()
 );
@@ -65,11 +88,25 @@ CREATE TRIGGER profiles_set_updated_at
 -- Trigger: buat profile otomatis saat user baru mendaftar
 CREATE OR REPLACE FUNCTION public.handle_new_user()
 RETURNS TRIGGER LANGUAGE plpgsql SECURITY DEFINER SET search_path = public AS $$
+DECLARE
+  meta JSONB := NEW.raw_user_meta_data;
 BEGIN
-  INSERT INTO public.profiles (id, nama_lengkap)
+  INSERT INTO public.profiles (
+    id, nama_lengkap, no_hp, angkatan,
+    tempat_lahir, tanggal_lahir, domisili, bidang, alamat_lengkap
+  )
   VALUES (
     NEW.id,
-    COALESCE(NEW.raw_user_meta_data->>'nama_lengkap', NEW.email)
+    COALESCE(meta->>'nama_lengkap', NEW.email),
+    meta->>'no_hp',
+    CASE WHEN meta->>'angkatan' IS NOT NULL
+         THEN (meta->>'angkatan')::SMALLINT ELSE NULL END,
+    meta->>'tempat_lahir',
+    CASE WHEN meta->>'tanggal_lahir' IS NOT NULL
+         THEN (meta->>'tanggal_lahir')::DATE ELSE NULL END,
+    meta->>'domisili',
+    meta->>'bidang',
+    meta->>'alamat_lengkap'
   );
   RETURN NEW;
 END;
@@ -104,6 +141,10 @@ CREATE TABLE public.alumni_profiles (
   domisili        TEXT,
   linkedin_url    TEXT,
   website_url     TEXT,
+  instagram_url   TEXT,
+  youtube_url     TEXT,
+  twitter_url     TEXT,
+  facebook_url    TEXT,
   is_publik       BOOLEAN     NOT NULL DEFAULT true,
   verified_at     TIMESTAMPTZ,
   created_at      TIMESTAMPTZ NOT NULL DEFAULT now(),
@@ -169,16 +210,74 @@ CREATE TABLE public.publikasi (
   created_at      TIMESTAMPTZ NOT NULL DEFAULT now()
 );
 
+-- ─── KEAHLIAN ALUMNI ──────────────────────────────────────────────────
+
+CREATE TABLE public.keahlian_alumni (
+  id          UUID        PRIMARY KEY DEFAULT gen_random_uuid(),
+  alumni_id   UUID        NOT NULL REFERENCES public.alumni_profiles(id) ON DELETE CASCADE,
+  nama        TEXT        NOT NULL,          -- e.g., 'React', 'Machine Learning'
+  tingkat     TEXT,                          -- 'Pemula' | 'Menengah' | 'Mahir' | 'Ahli'
+  created_at  TIMESTAMPTZ NOT NULL DEFAULT now()
+);
+
+-- ─── BAHASA ALUMNI ────────────────────────────────────────────────────
+
+CREATE TABLE public.bahasa_alumni (
+  id          UUID        PRIMARY KEY DEFAULT gen_random_uuid(),
+  alumni_id   UUID        NOT NULL REFERENCES public.alumni_profiles(id) ON DELETE CASCADE,
+  nama        TEXT        NOT NULL,          -- e.g., 'English', 'Arabic'
+  tingkat     TEXT,                          -- 'Dasar' | 'Percakapan' | 'Profesional' | 'Native'
+  created_at  TIMESTAMPTZ NOT NULL DEFAULT now()
+);
+
+-- ─── LEMBAGA / USAHA ALUMNI ───────────────────────────────────────────
+-- Kepemilikan bisnis, yayasan, atau organisasi milik alumni
+
+CREATE TABLE public.lembaga_alumni (
+  id              UUID        PRIMARY KEY DEFAULT gen_random_uuid(),
+  alumni_id       UUID        NOT NULL REFERENCES public.alumni_profiles(id) ON DELETE CASCADE,
+  nama            TEXT        NOT NULL,
+  jenis           public.lembaga_jenis,
+  sebagai         TEXT,                      -- 'Pendiri / Founder' | 'Direktur / CEO' | dsb.
+  bidang          TEXT,
+  lokasi          TEXT,
+  tahun_berdiri   SMALLINT,
+  website         TEXT,
+  deskripsi       TEXT,
+  open_kerjasama  BOOLEAN     NOT NULL DEFAULT false,
+  created_at      TIMESTAMPTZ NOT NULL DEFAULT now(),
+  updated_at      TIMESTAMPTZ NOT NULL DEFAULT now()
+);
+
+CREATE TRIGGER lembaga_alumni_set_updated_at
+  BEFORE UPDATE ON public.lembaga_alumni
+  FOR EACH ROW EXECUTE FUNCTION public.set_updated_at();
+
+-- ─── BERKAS ALUMNI ────────────────────────────────────────────────────
+-- Dokumen portofolio alumni (CV, sertifikat, dsb.) — BERBEDA dari dokumen verifikasi
+
+CREATE TABLE public.berkas_alumni (
+  id          UUID        PRIMARY KEY DEFAULT gen_random_uuid(),
+  alumni_id   UUID        NOT NULL REFERENCES public.alumni_profiles(id) ON DELETE CASCADE,
+  nama        TEXT        NOT NULL,          -- nama tampil, e.g., 'CV 2024'
+  kategori    public.berkas_kategori,
+  tipe        TEXT,                          -- 'PDF' | 'IMG'
+  ukuran      TEXT,                          -- string display, e.g., '1.2 MB'
+  file_url    TEXT        NOT NULL,
+  created_at  TIMESTAMPTZ NOT NULL DEFAULT now()
+);
+
 -- ─── DOKUMEN VERIFIKASI ───────────────────────────────────────────────
--- File yang diunggah alumni saat mendaftar (KTP, ijazah, foto)
+-- Foto bukti alumni yang diunggah saat mendaftar (hanya 1 foto JPEG/WebP)
 
 CREATE TABLE public.dokumen_verifikasi (
-  id              UUID        PRIMARY KEY DEFAULT gen_random_uuid(),
-  user_id         UUID        NOT NULL REFERENCES public.profiles(id) ON DELETE CASCADE,
-  jenis           TEXT        NOT NULL,     -- 'ktp' | 'ijazah' | 'foto' | 'lainnya'
-  file_url        TEXT        NOT NULL,
-  catatan         TEXT,
-  created_at      TIMESTAMPTZ NOT NULL DEFAULT now()
+  id          UUID        PRIMARY KEY DEFAULT gen_random_uuid(),
+  user_id     UUID        NOT NULL REFERENCES public.profiles(id) ON DELETE CASCADE,
+  jenis       TEXT        NOT NULL DEFAULT 'foto_bukti', -- selalu 'foto_bukti'
+  file_url    TEXT        NOT NULL,
+  auto_hapus  BOOLEAN     NOT NULL DEFAULT true,  -- dihapus otomatis setelah status = 'disetujui'
+  catatan     TEXT,
+  created_at  TIMESTAMPTZ NOT NULL DEFAULT now()
 );
 
 -- ─── BERITA ───────────────────────────────────────────────────────────
@@ -331,6 +430,27 @@ CREATE TABLE public.log_aktivitas (
   created_at      TIMESTAMPTZ NOT NULL DEFAULT now()
 );
 
+-- ─── TRIGGER: auto-hapus foto verifikasi setelah alumni disetujui ─────
+-- Menghapus baris dokumen_verifikasi (dan file di storage via application layer)
+
+CREATE OR REPLACE FUNCTION public.handle_alumni_verified()
+RETURNS TRIGGER LANGUAGE plpgsql SECURITY DEFINER SET search_path = public AS $$
+BEGIN
+  -- Hapus dokumen verifikasi jika status berubah menjadi 'disetujui'
+  IF NEW.status = 'disetujui' AND OLD.status != 'disetujui' THEN
+    DELETE FROM public.dokumen_verifikasi
+    WHERE user_id = NEW.id AND auto_hapus = true;
+  END IF;
+  RETURN NEW;
+END;
+$$;
+
+CREATE TRIGGER on_alumni_verified
+  AFTER UPDATE ON public.profiles
+  FOR EACH ROW
+  WHEN (NEW.status = 'disetujui' AND OLD.status IS DISTINCT FROM NEW.status)
+  EXECUTE FUNCTION public.handle_alumni_verified();
+
 -- ─── INDEXES ──────────────────────────────────────────────────────────
 
 CREATE INDEX idx_profiles_role           ON public.profiles(role);
@@ -346,3 +466,8 @@ CREATE INDEX idx_lowongan_aktif          ON public.lowongan(is_aktif);
 CREATE INDEX idx_notifikasi_target       ON public.notifikasi(target_user_id);
 CREATE INDEX idx_log_user                ON public.log_aktivitas(user_id);
 CREATE INDEX idx_log_created             ON public.log_aktivitas(created_at DESC);
+CREATE INDEX idx_keahlian_alumni         ON public.keahlian_alumni(alumni_id);
+CREATE INDEX idx_bahasa_alumni           ON public.bahasa_alumni(alumni_id);
+CREATE INDEX idx_lembaga_alumni          ON public.lembaga_alumni(alumni_id);
+CREATE INDEX idx_berkas_alumni           ON public.berkas_alumni(alumni_id);
+CREATE INDEX idx_dokver_user             ON public.dokumen_verifikasi(user_id);

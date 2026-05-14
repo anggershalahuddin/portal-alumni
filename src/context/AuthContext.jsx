@@ -74,11 +74,27 @@ export function AuthProvider({ children }) {
     return { data, error }
   }, [])
 
-  const signUp = useCallback(async ({ email, password, namaLengkap }) => {
+  const signUp = useCallback(async ({
+    email, password,
+    namaLengkap, noHp, angkatan,
+    tempatLahir, tanggalLahir,
+    domisili, bidang, alamat,
+  }) => {
     const { data, error } = await supabase.auth.signUp({
       email,
       password,
-      options: { data: { nama_lengkap: namaLengkap } },
+      options: {
+        data: {
+          nama_lengkap:   namaLengkap,
+          no_hp:          noHp,
+          angkatan:       angkatan ? String(angkatan) : null,
+          tempat_lahir:   tempatLahir,
+          tanggal_lahir:  tanggalLahir,   // format 'YYYY-MM-DD'
+          domisili,
+          bidang,
+          alamat_lengkap: alamat,
+        },
+      },
     })
     return { data, error }
   }, [])

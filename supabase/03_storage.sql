@@ -32,12 +32,20 @@ VALUES (
   ARRAY['image/jpeg', 'image/png', 'image/webp']
 );
 
--- Dokumen verifikasi alumni: KTP, ijazah (PRIVATE — hanya admin & pemilik)
+-- Foto bukti alumni saat mendaftar (PRIVATE — hanya admin & pemilik, auto-delete setelah verifikasi)
 INSERT INTO storage.buckets (id, name, public, file_size_limit, allowed_mime_types)
 VALUES (
   'documents', 'documents', false,
-  10485760, -- 10 MB
-  ARRAY['image/jpeg', 'image/png', 'image/webp', 'application/pdf']
+  2097152,  -- 2 MB (foto JPEG/WebP saja, sesuai validasi DaftarPage)
+  ARRAY['image/jpeg', 'image/webp']
+);
+
+-- Berkas portofolio alumni (CV, sertifikat, company profile, dsb.) — PRIVATE
+INSERT INTO storage.buckets (id, name, public, file_size_limit, allowed_mime_types)
+VALUES (
+  'berkas-alumni', 'berkas-alumni', false,
+  5242880,  -- 5 MB
+  ARRAY['application/pdf', 'image/jpeg', 'image/webp']
 );
 
 -- Foto pimpinan & aset situs (admin saja yang upload)
@@ -125,6 +133,34 @@ CREATE POLICY "documents: admin hapus"
   ON storage.objects FOR DELETE
   USING (
     bucket_id = 'documents' AND public.is_admin_or_above()
+  );
+
+-- BERKAS-ALUMNI (PRIVATE): hanya pemilik dan admin
+CREATE POLICY "berkas-alumni: baca sendiri atau admin"
+  ON storage.objects FOR SELECT
+  USING (
+    bucket_id = 'berkas-alumni'
+    AND (
+      auth.uid()::text = (storage.foldername(name))[1]
+      OR public.is_admin_or_above()
+    )
+  );
+
+CREATE POLICY "berkas-alumni: alumni upload sendiri"
+  ON storage.objects FOR INSERT
+  WITH CHECK (
+    bucket_id = 'berkas-alumni'
+    AND auth.uid()::text = (storage.foldername(name))[1]
+  );
+
+CREATE POLICY "berkas-alumni: alumni hapus sendiri"
+  ON storage.objects FOR DELETE
+  USING (
+    bucket_id = 'berkas-alumni'
+    AND (
+      auth.uid()::text = (storage.foldername(name))[1]
+      OR public.is_admin_or_above()
+    )
   );
 
 -- SITE-ASSETS: publik baca, admin upload
