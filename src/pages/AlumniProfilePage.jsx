@@ -18,6 +18,7 @@ import { fadeUp } from '@/lib/animations'
 const TABS = [
   { key: 'ringkasan', label: 'Ringkasan', icon: Activity },
   { key: 'pengalaman', label: 'Pengalaman & Pendidikan', icon: BookOpen },
+  { key: 'lembaga', label: 'Lembaga & Usaha', icon: Building2 },
   { key: 'aktivitas', label: 'Aktivitas', icon: Activity },
 ]
 
@@ -311,7 +312,7 @@ export default function AlumniProfilePage() {
                           Lembaga & Badan Usaha
                         </h2>
                         <button
-                          onClick={() => setActiveTab('pengalaman')}
+                          onClick={() => setActiveTab('lembaga')}
                           className="text-xs text-[#1A5C38] font-semibold hover:underline flex items-center gap-1"
                         >
                           Lihat semua
@@ -415,14 +416,19 @@ export default function AlumniProfilePage() {
                     </div>
                   </div>
 
-                  {/* Lembaga & Badan Usaha */}
-                  {detail.lembaga?.length > 0 && (
+                </div>
+              )}
+
+              {/* LEMBAGA & USAHA */}
+              {activeTab === 'lembaga' && (
+                <div className="space-y-5">
+                  {detail.lembaga?.length > 0 ? (
                     <div className="bg-white rounded-xl border border-gray-100 p-6">
                       <h2 className="flex items-center gap-2 font-bold text-[#0A2415] mb-5">
                         <Building2 className="w-4 h-4 text-[#1A5C38]" />
                         Lembaga & Badan Usaha
                       </h2>
-                      <div className="space-y-4">
+                      <div className="space-y-5">
                         {detail.lembaga.map((l, i) => {
                           const iconMap = {
                             'Perusahaan (PT/CV/UD)': { icon: Building2, color: '#1D4ED8', bg: '#EFF6FF' },
@@ -435,7 +441,7 @@ export default function AlumniProfilePage() {
                           const cfg = iconMap[l.jenis] ?? iconMap['Lainnya']
                           const Icon = cfg.icon
                           return (
-                            <div key={i} className="flex gap-4">
+                            <div key={i} className={`flex gap-4 ${i > 0 ? 'pt-5 border-t border-gray-100' : ''}`}>
                               <div className="w-10 h-10 rounded-lg flex items-center justify-center flex-shrink-0" style={{ backgroundColor: cfg.bg }}>
                                 <Icon className="w-5 h-5" style={{ color: cfg.color }} />
                               </div>
@@ -469,6 +475,11 @@ export default function AlumniProfilePage() {
                           )
                         })}
                       </div>
+                    </div>
+                  ) : (
+                    <div className="bg-white rounded-xl border border-gray-100 p-12 text-center">
+                      <Building2 className="w-10 h-10 mx-auto mb-3 text-gray-200" />
+                      <p className="text-sm font-medium text-gray-400">Belum ada data lembaga atau badan usaha.</p>
                     </div>
                   )}
                 </div>
