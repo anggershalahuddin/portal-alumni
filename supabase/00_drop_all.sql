@@ -57,19 +57,28 @@ DROP TYPE IF EXISTS public.publikasi_jenis      CASCADE;
 DROP TYPE IF EXISTS public.lembaga_jenis        CASCADE;
 DROP TYPE IF EXISTS public.berkas_kategori      CASCADE;
 
--- ─── STEP 5: STORAGE (hapus objects dulu karena ada FK ke buckets) ────
+-- ─── STEP 5: STORAGE ─────────────────────────────────────────────────
+-- Supabase tidak izinkan DELETE langsung ke storage.objects/buckets via SQL.
+-- Gunakan fungsi storage bawaan Supabase (kosongkan dulu, baru hapus):
 
-DELETE FROM storage.objects
-WHERE bucket_id IN (
-  'alumni-photos', 'berita-images', 'galeri-images',
-  'documents', 'berkas-alumni', 'site-assets'
-);
-
-DELETE FROM storage.buckets
-WHERE id IN (
-  'alumni-photos', 'berita-images', 'galeri-images',
-  'documents', 'berkas-alumni', 'site-assets'
-);
+DO $$
+DECLARE
+  b TEXT;
+BEGIN
+  FOREACH b IN ARRAY ARRAY[
+    'alumni-photos','berita-images','galeri-images',
+    'documents','berkas-alumni','site-assets'
+  ]
+  LOOP
+    BEGIN
+      PERFORM storage.empty_bucket(b);
+      PERFORM storage.delete_bucket(b);
+    EXCEPTION WHEN OTHERS THEN
+      NULL; -- bucket tidak ada, lanjut
+    END;
+  END LOOP;
+END;
+$$;
 
 -- ─── SELESAI ──────────────────────────────────────────────────────────
 -- Lanjut jalankan: 01_schema.sql → 02_rls.sql → 03_storage.sql → 04_seed.sql
