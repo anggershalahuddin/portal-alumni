@@ -5,7 +5,23 @@
 -- JANGAN jalankan 05_migration.sql setelah ini (sudah include di 01–04)
 -- =====================================================================
 
--- ─── TABEL (urutan terbalik dari FK dependency) ───────────────────────
+-- ─── STEP 1: TRIGGER DI auth.users (harus dihapus manual) ────────────
+-- Trigger ini nempel di tabel Supabase internal, tidak ikut cascade
+
+DROP TRIGGER IF EXISTS on_auth_user_created ON auth.users;
+
+-- ─── STEP 2: FUNCTIONS (CASCADE otomatis hapus trigger di tabel publik) ──
+
+DROP FUNCTION IF EXISTS public.handle_new_user()        CASCADE;
+DROP FUNCTION IF EXISTS public.handle_alumni_verified() CASCADE;
+DROP FUNCTION IF EXISTS public.set_updated_at()         CASCADE;
+DROP FUNCTION IF EXISTS public.my_role()                CASCADE;
+DROP FUNCTION IF EXISTS public.is_super_admin()         CASCADE;
+DROP FUNCTION IF EXISTS public.is_admin_or_above()      CASCADE;
+DROP FUNCTION IF EXISTS public.is_editor_or_above()     CASCADE;
+DROP FUNCTION IF EXISTS public.is_verified_alumni()     CASCADE;
+
+-- ─── STEP 3: TABEL (CASCADE otomatis hapus RLS policy & foreign key) ─
 
 DROP TABLE IF EXISTS public.log_aktivitas       CASCADE;
 DROP TABLE IF EXISTS public.notifikasi          CASCADE;
@@ -29,7 +45,7 @@ DROP TABLE IF EXISTS public.alumni_profiles     CASCADE;
 DROP TABLE IF EXISTS public.angkatan            CASCADE;
 DROP TABLE IF EXISTS public.profiles            CASCADE;
 
--- ─── ENUM TYPES ───────────────────────────────────────────────────────
+-- ─── STEP 4: ENUM TYPES ───────────────────────────────────────────────
 
 DROP TYPE IF EXISTS public.user_role            CASCADE;
 DROP TYPE IF EXISTS public.verification_status  CASCADE;
@@ -41,19 +57,7 @@ DROP TYPE IF EXISTS public.publikasi_jenis      CASCADE;
 DROP TYPE IF EXISTS public.lembaga_jenis        CASCADE;
 DROP TYPE IF EXISTS public.berkas_kategori      CASCADE;
 
--- ─── FUNCTIONS ────────────────────────────────────────────────────────
-
-DROP FUNCTION IF EXISTS public.set_updated_at()         CASCADE;
-DROP FUNCTION IF EXISTS public.handle_new_user()        CASCADE;
-DROP FUNCTION IF EXISTS public.handle_alumni_verified() CASCADE;
-DROP FUNCTION IF EXISTS public.my_role()                CASCADE;
-DROP FUNCTION IF EXISTS public.is_super_admin()         CASCADE;
-DROP FUNCTION IF EXISTS public.is_admin_or_above()      CASCADE;
-DROP FUNCTION IF EXISTS public.is_editor_or_above()     CASCADE;
-DROP FUNCTION IF EXISTS public.is_verified_alumni()     CASCADE;
-
--- ─── STORAGE ──────────────────────────────────────────────────────────
--- Hapus objects dulu (FK), baru hapus buckets
+-- ─── STEP 5: STORAGE (hapus objects dulu karena ada FK ke buckets) ────
 
 DELETE FROM storage.objects
 WHERE bucket_id IN (
