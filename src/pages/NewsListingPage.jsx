@@ -1,7 +1,8 @@
 import { useState } from 'react'
 import { Link } from 'react-router-dom'
 import { motion } from 'framer-motion'
-import { Search, Calendar, ArrowUpRight, Bell, GraduationCap } from 'lucide-react'
+import { Search, Calendar, ArrowUpRight, Bell } from 'lucide-react'
+import logoUrl from '@/assets/Logo DM Fix.jpg'
 import { news, categories, popularTags, getCategoryStyle } from '@/data/news'
 import { PaginationBar, PerPageSelector } from '@/components/PaginationBar'
 import { fadeUp, stagger, viewport } from '@/lib/animations'
@@ -310,9 +311,7 @@ export default function NewsListingPage() {
           />
           <div className="relative px-8 py-10 flex flex-col sm:flex-row items-center gap-6 justify-between">
             <div className="flex items-center gap-4">
-              <div className="w-12 h-12 rounded-full bg-[#F0A500] flex items-center justify-center flex-shrink-0">
-                <GraduationCap className="w-6 h-6 text-[#0A2415]" />
-              </div>
+              <img src={logoUrl} alt="Logo Daarul Mughni" className="w-12 h-12 object-contain rounded-full flex-shrink-0 bg-white/10 p-1" />
               <div>
                 <h3 className="font-bold text-white text-lg mb-0.5">
                   Ada Kisah Menarik yang Ingin Dibagikan?

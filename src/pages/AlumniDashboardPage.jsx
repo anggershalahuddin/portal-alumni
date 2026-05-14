@@ -1,6 +1,7 @@
 import { useState, useEffect, useRef } from 'react'
 import { Link, useNavigate } from 'react-router-dom'
 import { motion, AnimatePresence } from 'framer-motion'
+import logoUrl from '@/assets/Logo DM Fix.jpg'
 import {
   Bell, GraduationCap, Briefcase, Plus, Pencil, Trash2,
   BookOpen, Award, MapPin, Calendar, UserPlus, X, Download,
@@ -888,9 +889,7 @@ export default function AlumniDashboardPage() {
       <header className="bg-white border-b border-gray-100 sticky top-0 z-40">
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 h-14 flex items-center justify-between">
           <Link to="/" className="flex items-center gap-2.5 shrink-0">
-            <div className="w-8 h-8 rounded-full bg-[#F0A500] flex items-center justify-center">
-              <GraduationCap className="w-4 h-4 text-[#0A2415]" />
-            </div>
+            <img src={logoUrl} alt="Logo Daarul Mughni" className="w-8 h-8 object-contain rounded flex-shrink-0" />
             <span className="text-sm font-bold text-[#0A2415] hidden sm:inline">
               Alumni Portal — <span className="text-[#1A5C38]">Daarul Mughni</span>
             </span>

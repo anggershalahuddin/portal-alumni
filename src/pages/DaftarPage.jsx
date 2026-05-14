@@ -1,10 +1,11 @@
 import { useState, useRef } from 'react'
 import { Link } from 'react-router-dom'
 import {
-  Eye, EyeOff, GraduationCap, CheckCircle,
+  Eye, EyeOff, CheckCircle,
   ChevronDown, Upload, X, Camera, AlertCircle, Lock,
 } from 'lucide-react'
 import heroImg from '../assets/hero.jpg'
+import logoUrl from '@/assets/Logo DM Fix.jpg'
 
 const ANGKATAN_LIST = Array.from({ length: 2026 - 2006 + 1 }, (_, i) => 2006 + i)
 
@@ -311,10 +312,11 @@ export default function DaftarPage() {
           {/* Header */}
           <div className="flex items-center justify-between mb-5">
             <Link to="/" className="flex items-center gap-2.5">
-              <div className="w-8 h-8 rounded-full bg-[#F0A500] flex items-center justify-center">
-                <GraduationCap className="w-4 h-4 text-[#0A2415]" />
+              <img src={logoUrl} alt="Logo Daarul Mughni" className="w-9 h-9 object-contain rounded flex-shrink-0" />
+              <div>
+                <p className="text-sm font-extrabold text-[#0A2415] leading-tight">Portal Alumni</p>
+                <p className="text-[10px] font-semibold text-[#1A5C38] leading-tight">Daarul Mughni</p>
               </div>
-              <span className="text-sm font-bold text-[#0A2415]">Portal Alumni Daarul Mughni</span>
             </Link>
             <p className="hidden lg:block text-xs text-gray-400">
               Sudah punya akun?{' '}
@@ -327,10 +329,10 @@ export default function DaftarPage() {
 
           <form onSubmit={handleSubmit}>
             {/* 2-column grid on desktop */}
-            <div className="lg:grid lg:grid-cols-2 lg:gap-x-6 space-y-4 lg:space-y-0">
+            <div className="lg:grid lg:grid-cols-2 lg:gap-x-0 space-y-4 lg:space-y-0">
 
               {/* ── Kolom 1: Biodata Diri ── */}
-              <div className="space-y-3">
+              <div className="space-y-3 lg:pr-6 lg:border-r lg:border-gray-100">
                 <SectionLabel>Biodata Diri</SectionLabel>
 
                 <Field label="Nama Lengkap" required>
@@ -406,7 +408,7 @@ export default function DaftarPage() {
               </div>
 
               {/* ── Kolom 2: Kata Sandi + Dokumen ── */}
-              <div className="space-y-3">
+              <div className="space-y-3 lg:pl-6">
                 <SectionLabel>Kata Sandi</SectionLabel>
 
                 <Field label="Kata Sandi" required>
