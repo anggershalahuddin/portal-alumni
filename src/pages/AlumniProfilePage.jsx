@@ -2,7 +2,7 @@ import { useState } from 'react'
 import { Link, useParams, useNavigate } from 'react-router-dom'
 import { motion } from 'framer-motion'
 import {
-  BadgeCheck, MapPin, GraduationCap, Mail, Phone, Globe,
+  BadgeCheck, MapPin, GraduationCap, Globe,
   Link2, Download, Shield, MessageCircle, UserPlus,
   MoreHorizontal, Briefcase, BookOpen, Activity, ExternalLink,
   ChevronRight, Heart, Building2, ShoppingBag, Users, Layers,
@@ -57,6 +57,34 @@ function IconFacebook({ size = 16 }) {
     <svg width={size} height={size} viewBox="0 0 24 24">
       <rect width="24" height="24" rx="6" fill="#1877F2" />
       <path d="M15.5 8H13.5V6.5C13.5 5.95 13.95 5.5 14.5 5.5H15.5V3H13.5C11.84 3 10.5 4.34 10.5 6V8H8.5V11H10.5V21H13.5V11H15.5L16 8H15.5Z" fill="white" />
+    </svg>
+  )
+}
+function IconEmail({ size = 16 }) {
+  return (
+    <svg width={size} height={size} viewBox="0 0 24 24">
+      <rect width="24" height="24" rx="6" fill="#EA4335" />
+      <path d="M5 8.5L12 13.5L19 8.5V17.5H5V8.5Z" fill="white" opacity="0.9" />
+      <path d="M5 8.5H19L12 13.5L5 8.5Z" fill="white" />
+    </svg>
+  )
+}
+function IconWhatsApp({ size = 16 }) {
+  return (
+    <svg width={size} height={size} viewBox="0 0 24 24">
+      <rect width="24" height="24" rx="6" fill="#25D366" />
+      <path d="M12 4C7.58 4 4 7.58 4 12c0 1.49.41 2.88 1.12 4.08L4 20l4.05-1.06A8 8 0 1 0 12 4zm0 14.4A6.4 6.4 0 1 1 12 5.6 6.4 6.4 0 0 1 12 18.4zm3.52-4.86c-.19-.1-1.13-.56-1.3-.62-.18-.06-.31-.1-.44.1-.13.19-.5.62-.61.75-.11.13-.23.14-.42.05-.19-.1-.8-.3-1.53-.95a5.8 5.8 0 0 1-1.06-1.32c-.11-.19-.01-.3.08-.39.09-.09.19-.23.28-.34.1-.12.13-.2.19-.33.06-.13.03-.25-.02-.34-.05-.1-.44-1.06-.6-1.45-.16-.38-.32-.33-.44-.33h-.37c-.13 0-.34.05-.52.25-.18.2-.68.66-.68 1.61 0 .95.7 1.87.8 2 .1.13 1.37 2.09 3.32 2.93.46.2.82.32 1.1.41.46.14.88.12 1.21.07.37-.05 1.13-.46 1.29-.9.16-.45.16-.83.11-.91-.05-.08-.18-.13-.37-.22z" fill="white" />
+    </svg>
+  )
+}
+function IconWebsite({ size = 16 }) {
+  return (
+    <svg width={size} height={size} viewBox="0 0 24 24">
+      <rect width="24" height="24" rx="6" fill="#0A66C2" />
+      <circle cx="12" cy="12" r="7" stroke="white" strokeWidth="1.4" fill="none" />
+      <ellipse cx="12" cy="12" rx="3" ry="7" stroke="white" strokeWidth="1.4" fill="none" />
+      <line x1="5" y1="10" x2="19" y2="10" stroke="white" strokeWidth="1.4" />
+      <line x1="5" y1="14" x2="19" y2="14" stroke="white" strokeWidth="1.4" />
     </svg>
   )
 }
@@ -564,19 +592,18 @@ export default function AlumniProfilePage() {
                 <div className="space-y-0 divide-y divide-gray-50">
                   {/* Email */}
                   <div className="flex items-center gap-3 py-3">
-                    <Mail className="w-4 h-4 text-gray-300 flex-shrink-0" />
+                    <IconEmail size={16} />
                     <div className="flex-1 min-w-0">
                       <p className="text-[10px] font-bold text-gray-400 uppercase tracking-widest">Email Utama</p>
                       <p className="text-xs text-gray-700 truncate">{detail.kontak.email}</p>
                     </div>
-                    <Globe className="w-4 h-4 text-[#1A5C38] flex-shrink-0" />
                   </div>
 
-                  {/* Phone */}
+                  {/* WhatsApp */}
                   <div className="flex items-center gap-3 py-3">
-                    <Phone className="w-4 h-4 text-gray-300 flex-shrink-0" />
+                    <IconWhatsApp size={16} />
                     <div className="flex-1">
-                      <p className="text-[10px] font-bold text-gray-400 uppercase tracking-widest">Telepon</p>
+                      <p className="text-[10px] font-bold text-gray-400 uppercase tracking-widest">WhatsApp</p>
                       <p className="text-xs text-gray-400 tracking-widest">••••••••••••</p>
                     </div>
                     <Shield className="w-4 h-4 text-gray-300 flex-shrink-0" />
@@ -598,7 +625,7 @@ export default function AlumniProfilePage() {
                   {/* Website */}
                   {detail.kontak.website && (
                     <a href={`https://${detail.kontak.website}`} target="_blank" rel="noreferrer" className="flex items-center gap-3 py-3 hover:bg-gray-50 -mx-1 px-1 rounded-lg transition-colors">
-                      <Globe className="w-4 h-4 text-gray-300 flex-shrink-0" />
+                      <IconWebsite size={16} />
                       <div className="flex-1 min-w-0">
                         <p className="text-[10px] font-bold text-gray-400 uppercase tracking-widest">Website</p>
                         <p className="text-xs text-gray-700 truncate">{detail.kontak.website}</p>
