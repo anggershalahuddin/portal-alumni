@@ -14,7 +14,7 @@ import { news } from '../data/news'
 import { agendaData, kategoriStyle } from '../data/agenda'
 import { initialLowongan } from '../data/lowongan'
 import { initialGaleri } from '../data/galeri'
-import { TOTAL_ALUMNI, alumniData } from '../data/alumni'
+import { alumniData } from '../data/alumni'
 import { getAlumniDetail } from '../data/alumniDetail'
 
 // ── Mock logged-in user (pakai data alumni ID 3 dari direktori) ────────────────
@@ -952,7 +952,7 @@ export default function AlumniDashboardPage() {
                 <div className="flex flex-col sm:flex-row items-start sm:items-center gap-5">
                   <div className="flex-1">
                     <h1 className="text-xl sm:text-2xl font-extrabold text-[#0A2415] mb-1.5">
-                      Assalamu'alaikum, {profil.nama.split(' ')[0]}!
+                      Assalamu'alaikum, {profil.nama.split(' ').slice(0, 2).join(' ')}!
                     </h1>
                     <p className="text-sm text-gray-500 leading-relaxed mb-1">{profil.bio || 'Lengkapi bio profil Anda.'}</p>
                     <div className="flex items-center gap-2 flex-wrap text-xs text-gray-400 mb-4">
@@ -963,7 +963,6 @@ export default function AlumniDashboardPage() {
                     {/* Stat chips */}
                     <div className="flex items-center gap-2 flex-wrap mb-5">
                       {[
-                        { label: `${TOTAL_ALUMNI.toLocaleString('id-ID')} Alumni`, icon: Users, color: '#1A5C38' },
                         { label: 'ID: ' + mockUser.id, icon: FileText, color: '#7C3AED' },
                         { label: `${pekerjaan.length} Pengalaman Kerja`, icon: Briefcase, color: '#D97706' },
                         { label: `${sertifikasi.length} Sertifikasi`, icon: Award, color: '#0E7490' },
