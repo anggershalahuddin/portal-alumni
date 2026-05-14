@@ -1,4 +1,4 @@
-import { useState } from 'react'
+import { useState, useEffect } from 'react'
 import { Link, useParams, useNavigate } from 'react-router-dom'
 import { motion } from 'framer-motion'
 import {
@@ -10,10 +10,10 @@ import {
 } from 'lucide-react'
 import Navbar from '@/components/landing/Navbar'
 import Footer from '@/components/landing/Footer'
-import { alumniData, getAvatarColor, getInitials } from '@/data/alumni'
-import { getAlumniDetail } from '@/data/alumniDetail'
+import { getAvatarColor, getInitials } from '@/data/alumni'
 import { initialAngkatan } from '@/data/angkatan'
 import { fadeUp } from '@/lib/animations'
+import { supabase } from '@/lib/supabase'
 
 // ── Brand SVG Icons ───────────────────────────────────────────────────────────
 function IconInstagram({ size = 16 }) {
@@ -160,9 +160,157 @@ export default function AlumniProfilePage() {
   const navigate = useNavigate()
   const [activeTab, setActiveTab] = useState('ringkasan')
 
-  const alumni = alumniData.find((a) => a.id === Number(id))
-  const detail = alumni ? getAlumniDetail(alumni.id) : null
-  const angkatanInfo = alumni ? initialAngkatan.find(a => a.tahunLulusan === alumni.angkatan) : null
+  const [alumni, setAlumni]             = useState(null)
+  const [detail, setDetail]             = useState(null)
+  const [angkatanInfo, setAngkatanInfo] = useState(null)
+  const [alumniSerupa, setAlumniSerupa] = useState([])
+  const [loading, setLoading]           = useState(true)
+
+  useEffect(() => {
+    if (!id) return
+    let cancelled = false
+
+    async function fetchProfile() {
+      setLoading(true)
+      try {
+        const { data: p, error: profErr } = await supabase
+          .from('profiles')
+          .select('id, nama_lengkap, email, angkatan, bidang, domisili, status')
+          .eq('id', id)
+          .single()
+
+        if (profErr || !p || cancelled) { setLoading(false); return }
+
+        const { data: ap } = await supabase
+          .from('alumni_profiles')
+          .select('*')
+          .eq('id', id)
+          .maybeSingle()
+
+        const [keahlianRes, bahasaRes, pekerjaanRes, pendidikanRes, lembagaRes, berkasRes] =
+          await Promise.all([
+            supabase.from('keahlian_alumni').select('nama').eq('alumni_id', id),
+            supabase.from('bahasa_alumni').select('nama').eq('alumni_id', id),
+            supabase.from('pekerjaan').select('*').eq('alumni_id', id),
+            supabase.from('pendidikan').select('*').eq('alumni_id', id),
+            supabase.from('lembaga_alumni').select('*').eq('alumni_id', id),
+            supabase.from('berkas_alumni').select('nama, tipe, ukuran, kategori, file_url').eq('alumni_id', id),
+          ])
+
+        if (cancelled) return
+
+        const alumniObj = {
+          id:         p.id,
+          name:       p.nama_lengkap || p.email,
+          angkatan:   p.angkatan,
+          bidang:     p.bidang ?? '',
+          profesi:    ap?.profesi ?? '',
+          perusahaan: ap?.perusahaan ?? '',
+          domisili:   p.domisili ?? '',
+          keahlian:   (keahlianRes.data ?? []).map((k) => k.nama),
+          isVerified: p.status === 'disetujui',
+          avatar:     null,
+        }
+
+        const detailObj = {
+          bio:    ap?.bio ?? '',
+          bahasa: (bahasaRes.data ?? []).map((b) => b.nama),
+          kontak: {
+            email:     p.email,
+            linkedin:  ap?.linkedin_url ?? '',
+            website:   ap?.website_url ?? '',
+            instagram: ap?.instagram_url ?? '',
+            twitter:   ap?.twitter_url ?? '',
+            github:    ap?.github_url ?? '',
+          },
+          pengalaman: (pekerjaanRes.data ?? []).map((pek) => ({
+            jabatan:   pek.posisi ?? '',
+            institusi: pek.institusi ?? '',
+            periode:   pek.periode ?? '',
+            deskripsi: pek.deskripsi ?? '',
+          })),
+          pendidikan: (pendidikanRes.data ?? []).map((pend) => ({
+            gelar:     pend.gelar ?? '',
+            institusi: pend.institusi ?? '',
+            tahun:     pend.tahun ?? '',
+          })),
+          lembaga: (lembagaRes.data ?? []).map((l) => ({
+            nama:          l.nama_lembaga ?? '',
+            jenis:         l.jenis_lembaga ?? '',
+            sebagai:       l.peran ?? '',
+            bidang:        l.bidang_usaha ?? '',
+            lokasi:        l.domisili ?? '',
+            tahun:         l.tahun_berdiri ?? '',
+            openKerjasama: l.open_kerjasama ?? false,
+            deskripsi:     l.deskripsi ?? '',
+            website:       l.website ?? '',
+          })),
+          dokumen: (berkasRes.data ?? []).map((b) => ({
+            nama:   b.nama,
+            tipe:   b.tipe ?? b.kategori ?? 'FILE',
+            ukuran: b.ukuran ?? '',
+          })),
+        }
+
+        const angkInfo = initialAngkatan.find((a) => a.tahunLulusan === p.angkatan) ?? null
+
+        // Similar alumni: same angkatan or same bidang
+        const { data: similar } = await supabase
+          .from('profiles')
+          .select('id, nama_lengkap, angkatan, bidang, domisili')
+          .eq('role', 'alumni')
+          .eq('status', 'disetujui')
+          .neq('id', id)
+          .or(`angkatan.eq.${p.angkatan},bidang.eq.${p.bidang}`)
+          .limit(3)
+
+        const simIds = (similar ?? []).map((s) => s.id)
+        const { data: simAp } = simIds.length > 0
+          ? await supabase.from('alumni_profiles').select('id, profesi, perusahaan').in('id', simIds)
+          : { data: [] }
+
+        const simApMap = {}
+        ;(simAp ?? []).forEach((ap) => { simApMap[ap.id] = ap })
+
+        const simAlumni = (similar ?? []).map((s) => ({
+          id:         s.id,
+          name:       s.nama_lengkap || s.email,
+          angkatan:   s.angkatan,
+          bidang:     s.bidang ?? '',
+          profesi:    simApMap[s.id]?.profesi ?? '',
+          perusahaan: simApMap[s.id]?.perusahaan ?? '',
+          domisili:   s.domisili ?? '',
+          avatar:     null,
+        }))
+
+        if (!cancelled) {
+          setAlumni(alumniObj)
+          setDetail(detailObj)
+          setAngkatanInfo(angkInfo)
+          setAlumniSerupa(simAlumni)
+        }
+      } catch (err) {
+        console.error('Error loading profile:', err)
+      } finally {
+        if (!cancelled) setLoading(false)
+      }
+    }
+
+    fetchProfile()
+    return () => { cancelled = true }
+  }, [id])
+
+  if (loading) {
+    return (
+      <div className="min-h-screen bg-[#F8FAF9] flex flex-col">
+        <Navbar />
+        <div className="flex-1 flex items-center justify-center pt-16">
+          <div className="w-8 h-8 border-4 border-[#1A5C38] border-t-transparent rounded-full animate-spin" />
+        </div>
+        <Footer />
+      </div>
+    )
+  }
 
   if (!alumni || !detail) {
     return (
@@ -180,14 +328,6 @@ export default function AlumniProfilePage() {
       </div>
     )
   }
-
-  const alumniSerupa = alumniData
-    .filter(
-      (a) =>
-        a.id !== alumni.id &&
-        (a.angkatan === alumni.angkatan || a.bidang === alumni.bidang)
-    )
-    .slice(0, 3)
 
   return (
     <div className="min-h-screen bg-[#F8FAF9]">

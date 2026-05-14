@@ -1,4 +1,4 @@
-import { useState, useMemo } from 'react'
+import { useState, useMemo, useEffect, useCallback } from 'react'
 import { Link } from 'react-router-dom'
 import { motion } from 'framer-motion'
 import {
@@ -9,10 +9,11 @@ import {
 import Navbar from '@/components/landing/Navbar'
 import Footer from '@/components/landing/Footer'
 import {
-  alumniData, angkatanList, wilayahList, bidangList,
-  TOTAL_ALUMNI, TOTAL_VERIFIED, getAvatarColor, getInitials,
+  angkatanList, wilayahList, bidangList,
+  getAvatarColor, getInitials,
 } from '@/data/alumni'
 import { fadeUp, stagger } from '@/lib/animations'
+import { supabase } from '@/lib/supabase'
 
 const ITEMS_PER_PAGE = 9
 
@@ -58,18 +59,76 @@ function FilterCheckbox({ label, checked, onChange }) {
 }
 
 export default function AlumniDirectoryPage() {
+  const [alumniList, setAlumniList] = useState([])
+  const [listLoading, setListLoading]  = useState(true)
+
   const [inputValue, setInputValue] = useState('')
-  const [search, setSearch] = useState('')
+  const [search, setSearch]         = useState('')
   const [selectedAngkatan, setSelectedAngkatan] = useState([])
-  const [selectedWilayah, setSelectedWilayah] = useState([])
-  const [selectedBidang, setSelectedBidang] = useState([])
-  const [sort, setSort] = useState('verified')
-  const [page, setPage] = useState(1)
+  const [selectedWilayah, setSelectedWilayah]   = useState([])
+  const [selectedBidang, setSelectedBidang]     = useState([])
+  const [sort, setSort]             = useState('verified')
+  const [page, setPage]             = useState(1)
   const [expandAngkatan, setExpandAngkatan] = useState(true)
-  const [expandWilayah, setExpandWilayah] = useState(true)
-  const [expandBidang, setExpandBidang] = useState(false)
+  const [expandWilayah, setExpandWilayah]   = useState(true)
+  const [expandBidang, setExpandBidang]     = useState(false)
   const [showAllAngkatan, setShowAllAngkatan] = useState(false)
   const [showMobileFilter, setShowMobileFilter] = useState(false)
+
+  /* ── Load verified alumni from Supabase ── */
+  const loadAlumni = useCallback(async () => {
+    setListLoading(true)
+    try {
+      const { data: profiles } = await supabase
+        .from('profiles')
+        .select('id, nama_lengkap, angkatan, bidang, domisili, status')
+        .eq('role', 'alumni')
+        .eq('status', 'disetujui')
+        .order('created_at', { ascending: false })
+
+      if (!profiles?.length) { setAlumniList([]); return }
+
+      const ids = profiles.map((p) => p.id)
+      const [apRes, keahlianRes] = await Promise.all([
+        supabase.from('alumni_profiles').select('id, profesi, perusahaan').in('id', ids),
+        supabase.from('keahlian_alumni').select('alumni_id, nama').in('alumni_id', ids),
+      ])
+
+      const apMap = {}
+      ;(apRes.data ?? []).forEach((ap) => { apMap[ap.id] = ap })
+
+      const keahlianMap = {}
+      ;(keahlianRes.data ?? []).forEach((k) => {
+        if (!keahlianMap[k.alumni_id]) keahlianMap[k.alumni_id] = []
+        keahlianMap[k.alumni_id].push(k.nama)
+      })
+
+      const result = profiles.map((p) => ({
+        id:         p.id,
+        name:       p.nama_lengkap || '-',
+        angkatan:   p.angkatan,
+        bidang:     p.bidang ?? '',
+        profesi:    apMap[p.id]?.profesi ?? '',
+        perusahaan: apMap[p.id]?.perusahaan ?? '',
+        domisili:   p.domisili ?? '',
+        wilayah:    p.domisili ?? '',
+        keahlian:   keahlianMap[p.id] ?? [],
+        isVerified: true,
+        avatar:     null,
+      }))
+
+      setAlumniList(result)
+    } catch (err) {
+      console.error('Error loading alumni directory:', err)
+    } finally {
+      setListLoading(false)
+    }
+  }, [])
+
+  useEffect(() => { loadAlumni() }, [loadAlumni])
+
+  const TOTAL_ALUMNI   = alumniList.length
+  const TOTAL_VERIFIED = alumniList.filter((a) => a.isVerified).length
 
   const shownAngkatan = showAllAngkatan ? angkatanList : angkatanList.slice(0, 4)
 
@@ -112,7 +171,7 @@ export default function AlumniDirectoryPage() {
     selectedAngkatan.length + selectedWilayah.length + selectedBidang.length
 
   const filtered = useMemo(() => {
-    let result = alumniData
+    let result = alumniList
 
     if (search) {
       const q = search.toLowerCase()
@@ -148,7 +207,7 @@ export default function AlumniDirectoryPage() {
     }
 
     return result
-  }, [search, selectedAngkatan, selectedWilayah, selectedBidang, sort])
+  }, [alumniList, search, selectedAngkatan, selectedWilayah, selectedBidang, sort])
 
   const totalPages = Math.ceil(filtered.length / ITEMS_PER_PAGE)
   const paged = filtered.slice((page - 1) * ITEMS_PER_PAGE, page * ITEMS_PER_PAGE)
@@ -440,11 +499,15 @@ export default function AlumniDirectoryPage() {
             )}
 
             {/* Grid */}
-            {paged.length === 0 ? (
+            {listLoading ? (
+              <div className="flex justify-center py-24">
+                <div className="w-8 h-8 border-4 border-[#1A5C38] border-t-transparent rounded-full animate-spin" />
+              </div>
+            ) : paged.length === 0 ? (
               <div className="text-center py-24 text-gray-400">
                 <GraduationCap className="w-12 h-12 mx-auto mb-3 opacity-25" />
                 <p className="text-base font-medium mb-1 text-gray-500">
-                  Tidak ada alumni ditemukan
+                  {alumniList.length === 0 ? 'Belum ada alumni terdaftar.' : 'Tidak ada alumni ditemukan.'}
                 </p>
                 <p className="text-sm">Coba ubah filter atau kata kunci pencarian.</p>
               </div>
