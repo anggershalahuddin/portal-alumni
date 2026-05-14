@@ -542,15 +542,35 @@ export default function AlumniProfilePage() {
 
                   {/* Website */}
                   {detail.kontak.website && (
-                    <div className="flex items-center gap-3 py-3">
+                    <a href={`https://${detail.kontak.website}`} target="_blank" rel="noreferrer" className="flex items-center gap-3 py-3 hover:bg-gray-50 -mx-1 px-1 rounded-lg transition-colors">
                       <Globe className="w-4 h-4 text-gray-300 flex-shrink-0" />
                       <div className="flex-1 min-w-0">
                         <p className="text-[10px] font-bold text-gray-400 uppercase tracking-widest">Website</p>
                         <p className="text-xs text-gray-700 truncate">{detail.kontak.website}</p>
                       </div>
-                      <Globe className="w-4 h-4 text-[#1A5C38] flex-shrink-0" />
-                    </div>
+                      <ExternalLink className="w-3.5 h-3.5 text-gray-300 flex-shrink-0" />
+                    </a>
                   )}
+
+                  {/* Sosial Media */}
+                  {[
+                    { key: 'instagram', label: 'Instagram', prefix: '@', color: '#E1306C', bg: '#FDF0F4', href: h => `https://instagram.com/${h.replace('@','')}` },
+                    { key: 'youtube',   label: 'YouTube',   prefix: '',  color: '#FF0000', bg: '#FFF0F0', href: h => h.startsWith('http') ? h : `https://youtube.com/${h}` },
+                    { key: 'twitter',   label: 'Twitter / X', prefix: '@', color: '#000000', bg: '#F4F4F4', href: h => `https://x.com/${h.replace('@','')}` },
+                    { key: 'facebook',  label: 'Facebook',  prefix: '',  color: '#1877F2', bg: '#EEF4FE', href: h => h.startsWith('http') ? h : `https://facebook.com/${h}` },
+                  ].filter(s => detail.kontak[s.key]).map(s => (
+                    <a key={s.key} href={s.href(detail.kontak[s.key])} target="_blank" rel="noreferrer"
+                      className="flex items-center gap-3 py-3 hover:bg-gray-50 -mx-1 px-1 rounded-lg transition-colors">
+                      <div className="w-4 h-4 rounded flex items-center justify-center flex-shrink-0 text-[8px] font-black" style={{ backgroundColor: s.bg, color: s.color }}>
+                        {s.label[0]}
+                      </div>
+                      <div className="flex-1 min-w-0">
+                        <p className="text-[10px] font-bold text-gray-400 uppercase tracking-widest">{s.label}</p>
+                        <p className="text-xs text-gray-700 truncate">{s.prefix}{detail.kontak[s.key]}</p>
+                      </div>
+                      <ExternalLink className="w-3.5 h-3.5 text-gray-300 flex-shrink-0" />
+                    </a>
+                  ))}
                 </div>
 
                 <p className="text-[10px] text-gray-400 mt-3 leading-relaxed border-t border-gray-50 pt-3">

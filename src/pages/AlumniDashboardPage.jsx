@@ -175,8 +175,31 @@ function EditProfilModal({ profil, onSave, onClose }) {
           </div>
           <MF label="Email"><input className={inp} type="email" value={form.email} onChange={s('email')} /></MF>
           <MF label="No. HP / WhatsApp"><input className={inp} type="tel" value={form.phone} onChange={s('phone')} /></MF>
-          <MF label="URL LinkedIn"><input className={inp} type="url" value={form.linkedin} onChange={s('linkedin')} placeholder="linkedin.com/in/username" /></MF>
-          <MF label="Website / Portofolio"><input className={inp} type="url" value={form.website} onChange={s('website')} placeholder="https://portofolio.com" /></MF>
+          <MF label="URL LinkedIn"><input className={inp} value={form.linkedin} onChange={s('linkedin')} placeholder="linkedin.com/in/username" /></MF>
+          <MF label="Website / Portofolio"><input className={inp} value={form.website} onChange={s('website')} placeholder="portofolio.com" /></MF>
+          <div className="border-t border-gray-100 pt-4">
+            <p className="text-xs font-bold text-gray-400 uppercase tracking-widest mb-3">Sosial Media</p>
+            <div className="space-y-3">
+              <MF label="Instagram">
+                <div className="relative">
+                  <span className="absolute left-3.5 top-1/2 -translate-y-1/2 text-sm text-gray-400">@</span>
+                  <input className={`${inp} pl-8`} value={form.instagram} onChange={s('instagram')} placeholder="username" />
+                </div>
+              </MF>
+              <MF label="YouTube">
+                <input className={inp} value={form.youtube} onChange={s('youtube')} placeholder="@channelname atau youtube.com/c/..." />
+              </MF>
+              <MF label="Twitter / X">
+                <div className="relative">
+                  <span className="absolute left-3.5 top-1/2 -translate-y-1/2 text-sm text-gray-400">@</span>
+                  <input className={`${inp} pl-8`} value={form.twitter} onChange={s('twitter')} placeholder="username" />
+                </div>
+              </MF>
+              <MF label="Facebook">
+                <input className={inp} value={form.facebook} onChange={s('facebook')} placeholder="facebook.com/username" />
+              </MF>
+            </div>
+          </div>
           <MF label="Foto Profil">
             <div className="border-2 border-dashed border-gray-200 rounded-xl p-5 text-center hover:border-[#1A5C38]/40 transition-colors cursor-pointer">
               <ImageIcon className="w-6 h-6 text-gray-300 mx-auto mb-1" />
@@ -745,7 +768,14 @@ export default function AlumniDashboardPage() {
   const [profil, setProfil] = useState({
     nama: mockUser.name, email: mockUser.email, phone: mockUser.phone,
     bio: 'Software Engineer dengan passion di bidang teknologi dan pengembangan sistem digital skala besar.',
-    bidang: 'Teknik Informatika', domisili: 'Jakarta', linkedin: '', website: '', foto: false,
+    bidang: 'Teknik Informatika', domisili: 'Jakarta',
+    linkedin: _mockDetail?.kontak?.linkedin ?? '',
+    website:  _mockDetail?.kontak?.website  ?? '',
+    instagram: _mockDetail?.kontak?.instagram ?? '',
+    youtube:   _mockDetail?.kontak?.youtube  ?? '',
+    twitter:   _mockDetail?.kontak?.twitter  ?? '',
+    facebook:  _mockDetail?.kontak?.facebook ?? '',
+    foto: false,
   })
   const [pendidikan, setPendidikan] = useState(initPendidikan)
   const [pekerjaan, setPekerjaan] = useState(initPekerjaan)
