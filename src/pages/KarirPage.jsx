@@ -1,9 +1,10 @@
-import { useState } from 'react'
+import { useState, useEffect } from 'react'
 import { Link } from 'react-router-dom'
-import { Search, MapPin, Clock, Briefcase, ExternalLink, X, CheckCircle, ChevronRight } from 'lucide-react'
+import { Search, MapPin, Clock, Briefcase, ExternalLink, X, CheckCircle, ChevronRight, Loader2 } from 'lucide-react'
 import Navbar from '../components/landing/Navbar'
 import Footer from '../components/landing/Footer'
-import { initialLowongan, bidangLowongan, tipeLowongan } from '../data/lowongan'
+import { bidangLowongan, tipeLowongan } from '../data/lowongan'
+import { supabase } from '@/lib/supabase'
 
 const TIPE_STYLE = {
   fulltime: { bg: '#F0FDF4', text: '#15803D' },
@@ -144,18 +145,50 @@ function JobDetailModal({ job, onClose }) {
   )
 }
 
-const activeJobs = initialLowongan.filter(l => l.aktif)
+function mapLowongan(row) {
+  const gaji = row.gaji_min
+    ? `Rp ${(row.gaji_min / 1e6).toFixed(0)}–${(row.gaji_max / 1e6).toFixed(0)} jt/bulan`
+    : null
+  return {
+    id: row.id,
+    judul: row.judul,
+    instansi: row.perusahaan,
+    lokasi: row.lokasi ?? '—',
+    tipe: row.tipe ?? 'fulltime',
+    gaji,
+    deskripsi: row.deskripsi ?? '',
+    syarat: row.persyaratan ?? [],
+    deadline: row.deadline ?? null,
+    tanggalPosting: row.created_at,
+    tags: [],
+    bidang: '',
+    aktif: row.is_aktif,
+  }
+}
 
 export default function KarirPage() {
-  const [search, setSearch] = useState('')
+  const [jobs, setJobs]               = useState([])
+  const [loading, setLoading]         = useState(true)
+  const [search, setSearch]           = useState('')
   const [filterBidang, setFilterBidang] = useState('semua')
   const [selectedJob, setSelectedJob] = useState(null)
 
-  const filtered = activeJobs.filter((l) => {
+  useEffect(() => {
+    supabase
+      .from('lowongan')
+      .select('id, judul, perusahaan, lokasi, tipe, deskripsi, persyaratan, gaji_min, gaji_max, deadline, is_aktif, created_at')
+      .eq('is_aktif', true)
+      .order('created_at', { ascending: false })
+      .then(({ data }) => {
+        setJobs((data ?? []).map(mapLowongan))
+        setLoading(false)
+      })
+  }, [])
+
+  const filtered = jobs.filter((l) => {
     const q = search.toLowerCase()
     const matchSearch = !q || l.judul.toLowerCase().includes(q) || l.instansi.toLowerCase().includes(q) || l.lokasi.toLowerCase().includes(q)
-    const matchBidang = filterBidang === 'semua' || l.bidang === filterBidang
-    return matchSearch && matchBidang
+    return matchSearch
   })
 
   return (
@@ -217,10 +250,16 @@ export default function KarirPage() {
         </div>
 
         {/* Job list */}
-        {filtered.length === 0 ? (
+        {loading ? (
+          <div className="flex justify-center py-20">
+            <Loader2 className="w-8 h-8 animate-spin text-[#1A5C38]" />
+          </div>
+        ) : filtered.length === 0 ? (
           <div className="text-center py-20">
             <Briefcase className="w-10 h-10 text-gray-300 mx-auto mb-3" />
-            <p className="text-gray-400 text-sm">Tidak ada lowongan yang sesuai pencarian.</p>
+            <p className="text-gray-400 text-sm">
+              {jobs.length === 0 ? 'Belum ada lowongan tersedia.' : 'Tidak ada lowongan yang sesuai pencarian.'}
+            </p>
           </div>
         ) : (
           <div className="grid grid-cols-1 md:grid-cols-2 gap-4">

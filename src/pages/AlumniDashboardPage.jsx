@@ -11,10 +11,7 @@ import {
   Phone, Mail, Building2, ShoppingBag, Heart, Handshake, Layers, Upload, Paperclip,
 } from 'lucide-react'
 import Footer from '../components/landing/Footer'
-import { news } from '../data/news'
-import { agendaData, kategoriStyle } from '../data/agenda'
-import { initialLowongan } from '../data/lowongan'
-import { initialGaleri } from '../data/galeri'
+import { kategoriStyle } from '../data/agenda'
 import { useAuth } from '@/context/AuthContext'
 import { supabase } from '@/lib/supabase'
 
@@ -771,6 +768,12 @@ export default function AlumniDashboardPage() {
   const [dokumen, setDokumen]       = useState([])
   const [notif, setNotif]           = useState(initNotif)
 
+  // Sidebar widget data (loaded from Supabase)
+  const [recentNews, setRecentNews]         = useState([])
+  const [upcomingAgenda, setUpcomingAgenda] = useState([])
+  const [activeJobs, setActiveJobs]         = useState([])
+  const [recentGaleri, setRecentGaleri]     = useState([])
+
   // UI states
   const [modal, setModal]           = useState(null)
   const [showBell, setShowBell]     = useState(false)
@@ -782,7 +785,49 @@ export default function AlumniDashboardPage() {
   useEffect(() => {
     if (!user) return
     loadDashboard()
+    loadWidgets()
   }, [user?.id]) // eslint-disable-line react-hooks/exhaustive-deps
+
+  async function loadWidgets() {
+    const now = new Date().toISOString()
+    const [newsRes, agendaRes, jobsRes, galeriRes] = await Promise.all([
+      supabase.from('berita').select('slug, judul, foto_url, published_at').eq('status', 'published').order('published_at', { ascending: false }).limit(3),
+      supabase.from('agenda').select('id, judul, kategori, foto_url, tanggal_mulai').eq('is_aktif', true).gte('tanggal_mulai', now).order('tanggal_mulai', { ascending: true }).limit(3),
+      supabase.from('lowongan').select('id, judul, perusahaan, tipe, lokasi, gaji_min, gaji_max').eq('is_aktif', true).order('created_at', { ascending: false }).limit(3),
+      supabase.from('galeri').select('id, judul, foto_url').eq('is_aktif', true).order('created_at', { ascending: false }).limit(4),
+    ])
+    const monthShort = ['Jan','Feb','Mar','Apr','Mei','Jun','Jul','Agu','Sep','Okt','Nov','Des']
+    setRecentNews((newsRes.data ?? []).map(b => ({
+      slug: b.slug,
+      title: b.judul,
+      image: b.foto_url || 'https://images.unsplash.com/photo-1523050854058-8df90110c9f1?auto=format&fit=crop&w=800&q=80',
+      date: b.published_at ? new Date(b.published_at).toLocaleDateString('id-ID', { day: 'numeric', month: 'short', year: 'numeric' }) : '—',
+    })))
+    setUpcomingAgenda((agendaRes.data ?? []).map(a => {
+      const tgl = new Date(a.tanggal_mulai)
+      return {
+        id: a.id,
+        title: a.judul,
+        kategori: a.kategori ?? 'edukasi',
+        kategoriLabel: a.kategori ?? 'Umum',
+        image: a.foto_url || null,
+        tanggalLabel: `${tgl.getDate()} ${monthShort[tgl.getMonth()]} ${tgl.getFullYear()}`,
+      }
+    }))
+    setActiveJobs((jobsRes.data ?? []).map(j => ({
+      id: j.id,
+      judul: j.judul,
+      instansi: j.perusahaan,
+      tipe: j.tipe ?? 'fulltime',
+      lokasi: j.lokasi ?? '—',
+      gaji: j.gaji_min ? `Rp ${(j.gaji_min / 1e6).toFixed(0)}–${(j.gaji_max / 1e6).toFixed(0)} jt` : null,
+    })))
+    setRecentGaleri((galeriRes.data ?? []).map(g => ({
+      id: g.id,
+      judul: g.judul,
+      url: g.foto_url,
+    })))
+  }
 
   async function loadDashboard() {
     setPageLoading(true)
@@ -887,11 +932,7 @@ export default function AlumniDashboardPage() {
   const profileCompletion = completionItems.reduce((a, i) => a + (i.done ? i.weight : 0), 0)
   const missing = completionItems.filter(i => !i.done)
 
-  const unreadCount    = notif.filter(n => !n.dibaca).length
-  const recentNews     = news.slice(0, 3)
-  const upcomingAgenda = agendaData.slice(0, 3)
-  const activeJobs     = initialLowongan.filter(l => l.aktif).slice(0, 3)
-  const recentGaleri   = initialGaleri.filter(g => g.aktif).slice(0, 4)
+  const unreadCount = notif.filter(n => !n.dibaca).length
 
   // ── CRUD — Supabase ──────────────────────────────────────────────────────────
 
