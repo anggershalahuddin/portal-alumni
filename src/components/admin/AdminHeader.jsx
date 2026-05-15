@@ -215,7 +215,7 @@ export default function AdminHeader({ searchValue = '', onSearchChange, searchPl
   async function handleLogout() {
     setShowProfile(false)
     await signOut()
-    navigate('/masuk')
+    window.location.href = '/masuk'
   }
 
   return (

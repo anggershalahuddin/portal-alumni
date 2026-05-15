@@ -29,7 +29,7 @@ export default function PilihDashboardPage() {
 
   async function handleLogout() {
     await signOut()
-    navigate('/masuk')
+    window.location.href = '/masuk'
   }
 
   return (

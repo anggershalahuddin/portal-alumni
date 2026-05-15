@@ -28,7 +28,7 @@ export default function AdminSidebar({ active }) {
 
   async function handleLogout() {
     await signOut()
-    navigate('/masuk')
+    window.location.href = '/masuk'
   }
 
   return (

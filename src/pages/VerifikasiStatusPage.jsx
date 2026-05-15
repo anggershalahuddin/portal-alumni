@@ -51,7 +51,7 @@ export default function VerifikasiStatusPage() {
 
   async function handleLogout() {
     await signOut()
-    navigate('/masuk')
+    window.location.href = '/masuk'
   }
 
   // Status bisa 'menunggu' atau 'ditolak' — diset dari URL param saat redirect setelah login

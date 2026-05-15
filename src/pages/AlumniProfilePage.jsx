@@ -1,5 +1,6 @@
 import { useState, useEffect } from 'react'
 import { Link, useParams, useNavigate } from 'react-router-dom'
+import { useAuth } from '@/context/AuthContext'
 import { motion } from 'framer-motion'
 import {
   BadgeCheck, MapPin, GraduationCap, Globe,
@@ -161,6 +162,7 @@ function SmallAlumniAvatar({ alumni }) {
 export default function AlumniProfilePage() {
   const { id } = useParams()
   const navigate = useNavigate()
+  const { user } = useAuth()
   const [activeTab, setActiveTab] = useState('ringkasan')
 
   const [alumni, setAlumni]             = useState(null)
@@ -179,74 +181,83 @@ export default function AlumniProfilePage() {
       try {
         const { data: p, error: profErr } = await supabase
           .from('profiles')
-          .select('id, nama_lengkap, email, angkatan, bidang, domisili, status')
+          .select('id, nama_lengkap, angkatan, bidang, domisili, status, foto_url, email')
           .eq('id', id)
           .single()
 
         if (profErr || !p || cancelled) { setLoading(false); return }
 
+        // FIX: query by user_id, bukan id
         const { data: ap } = await supabase
           .from('alumni_profiles')
           .select('*')
-          .eq('id', id)
+          .eq('user_id', id)
           .maybeSingle()
 
-        const [keahlianRes, bahasaRes, pekerjaanRes, pendidikanRes, lembagaRes, berkasRes, angkatanRes] =
+        const apId = ap?.id ?? null
+
+        const [keahlianRes, bahasaRes, pekerjaanRes, pendidikanRes, lembagaRes, berkasRes, angkatanRes, publikasiRes] =
           await Promise.all([
-            supabase.from('keahlian_alumni').select('nama').eq('alumni_id', id),
-            supabase.from('bahasa_alumni').select('nama').eq('alumni_id', id),
-            supabase.from('pekerjaan').select('*').eq('alumni_id', id),
-            supabase.from('pendidikan').select('*').eq('alumni_id', id),
-            supabase.from('lembaga_alumni').select('*').eq('alumni_id', id),
-            supabase.from('berkas_alumni').select('nama, tipe, ukuran, kategori, file_url').eq('alumni_id', id),
+            apId ? supabase.from('keahlian_alumni').select('nama').eq('alumni_id', apId) : { data: [] },
+            apId ? supabase.from('bahasa_alumni').select('nama').eq('alumni_id', apId) : { data: [] },
+            apId ? supabase.from('pekerjaan').select('*').eq('alumni_id', apId).order('is_current', { ascending: false }) : { data: [] },
+            apId ? supabase.from('pendidikan').select('*').eq('alumni_id', apId).order('tahun_selesai', { ascending: false }) : { data: [] },
+            apId ? supabase.from('lembaga_alumni').select('*').eq('alumni_id', apId) : { data: [] },
+            apId ? supabase.from('berkas_alumni').select('nama, tipe, ukuran, kategori, file_url').eq('alumni_id', apId) : { data: [] },
             supabase.from('angkatan').select('id, tahun_lulus, nama_angkatan').order('tahun_lulus'),
+            apId ? supabase.from('publikasi').select('*').eq('alumni_id', apId).order('tahun', { ascending: false }) : { data: [] },
           ])
 
         const fetchedAngkatan = (angkatanRes.data ?? []).map(mapAngkatan)
 
         if (cancelled) return
 
+        // Ambil pekerjaan aktif untuk ditampilkan di header kartu
+        const currentJob = (pekerjaanRes.data ?? []).find((j) => j.is_current) ?? (pekerjaanRes.data ?? [])[0] ?? null
+
         const alumniObj = {
           id:         p.id,
-          name:       p.nama_lengkap || p.email,
+          name:       p.nama_lengkap || '—',
           angkatan:   p.angkatan,
           bidang:     p.bidang ?? '',
-          profesi:    ap?.profesi ?? '',
-          perusahaan: ap?.perusahaan ?? '',
+          profesi:    currentJob?.posisi ?? '',
+          perusahaan: currentJob?.perusahaan ?? '',
           domisili:   p.domisili ?? '',
           keahlian:   (keahlianRes.data ?? []).map((k) => k.nama),
           isVerified: p.status === 'disetujui',
-          avatar:     null,
+          avatar:     p.foto_url ?? null,
         }
 
         const detailObj = {
           bio:    ap?.bio ?? '',
           bahasa: (bahasaRes.data ?? []).map((b) => b.nama),
           kontak: {
-            email:     p.email,
+            email:     p.email ?? '',
             linkedin:  ap?.linkedin_url ?? '',
             website:   ap?.website_url ?? '',
             instagram: ap?.instagram_url ?? '',
+            youtube:   ap?.youtube_url ?? '',
             twitter:   ap?.twitter_url ?? '',
-            github:    ap?.github_url ?? '',
+            facebook:  ap?.facebook_url ?? '',
           },
           pengalaman: (pekerjaanRes.data ?? []).map((pek) => ({
             jabatan:   pek.posisi ?? '',
-            institusi: pek.institusi ?? '',
-            periode:   pek.periode ?? '',
+            institusi: pek.perusahaan ?? '',
+            periode:   [pek.tahun_mulai, pek.is_current ? 'Sekarang' : pek.tahun_selesai].filter(Boolean).join(' – '),
             deskripsi: pek.deskripsi ?? '',
           })),
           pendidikan: (pendidikanRes.data ?? []).map((pend) => ({
-            gelar:     pend.gelar ?? '',
+            jenjang:   pend.jenjang ?? '',
+            gelar:     [pend.gelar_depan, pend.gelar_belakang].filter(Boolean).join(', '),
             institusi: pend.institusi ?? '',
-            tahun:     pend.tahun ?? '',
+            tahun:     [pend.tahun_mulai, pend.is_current ? 'Sekarang' : pend.tahun_selesai].filter(Boolean).join(' – '),
           })),
           lembaga: (lembagaRes.data ?? []).map((l) => ({
-            nama:          l.nama_lembaga ?? '',
-            jenis:         l.jenis_lembaga ?? '',
-            sebagai:       l.peran ?? '',
-            bidang:        l.bidang_usaha ?? '',
-            lokasi:        l.domisili ?? '',
+            nama:          l.nama ?? '',
+            jenis:         l.jenis ?? '',
+            sebagai:       l.sebagai ?? '',
+            bidang:        l.bidang ?? '',
+            lokasi:        l.lokasi ?? '',
             tahun:         l.tahun_berdiri ?? '',
             openKerjasama: l.open_kerjasama ?? false,
             deskripsi:     l.deskripsi ?? '',
@@ -257,37 +268,35 @@ export default function AlumniProfilePage() {
             tipe:   b.tipe ?? b.kategori ?? 'FILE',
             ukuran: b.ukuran ?? '',
           })),
+          publikasi: (publikasiRes.data ?? []).map((pub) => ({
+            judul:    pub.judul ?? '',
+            penerbit: pub.penerbit ?? '',
+            tahun:    pub.tahun ?? '',
+            url:      pub.url ?? '',
+            deskripsi: pub.deskripsi ?? '',
+          })),
         }
 
         const angkInfo = fetchedAngkatan.find((a) => a.tahunLulusan === p.angkatan) ?? null
 
-        // Similar alumni: same angkatan or same bidang
+        // Alumni serupa: angkatan atau bidang sama, harus punya alumni_profiles
         const { data: similar } = await supabase
           .from('profiles')
-          .select('id, nama_lengkap, angkatan, bidang, domisili')
-          .eq('role', 'alumni')
+          .select('id, nama_lengkap, angkatan, bidang, domisili, foto_url, alumni_profiles!inner(id)')
           .eq('status', 'disetujui')
           .neq('id', id)
-          .or(`angkatan.eq.${p.angkatan},bidang.eq.${p.bidang}`)
+          .or(`angkatan.eq.${p.angkatan},bidang.eq.${p.bidang ?? ''}`)
           .limit(3)
-
-        const simIds = (similar ?? []).map((s) => s.id)
-        const { data: simAp } = simIds.length > 0
-          ? await supabase.from('alumni_profiles').select('id, profesi, perusahaan').in('id', simIds)
-          : { data: [] }
-
-        const simApMap = {}
-        ;(simAp ?? []).forEach((ap) => { simApMap[ap.id] = ap })
 
         const simAlumni = (similar ?? []).map((s) => ({
           id:         s.id,
-          name:       s.nama_lengkap || s.email,
+          name:       s.nama_lengkap || '—',
           angkatan:   s.angkatan,
           bidang:     s.bidang ?? '',
-          profesi:    simApMap[s.id]?.profesi ?? '',
-          perusahaan: simApMap[s.id]?.perusahaan ?? '',
+          profesi:    '',
+          perusahaan: '',
           domisili:   s.domisili ?? '',
-          avatar:     null,
+          avatar:     s.foto_url ?? null,
         }))
 
         if (!cancelled) {
@@ -342,18 +351,8 @@ export default function AlumniProfilePage() {
       <Navbar />
 
       <div className="pt-16">
-        {/* Banner */}
-        <div
-          className="h-28 relative"
-          style={{ background: 'linear-gradient(135deg, #E8F5EE 0%, #F0FFF4 50%, #F8FAF9 100%)' }}
-        >
-          <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 h-full flex items-start pt-3 justify-end">
-            <span className="flex items-center gap-1.5 text-xs text-[#1A5C38] font-medium">
-              <Shield className="w-3.5 h-3.5" />
-              Profil Hanya Terlihat untuk Alumni Terdaftar
-            </span>
-          </div>
-        </div>
+        {/* Spacer for avatar overlap */}
+        <div className="h-28 bg-[#F8FAF9]" />
 
         {/* Profile header */}
         <div className="bg-white border-b border-gray-100 shadow-sm">
@@ -380,7 +379,7 @@ export default function AlumniProfilePage() {
                       )}
                     </div>
                     <p className="text-[#1A5C38] font-semibold text-sm mt-0.5">
-                      {alumni.profesi} at {alumni.perusahaan}
+                      {alumni.profesi} · {alumni.perusahaan}
                     </p>
                     <div className="flex flex-wrap items-center gap-3 mt-1.5 text-xs text-gray-500">
                       <span className="flex items-center gap-1.5">
@@ -607,37 +606,20 @@ export default function AlumniProfilePage() {
                   {/* Pendidikan */}
                   <div className="bg-white rounded-xl border border-gray-100 p-6">
                     <h2 className="flex items-center gap-2 font-bold text-[#0A2415] mb-5">
-                      <BookOpen className="w-4 h-4 text-[#1A5C38]" />
+                      <GraduationCap className="w-4 h-4 text-[#F0A500]" />
                       Pendidikan
                     </h2>
                     <div className="space-y-5">
-                      {/* Pondok Pesantren selalu muncul */}
-                      <div className="flex gap-4">
-                        <div className="w-10 h-10 bg-[#FFF8E7] rounded-lg overflow-hidden flex items-center justify-center flex-shrink-0">
-                          {angkatanInfo?.logo ? (
-                            <img src={angkatanInfo.logo} alt={angkatanInfo.nama} className="w-full h-full object-cover" />
-                          ) : (
-                            <GraduationCap className="w-5 h-5 text-[#F0A500]" />
-                          )}
-                        </div>
-                        <div>
-                          <p className="font-bold text-sm text-[#0A2415]">Santri – Program Tahfidz & Mu'allimin</p>
-                          <p className="text-xs text-[#F0A500] font-medium">Pondok Pesantren Daarul Mughni</p>
-                          <p className="text-xs text-gray-400">
-                            {angkatanInfo
-                              ? `Angkatan ${angkatanInfo.angkatanKe} · ${angkatanInfo.tahunLulusan} · ${angkatanInfo.nama}`
-                              : `Angkatan ${alumni.angkatan}`}
-                          </p>
-                        </div>
-                      </div>
-
-                      {detail.pendidikan.map((p, i) => (
+                      {detail.pendidikan.length === 0 ? (
+                        <p className="text-sm text-gray-400 text-center py-4">Belum ada riwayat pendidikan.</p>
+                      ) : detail.pendidikan.map((p, i) => (
                         <div key={i} className="flex gap-4">
-                          <div className="w-10 h-10 bg-[#F8FAF9] rounded-lg flex items-center justify-center flex-shrink-0">
-                            <BookOpen className="w-5 h-5 text-gray-400" />
+                          <div className="w-10 h-10 bg-[#FFF8EE] rounded-lg flex items-center justify-center flex-shrink-0">
+                            <GraduationCap className="w-5 h-5 text-[#F0A500]" />
                           </div>
                           <div>
-                            <p className="font-bold text-sm text-[#0A2415]">{p.gelar}</p>
+                            <p className="font-bold text-sm text-[#0A2415]">{p.jenjang}</p>
+                            {p.gelar && <p className="text-xs text-[#1A5C38] font-medium">{p.gelar}</p>}
                             <p className="text-xs text-gray-500">{p.institusi}</p>
                             <p className="text-xs text-gray-400">{p.tahun}</p>
                           </div>
@@ -715,14 +697,46 @@ export default function AlumniProfilePage() {
                 </div>
               )}
 
-              {/* AKTIVITAS */}
+              {/* AKTIVITAS — Publikasi & Karya */}
               {activeTab === 'aktivitas' && (
-                <div className="bg-white rounded-xl border border-gray-100 p-12 text-center">
-                  <Activity className="w-10 h-10 mx-auto mb-3 text-gray-200" />
-                  <p className="text-sm font-medium text-gray-400">Belum ada aktivitas yang ditampilkan.</p>
-                  <p className="text-xs text-gray-300 mt-1">
-                    Fitur ini akan tersedia setelah alumni bergabung dan aktif di portal.
-                  </p>
+                <div className="space-y-5">
+                  {detail.publikasi?.length > 0 ? (
+                    <div className="bg-white rounded-xl border border-gray-100 p-6">
+                      <h2 className="flex items-center gap-2 font-bold text-[#0A2415] mb-5">
+                        <BookOpen className="w-4 h-4 text-[#1A5C38]" />
+                        Publikasi & Karya
+                      </h2>
+                      <div className="space-y-5">
+                        {detail.publikasi.map((pub, i) => (
+                          <div key={i} className={`flex gap-4 ${i > 0 ? 'pt-5 border-t border-gray-100' : ''}`}>
+                            <div className="w-10 h-10 bg-[#E8F5EE] rounded-lg flex items-center justify-center flex-shrink-0">
+                              <BookOpen className="w-5 h-5 text-[#1A5C38]" />
+                            </div>
+                            <div className="flex-1">
+                              <p className="font-bold text-sm text-[#0A2415]">{pub.judul}</p>
+                              <div className="flex items-center gap-2 mt-0.5 text-xs text-gray-500 flex-wrap">
+                                {pub.penerbit && <span>{pub.penerbit}</span>}
+                                {pub.penerbit && pub.tahun && <span>·</span>}
+                                {pub.tahun && <span>{pub.tahun}</span>}
+                              </div>
+                              {pub.deskripsi && <p className="text-xs text-gray-500 mt-1 leading-relaxed">{pub.deskripsi}</p>}
+                              {pub.url && (
+                                <a href={pub.url} target="_blank" rel="noreferrer"
+                                  className="text-[11px] text-[#1A5C38] font-semibold flex items-center gap-1 mt-1.5 hover:underline">
+                                  <ExternalLink className="w-3 h-3" /> Lihat Publikasi
+                                </a>
+                              )}
+                            </div>
+                          </div>
+                        ))}
+                      </div>
+                    </div>
+                  ) : (
+                    <div className="bg-white rounded-xl border border-gray-100 p-12 text-center">
+                      <BookOpen className="w-10 h-10 mx-auto mb-3 text-gray-200" />
+                      <p className="text-sm font-medium text-gray-400">Belum ada publikasi atau karya.</p>
+                    </div>
+                  )}
                 </div>
               )}
             </motion.div>
@@ -784,11 +798,11 @@ export default function AlumniProfilePage() {
 
                   {/* Sosial Media */}
                   {[
-                    { key: 'instagram', label: 'Instagram',  prefix: '@', Icon: IconInstagram, href: h => `https://instagram.com/${h.replace('@','')}` },
-                    { key: 'youtube',   label: 'YouTube',    prefix: '',  Icon: IconYouTube,   href: h => h.startsWith('http') ? h : `https://youtube.com/${h}` },
-                    { key: 'twitter',   label: 'Twitter / X', prefix: '@', Icon: IconTwitterX, href: h => `https://x.com/${h.replace('@','')}` },
-                    { key: 'facebook',  label: 'Facebook',   prefix: '',  Icon: IconFacebook,  href: h => h.startsWith('http') ? h : `https://facebook.com/${h}` },
-                  ].filter(s => detail.kontak[s.key]).map(({ key, label, prefix, Icon, href }) => (
+                    { key: 'instagram', label: 'Instagram',   prefix: '@', Icon: IconInstagram, href: h => `https://instagram.com/${h.replace('@','')}` },
+                    { key: 'youtube',   label: 'YouTube',     prefix: '',  Icon: IconYouTube,   href: h => h.startsWith('http') ? h : `https://youtube.com/${h}` },
+                    { key: 'twitter',   label: 'Twitter / X', prefix: '@', Icon: IconTwitterX,  href: h => `https://x.com/${h.replace('@','')}` },
+                    { key: 'facebook',  label: 'Facebook',    prefix: '',  Icon: IconFacebook,  href: h => h.startsWith('http') ? h : `https://facebook.com/${h}` },
+                  ].filter(s => detail.kontak[s.key] && detail.kontak[s.key].trim() !== '').map(({ key, label, prefix, Icon, href }) => (
                     <a key={key} href={href(detail.kontak[key])} target="_blank" rel="noreferrer"
                       className="flex items-center gap-3 py-3 hover:bg-gray-50 -mx-1 px-1 rounded-lg transition-colors">
                       <Icon size={16} />

@@ -40,7 +40,7 @@ function jenisConfig(jenis) {
   return JENIS_USAHA.find(j => j.value === jenis) ?? JENIS_USAHA[JENIS_USAHA.length - 1]
 }
 
-const JENJANG_OPTIONS = ['SD', 'SMP', 'SMA/SMK', 'D3', 'S1', 'S2', 'S3', 'Lainnya']
+const JENJANG_OPTIONS = ['SD/MI', 'SMP/MTs/Sederajat', 'SMA/MA/Sederajat', 'D3', 'S1', 'S2', 'S3', 'Lainnya']
 
 const TIPE_PEKERJAAN = [
   { value: 'full-time', label: 'Full-time', color: '#1D4ED8', bg: '#EFF6FF' },
@@ -243,11 +243,15 @@ function PendidikanModal({ item, onSave, onClose }) {
     jenjang:      item?.jenjang      ?? 'S1',
     jurusan:      item?.jurusan      ?? '',
     institusi:    item?.institusi    ?? '',
+    lokasi:       item?.lokasi       ?? '',
+    gelar_depan:  item?.gelar_depan  ?? '',
+    gelar_belakang: item?.gelar_belakang ?? '',
     tahun_mulai:  item?.tahun_mulai  ? String(item.tahun_mulai)  : '',
     tahun_selesai:item?.tahun_selesai? String(item.tahun_selesai): '',
     is_current:   item?.is_current   ?? false,
   })
   const s = k => e => setForm(p => ({ ...p, [k]: e.target.value }))
+  const showGelar = ['D3', 'S1', 'S2', 'S3'].includes(form.jenjang)
   const curYear = new Date().getFullYear()
 
   return (
@@ -263,11 +267,24 @@ function PendidikanModal({ item, onSave, onClose }) {
               {JENJANG_OPTIONS.map(j => <option key={j} value={j}>{j}</option>)}
             </select>
           </MF>
+          {showGelar && (
+            <div className="grid grid-cols-2 gap-3">
+              <MF label="Gelar Depan">
+                <input className={inp} value={form.gelar_depan} onChange={s('gelar_depan')} placeholder="cth. Dr." />
+              </MF>
+              <MF label="Gelar Belakang">
+                <input className={inp} value={form.gelar_belakang} onChange={s('gelar_belakang')} placeholder="cth. S.Kom., M.T." />
+              </MF>
+            </div>
+          )}
           <MF label="Jurusan / Program Studi">
             <input className={inp} value={form.jurusan} onChange={s('jurusan')} placeholder="cth. Teknik Informatika" />
           </MF>
           <MF label="Institusi / Nama Sekolah *">
             <input className={inp} value={form.institusi} onChange={s('institusi')} placeholder="Nama universitas, sekolah, atau pesantren" />
+          </MF>
+          <MF label="Lokasi Sekolah / Kota">
+            <input className={inp} value={form.lokasi} onChange={s('lokasi')} placeholder="cth. Bandung, Jawa Barat" />
           </MF>
           <div className="grid grid-cols-2 gap-3">
             <MF label="Tahun Mulai">
@@ -1043,7 +1060,7 @@ export default function AlumniDashboardPage() {
   // Keluar
   async function handleSignOut() {
     await signOut()
-    navigate('/masuk')
+    window.location.href = '/masuk'
   }
 
   // Profile completion
@@ -1114,7 +1131,8 @@ export default function AlumniDashboardPage() {
       onConfirm: async () => {
         const { data } = await supabase.from('pendidikan').insert({
           alumni_id: alumniId, jenjang: form.jenjang, jurusan: form.jurusan || null,
-          institusi: form.institusi,
+          institusi: form.institusi, lokasi: form.lokasi || null,
+          gelar_depan: form.gelar_depan || null, gelar_belakang: form.gelar_belakang || null,
           tahun_mulai:  form.tahun_mulai  ? Number(form.tahun_mulai)  : null,
           tahun_selesai:form.is_current   ? null : (form.tahun_selesai ? Number(form.tahun_selesai) : null),
           is_current: !!form.is_current,
@@ -1133,6 +1151,8 @@ export default function AlumniDashboardPage() {
       onConfirm: async () => {
         const { data } = await supabase.from('pendidikan').update({
           jenjang: form.jenjang, jurusan: form.jurusan || null, institusi: form.institusi,
+          lokasi: form.lokasi || null,
+          gelar_depan: form.gelar_depan || null, gelar_belakang: form.gelar_belakang || null,
           tahun_mulai:  form.tahun_mulai  ? Number(form.tahun_mulai)  : null,
           tahun_selesai:form.is_current   ? null : (form.tahun_selesai ? Number(form.tahun_selesai) : null),
           is_current: !!form.is_current,
@@ -1220,6 +1240,22 @@ export default function AlumniDashboardPage() {
           tahun: form.tahun ? Number(form.tahun) : null, no_cert: form.noCert, url: form.url,
         }).select().single()
         if (data) setSertifikasi(p => [...p, { ...data, noCert: data.no_cert }])
+        closeConfirm(); setModal(null)
+      },
+    })
+  }
+  function editSertifikasi(id, form) {
+    askConfirm({
+      title: 'Simpan Perubahan Sertifikasi',
+      message: 'Apakah Anda yakin ingin menyimpan perubahan sertifikasi ini?',
+      confirmLabel: 'Ya, Simpan',
+      variant: 'success',
+      onConfirm: async () => {
+        const { data } = await supabase.from('sertifikasi').update({
+          nama: form.nama, penerbit: form.penerbit,
+          tahun: form.tahun ? Number(form.tahun) : null, no_cert: form.noCert, url: form.url,
+        }).eq('id', id).select().single()
+        if (data) setSertifikasi(p => p.map(x => x.id === id ? { ...data, noCert: data.no_cert } : x))
         closeConfirm(); setModal(null)
       },
     })
@@ -1491,7 +1527,7 @@ export default function AlumniDashboardPage() {
                         <FileText className="w-3.5 h-3.5 text-gray-400" /> Unduh Kartu Alumni
                       </button>
                     </div>
-                    {isAdminUser && (
+                    {(isAdminUser || !authProfile) && (
                       <div className="border-t border-gray-50 py-1">
                         <button onClick={() => { setShowProfile(false); navigate('/admin/dashboard') }}
                           className="w-full flex items-center gap-2.5 px-4 py-2.5 text-sm text-gray-700 hover:bg-gray-50 transition-colors">
@@ -1607,6 +1643,11 @@ export default function AlumniDashboardPage() {
                               <h3 className="text-sm font-bold text-[#0A2415]">{p.jenjang}</h3>
                               {p.is_current && <span className="text-[10px] font-bold bg-green-100 text-green-700 px-2 py-0.5 rounded-full">Saat Ini</span>}
                             </div>
+                            {(p.gelar_depan || p.gelar_belakang) && (
+                              <p className="text-[11px] text-gray-400 mt-0.5">
+                                {[p.gelar_depan, p.gelar_belakang].filter(Boolean).join(' · ')}
+                              </p>
+                            )}
                             <p className="text-xs font-semibold text-[#1A5C38] mt-0.5">
                               {p.jurusan ? `${p.jurusan} · ` : ''}{p.institusi}
                             </p>
@@ -1615,6 +1656,12 @@ export default function AlumniDashboardPage() {
                                 <span className="flex items-center gap-1">
                                   <Calendar className="w-3 h-3" />
                                   {p.tahun_mulai ?? '?'} – {p.is_current ? 'Sekarang' : (p.tahun_selesai ?? '?')}
+                                </span>
+                              )}
+                              {p.lokasi && (
+                                <span className="flex items-center gap-1">
+                                  <MapPin className="w-3 h-3" />
+                                  {p.lokasi}
                                 </span>
                               )}
                             </div>
@@ -1721,10 +1768,16 @@ export default function AlumniDashboardPage() {
                           <p className="text-[10px] text-gray-500 mt-0.5">{s.penerbit} · {s.tahun}</p>
                           {s.noCert && <p className="text-[9px] text-gray-400 font-mono mt-0.5">{s.noCert}</p>}
                         </div>
-                        <button onClick={() => delSertifikasi(s.id)}
-                          className="opacity-0 group-hover:opacity-100 w-6 h-6 rounded-lg hover:bg-red-50 flex items-center justify-center text-red-300 transition-all">
-                          <X className="w-3.5 h-3.5" />
-                        </button>
+                        <div className="opacity-0 group-hover:opacity-100 flex items-center gap-0.5 transition-all">
+                          <button onClick={() => setModal({ type: 'editSertifikasi', item: s })}
+                            className="w-6 h-6 rounded-lg hover:bg-gray-100 flex items-center justify-center text-gray-300 hover:text-[#1A5C38] transition-colors">
+                            <Pencil className="w-3.5 h-3.5" />
+                          </button>
+                          <button onClick={() => delSertifikasi(s.id)}
+                            className="w-6 h-6 rounded-lg hover:bg-red-50 flex items-center justify-center text-red-300 transition-colors">
+                            <X className="w-3.5 h-3.5" />
+                          </button>
+                        </div>
                       </motion.div>
                     ))}
                   </div>
@@ -2178,6 +2231,9 @@ export default function AlumniDashboardPage() {
       )}
       {modal?.type === 'addSertifikasi' && (
         <SertifikasiModal item={null} onSave={addSertifikasi} onClose={() => setModal(null)} />
+      )}
+      {modal?.type === 'editSertifikasi' && (
+        <SertifikasiModal item={modal.item} onSave={form => editSertifikasi(modal.item.id, form)} onClose={() => setModal(null)} />
       )}
       {modal?.type === 'editKeahlianBahasa' && (
         <KeahlianBahasaModal keahlian={keahlian} bahasa={bahasa}
