@@ -865,7 +865,7 @@ function KartuAlumniModal({ user, profil, onClose }) {
 // ── Main Page ──────────────────────────────────────────────────────────────────
 export default function AlumniDashboardPage() {
   const navigate = useNavigate()
-  const { user, profile: authProfile, signOut, refreshProfile, isAdminUser } = useAuth()
+  const { user, profile: authProfile, profileReady, signOut, refreshProfile, isAdminUser } = useAuth()
 
   const [alumniId, setAlumniId]   = useState(null)
   const [idAlumni, setIdAlumni]   = useState(null)
@@ -909,10 +909,10 @@ export default function AlumniDashboardPage() {
 
   // ── Load data dari Supabase ──────────────────────────────────────────────────
   useEffect(() => {
-    if (!user) return
+    if (!user || !profileReady) return
     loadDashboard()
     loadWidgets()
-  }, [user?.id]) // eslint-disable-line react-hooks/exhaustive-deps
+  }, [user?.id, profileReady]) // eslint-disable-line react-hooks/exhaustive-deps
 
   async function loadWidgets() {
     const now = new Date().toISOString()
@@ -1095,9 +1095,14 @@ export default function AlumniDashboardPage() {
         let fotoUrl = form.fotoUrl ?? profil.fotoUrl ?? null
 
         if (form.fotoFile) {
+          // Hapus semua file foto lama milik user ini sebelum upload baru
+          const { data: oldFiles } = await supabase.storage.from('alumni-photos').list(user.id)
+          if (oldFiles?.length > 0) {
+            await supabase.storage.from('alumni-photos').remove(oldFiles.map(f => `${user.id}/${f.name}`))
+          }
           const ext = form.fotoFile.name.split('.').pop().toLowerCase()
           const filePath = `${user.id}/avatar.${ext}`
-          const { error: upErr } = await supabase.storage.from('alumni-photos').upload(filePath, form.fotoFile, { upsert: true })
+          const { error: upErr } = await supabase.storage.from('alumni-photos').upload(filePath, form.fotoFile)
           if (!upErr) {
             const { data: urlData } = supabase.storage.from('alumni-photos').getPublicUrl(filePath)
             fotoUrl = urlData.publicUrl
@@ -1286,6 +1291,22 @@ export default function AlumniDashboardPage() {
           tahun: form.tahun ? Number(form.tahun) : null, url: form.url, deskripsi: form.deskripsi,
         }).select().single()
         if (data) setPublikasi(p => [...p, data])
+        closeConfirm(); setModal(null)
+      },
+    })
+  }
+  function editPublikasi(id, form) {
+    askConfirm({
+      title: 'Simpan Perubahan Publikasi',
+      message: 'Apakah Anda yakin ingin menyimpan perubahan publikasi ini?',
+      confirmLabel: 'Ya, Simpan',
+      variant: 'success',
+      onConfirm: async () => {
+        const { data } = await supabase.from('publikasi').update({
+          judul: form.judul, penerbit: form.penerbit,
+          tahun: form.tahun ? Number(form.tahun) : null, url: form.url, deskripsi: form.deskripsi,
+        }).eq('id', id).select().single()
+        if (data) setPublikasi(p => p.map(x => x.id === id ? data : x))
         closeConfirm(); setModal(null)
       },
     })
@@ -1565,7 +1586,7 @@ export default function AlumniDashboardPage() {
                       Assalamu'alaikum, {profil.nama.split(' ').slice(0, 2).join(' ')}!
                     </h1>
                     <p className="text-sm text-gray-500 leading-relaxed mb-1">{profil.bio || 'Lengkapi bio profil Anda.'}</p>
-                    <div className="flex items-center gap-2 flex-wrap text-xs text-gray-400 mb-4">
+                    <div className="flex flex-col gap-1 text-xs text-gray-400 mb-4">
                       {profil.bidang && <span className="flex items-center gap-1"><Briefcase className="w-3 h-3" />{profil.bidang}</span>}
                       {profil.domisili && <span className="flex items-center gap-1"><MapPin className="w-3 h-3" />{profil.domisili}</span>}
                       {(angkatanInfo || authProfile?.angkatan) && (
@@ -1668,11 +1689,11 @@ export default function AlumniDashboardPage() {
                           </div>
                           <div className="flex items-center gap-1 shrink-0">
                             <button onClick={() => setModal({ type: 'editPendidikan', item: p })}
-                              className="w-7 h-7 rounded-lg hover:bg-gray-100 flex items-center justify-center text-gray-300 hover:text-[#1A5C38] transition-colors">
+                              className="w-7 h-7 rounded-lg hover:bg-gray-100 flex items-center justify-center text-gray-400 hover:text-[#1A5C38] transition-colors">
                               <Pencil className="w-3.5 h-3.5" />
                             </button>
                             <button onClick={() => delPendidikan(p.id)}
-                              className="w-7 h-7 rounded-lg hover:bg-red-50 flex items-center justify-center text-gray-200 hover:text-red-400 transition-colors">
+                              className="w-7 h-7 rounded-lg hover:bg-red-50 flex items-center justify-center text-gray-400 hover:text-red-500 transition-colors">
                               <Trash2 className="w-3.5 h-3.5" />
                             </button>
                           </div>
@@ -1726,11 +1747,11 @@ export default function AlumniDashboardPage() {
                           </div>
                           <div className="flex items-center gap-1 shrink-0">
                             <button onClick={() => setModal({ type: 'editPekerjaan', item: p })}
-                              className="w-7 h-7 rounded-lg hover:bg-gray-100 flex items-center justify-center text-gray-300 hover:text-[#1A5C38] transition-colors">
+                              className="w-7 h-7 rounded-lg hover:bg-gray-100 flex items-center justify-center text-gray-400 hover:text-[#1A5C38] transition-colors">
                               <Pencil className="w-3.5 h-3.5" />
                             </button>
                             <button onClick={() => delPekerjaan(p.id)}
-                              className="w-7 h-7 rounded-lg hover:bg-red-50 flex items-center justify-center text-gray-200 hover:text-red-400 transition-colors">
+                              className="w-7 h-7 rounded-lg hover:bg-red-50 flex items-center justify-center text-gray-400 hover:text-red-500 transition-colors">
                               <Trash2 className="w-3.5 h-3.5" />
                             </button>
                           </div>
@@ -1770,11 +1791,11 @@ export default function AlumniDashboardPage() {
                         </div>
                         <div className="opacity-0 group-hover:opacity-100 flex items-center gap-0.5 transition-all">
                           <button onClick={() => setModal({ type: 'editSertifikasi', item: s })}
-                            className="w-6 h-6 rounded-lg hover:bg-gray-100 flex items-center justify-center text-gray-300 hover:text-[#1A5C38] transition-colors">
+                            className="w-6 h-6 rounded-lg hover:bg-gray-100 flex items-center justify-center text-gray-400 hover:text-[#1A5C38] transition-colors">
                             <Pencil className="w-3.5 h-3.5" />
                           </button>
                           <button onClick={() => delSertifikasi(s.id)}
-                            className="w-6 h-6 rounded-lg hover:bg-red-50 flex items-center justify-center text-red-300 transition-colors">
+                            className="w-6 h-6 rounded-lg hover:bg-red-50 flex items-center justify-center text-red-400 transition-colors">
                             <X className="w-3.5 h-3.5" />
                           </button>
                         </div>
@@ -1852,10 +1873,16 @@ export default function AlumniDashboardPage() {
                           {p.deskripsi && <p className="text-[10px] text-gray-400 mt-1 leading-relaxed line-clamp-2">{p.deskripsi}</p>}
                           {p.url && <a href={p.url} target="_blank" rel="noreferrer" className="text-[10px] text-[#1A5C38] font-semibold flex items-center gap-1 mt-1 hover:underline"><ExternalLink className="w-3 h-3" />Lihat Publikasi</a>}
                         </div>
-                        <button onClick={() => delPublikasi(p.id)}
-                          className="opacity-0 group-hover:opacity-100 w-6 h-6 rounded-lg hover:bg-red-50 flex items-center justify-center text-red-300 transition-all">
-                          <X className="w-3.5 h-3.5" />
-                        </button>
+                        <div className="opacity-0 group-hover:opacity-100 flex items-center gap-0.5 transition-all">
+                          <button onClick={() => setModal({ type: 'editPublikasi', item: p })}
+                            className="w-6 h-6 rounded-lg hover:bg-gray-100 flex items-center justify-center text-gray-400 hover:text-[#1A5C38] transition-colors">
+                            <Pencil className="w-3.5 h-3.5" />
+                          </button>
+                          <button onClick={() => delPublikasi(p.id)}
+                            className="w-6 h-6 rounded-lg hover:bg-red-50 flex items-center justify-center text-red-400 transition-colors">
+                            <X className="w-3.5 h-3.5" />
+                          </button>
+                        </div>
                       </motion.div>
                     ))}
                   </div>
@@ -2245,6 +2272,9 @@ export default function AlumniDashboardPage() {
       )}
       {modal?.type === 'addPublikasi' && (
         <PublikasiModal item={null} onSave={addPublikasi} onClose={() => setModal(null)} />
+      )}
+      {modal?.type === 'editPublikasi' && (
+        <PublikasiModal item={modal.item} onSave={form => editPublikasi(modal.item.id, form)} onClose={() => setModal(null)} />
       )}
       {modal?.type === 'addUsaha' && (
         <UsahaModal item={null} onSave={addUsaha} onClose={() => setModal(null)} />
