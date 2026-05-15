@@ -67,8 +67,9 @@ ON CONFLICT (id) DO UPDATE SET
 -- Semua policy didahului DROP IF EXISTS agar aman dijalankan ulang
 
 -- ALUMNI-PHOTOS
-DROP POLICY IF EXISTS "alumni-photos: baca publik"         ON storage.objects;
+DROP POLICY IF EXISTS "alumni-photos: baca publik"           ON storage.objects;
 DROP POLICY IF EXISTS "alumni-photos: alumni upload sendiri" ON storage.objects;
+DROP POLICY IF EXISTS "alumni-photos: alumni update sendiri" ON storage.objects;
 DROP POLICY IF EXISTS "alumni-photos: alumni hapus sendiri"  ON storage.objects;
 
 CREATE POLICY "alumni-photos: baca publik"
@@ -77,6 +78,17 @@ CREATE POLICY "alumni-photos: baca publik"
 
 CREATE POLICY "alumni-photos: alumni upload sendiri"
   ON storage.objects FOR INSERT
+  WITH CHECK (
+    bucket_id = 'alumni-photos'
+    AND auth.uid()::text = (storage.foldername(name))[1]
+  );
+
+CREATE POLICY "alumni-photos: alumni update sendiri"
+  ON storage.objects FOR UPDATE
+  USING (
+    bucket_id = 'alumni-photos'
+    AND auth.uid()::text = (storage.foldername(name))[1]
+  )
   WITH CHECK (
     bucket_id = 'alumni-photos'
     AND auth.uid()::text = (storage.foldername(name))[1]

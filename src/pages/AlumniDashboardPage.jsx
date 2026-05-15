@@ -984,8 +984,9 @@ export default function AlumniDashboardPage() {
       if (ap?.angkatan_id) {
         const { data: a } = await supabase.from('angkatan').select('*').eq('id', ap.angkatan_id).maybeSingle()
         angk = a
-      } else if (authProfile?.angkatan) {
-        const { data: a } = await supabase.from('angkatan').select('*').eq('tahun_lulus', authProfile.angkatan).maybeSingle()
+      } else if (authProfile?.angkatan || ap?.angkatan) {
+        const tahun = authProfile?.angkatan ?? ap?.angkatan
+        const { data: a } = await supabase.from('angkatan').select('*').eq('tahun_lulus', tahun).maybeSingle()
         angk = a
       }
       setAngkatanInfo(angk)
@@ -999,15 +1000,21 @@ export default function AlumniDashboardPage() {
         setIdAlumni(newId)
       }
 
-      // 4. Bangun state profil dari profiles + alumni_profiles
-      const fotoUrl = authProfile?.foto_url ?? ''
+      // 4. Fetch profil langsung dari Supabase (hindari race condition authProfile)
+      const { data: freshProfile } = await supabase
+        .from('profiles')
+        .select('id, nama_lengkap, foto_url, no_hp, bidang, domisili, angkatan')
+        .eq('id', user.id)
+        .single()
+
+      const fotoUrl = freshProfile?.foto_url ?? ''
       setProfil({
-        nama:      authProfile?.nama_lengkap ?? user.name ?? '',
+        nama:      freshProfile?.nama_lengkap ?? '',
         email:     user.email ?? '',
-        phone:     authProfile?.no_hp ?? ap?.no_hp ?? '',
+        phone:     freshProfile?.no_hp ?? ap?.no_hp ?? '',
         bio:       ap?.bio ?? '',
-        bidang:    ap?.bidang ?? authProfile?.bidang ?? '',
-        domisili:  ap?.domisili ?? authProfile?.domisili ?? '',
+        bidang:    ap?.bidang ?? freshProfile?.bidang ?? '',
+        domisili:  ap?.domisili ?? freshProfile?.domisili ?? '',
         linkedin:  ap?.linkedin_url ?? '',
         website:   ap?.website_url ?? '',
         instagram: ap?.instagram_url ?? '',
@@ -1102,22 +1109,28 @@ export default function AlumniDashboardPage() {
           }
           const ext = form.fotoFile.name.split('.').pop().toLowerCase()
           const filePath = `${user.id}/avatar.${ext}`
-          const { error: upErr } = await supabase.storage.from('alumni-photos').upload(filePath, form.fotoFile)
+            const { error: upErr } = await supabase.storage.from('alumni-photos').upload(filePath, form.fotoFile, { upsert: true })
           if (!upErr) {
             const { data: urlData } = supabase.storage.from('alumni-photos').getPublicUrl(filePath)
-            fotoUrl = urlData.publicUrl
+            // Tambahkan cache-buster agar browser tidak pakai versi lama
+            fotoUrl = urlData.publicUrl + '?t=' + Date.now()
+          } else {
+            console.error('[upload foto]', upErr)
           }
         }
 
         const profilesPayload = { nama_lengkap: form.nama, no_hp: form.phone, bidang: form.bidang, domisili: form.domisili }
         if (fotoUrl) profilesPayload.foto_url = fotoUrl
-        await supabase.from('profiles').update(profilesPayload).eq('id', user.id)
-        await supabase.from('alumni_profiles').update({
+        const { error: profErr } = await supabase.from('profiles').update(profilesPayload).eq('id', user.id)
+        if (profErr) console.error('[update profiles]', profErr)
+
+        const { error: apErr } = await supabase.from('alumni_profiles').update({
           bio: form.bio, bidang: form.bidang, domisili: form.domisili, no_hp: form.phone,
           linkedin_url: form.linkedin, website_url: form.website,
           instagram_url: form.instagram, youtube_url: form.youtube,
           twitter_url: form.twitter, facebook_url: form.facebook,
         }).eq('user_id', user.id)
+        if (apErr) console.error('[update alumni_profiles]', apErr)
 
         setProfil({ ...form, foto: !!fotoUrl, fotoUrl: fotoUrl ?? '' })
         await refreshProfile()
