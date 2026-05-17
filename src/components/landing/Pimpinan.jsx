@@ -1,44 +1,19 @@
-import { useState, useEffect } from 'react'
 import { motion } from 'framer-motion'
 import { ChevronRight } from 'lucide-react'
 import pimpinanImg from '@/assets/pimpinan.jpg'
-import { supabase } from '@/lib/supabase'
 import { fadeLeft, fadeRight, fadeUp, viewport } from '@/lib/animations'
 
-function mapPimpinan(row) {
-  return {
-    id: row.id,
-    nama: [row.nama, row.gelar].filter(Boolean).join(', '),
-    jabatan: row.jabatan ?? '',
-    pesan: row.pesan ?? '',
-    foto: row.foto_url ?? null,
-    aktif: row.is_aktif,
-    judul: 'Menjaga Warisan Luhur di Era',
-    judulAksen: 'Disrupsi Digital',
-    deskripsi: null,
-  }
+// Konten statis — edit langsung di sini jika ingin mengubah pesan pimpinan
+const PIMPINAN = {
+  nama:       'KH. Mustopa Mughni, MA.',
+  jabatan:    'Pengasuh Pondok Pesantren',
+  pesan:      'Pondok bukan hanya tempat menimba ilmu agama, melainkan rahim yang melahirkan para penggerak perubahan. Alumni Daarul Mughni harus menjadi cahaya yang menerangi masyarakat melalui keahlian profesional yang dibalut dengan akhlak karimah.',
+  deskripsi:  'Kami bangga melihat lulusan kami berkarier di berbagai sektor, mulai dari akademisi, pengusaha, hingga birokrat. Portal ini adalah jembatan untuk memastikan nilai-nilai kepesantrenan tetap hidup dalam setiap langkah karier kalian.',
+  judul:      'Menjaga Warisan Luhur di Era',
+  judulAksen: 'Disrupsi Digital',
 }
 
 export default function Pimpinan() {
-  const [p, setP] = useState(null)
-
-  useEffect(() => {
-    let cancelled = false
-    supabase
-      .from('pimpinan')
-      .select('id, nama, gelar, jabatan, pesan, foto_url, is_aktif, urutan')
-      .eq('is_aktif', true)
-      .order('urutan', { ascending: true })
-      .limit(1)
-      .then(({ data }) => {
-        if (!cancelled && data?.[0]) setP(mapPimpinan(data[0]))
-      })
-    return () => { cancelled = true }
-  }, [])
-
-  if (!p) return null
-  const fotoSrc = p.foto || pimpinanImg
-
   return (
     <section className="bg-[#F8FAF9] py-24">
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
@@ -57,15 +32,17 @@ export default function Pimpinan() {
 
             <div className="relative overflow-hidden rounded-2xl" style={{ aspectRatio: '4/5' }}>
               <img
-                src={fotoSrc}
-                alt={p.nama}
+                src={pimpinanImg}
+                alt={PIMPINAN.nama}
+                loading="lazy"
+                decoding="async"
                 className="absolute inset-0 w-full h-full object-cover object-top"
               />
               <div className="absolute inset-0 bg-gradient-to-t from-[#061410]/90 via-[#0A2415]/20 to-transparent" />
               <div className="absolute bottom-0 left-0 right-0 p-5">
-                <div className="text-white font-bold text-base">{p.nama}</div>
+                <div className="text-white font-bold text-base">{PIMPINAN.nama}</div>
                 <div className="text-[#F0A500] text-xs font-semibold mt-0.5 uppercase tracking-wide">
-                  {p.jabatan}
+                  {PIMPINAN.jabatan}
                 </div>
               </div>
             </div>
@@ -93,9 +70,9 @@ export default function Pimpinan() {
               </span>
             </motion.div>
 
-            {/* Judul 2 warna: judulAksen otomatis hijau */}
             <h2 className="text-4xl font-bold text-[#0A2415] leading-tight mb-7 tracking-tight">
-              {p.judul}{p.judulAksen ? <>{' '}<span className="text-[#1A5C38]">{p.judulAksen}</span></> : null}
+              {PIMPINAN.judul}{' '}
+              <span className="text-[#1A5C38]">{PIMPINAN.judulAksen}</span>
             </h2>
 
             {/* Quote block */}
@@ -104,12 +81,10 @@ export default function Pimpinan() {
               <svg className="w-7 h-7 text-[#F0A500] mb-2 opacity-80" fill="currentColor" viewBox="0 0 24 24">
                 <path d="M14.017 21v-7.391c0-5.704 3.731-9.57 8.983-10.609l.995 2.151c-2.432.917-3.995 3.638-3.995 5.849h4v10h-9.983zm-14.017 0v-7.391c0-5.704 3.748-9.57 9-10.609l.996 2.151c-2.433.917-3.996 3.638-3.996 5.849h3.983v10h-9.983z" />
               </svg>
-              <p className="text-gray-600 text-base leading-relaxed italic">{p.pesan}</p>
+              <p className="text-gray-600 text-base leading-relaxed italic">{PIMPINAN.pesan}</p>
             </div>
 
-            {p.deskripsi && (
-              <p className="text-gray-500 text-sm leading-relaxed mb-8">{p.deskripsi}</p>
-            )}
+            <p className="text-gray-500 text-sm leading-relaxed mb-8">{PIMPINAN.deskripsi}</p>
 
             <a
               href="/pesantren"

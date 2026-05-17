@@ -86,7 +86,7 @@ function GaleriModal({ item, onClose, onSave, kategoris }) {
           <button onClick={onClose} className="p-1 rounded-lg hover:bg-gray-100"><X className="w-4 h-4 text-gray-500" /></button>
         </div>
         <div className="px-6 py-5 space-y-4 max-h-[75vh] overflow-y-auto">
-          <ImageUploadBox label="Foto" hint="JPG/PNG · Upload atau paste URL" value={form.url} onChange={url => set('url', url)} />
+          <ImageUploadBox label="Foto" hint="JPG/PNG · Upload atau paste URL" value={form.url} onChange={url => set('url', url)} bucket="galeri-images" pathPrefix="galeri" />
           <div>
             <label className="text-xs font-semibold text-gray-700 mb-1 block">Judul Foto</label>
             <input value={form.judul} onChange={e => set('judul', e.target.value)} placeholder="Judul foto..." className="w-full px-3 py-2 rounded-xl border border-gray-200 text-sm outline-none focus:border-green-400" />

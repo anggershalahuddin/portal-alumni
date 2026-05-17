@@ -79,29 +79,44 @@ export default function AlumniDirectoryPage() {
   const loadAlumni = useCallback(async () => {
     setListLoading(true)
     try {
-      // Query profiles yang punya alumni_profiles — tidak filter by role agar admin yg juga alumni bisa tampil
-      const { data: profiles } = await supabase
-        .from('profiles')
-        .select('id, nama_lengkap, angkatan, bidang, domisili, status, foto_url, alumni_profiles!inner(id, user_id)')
-        .eq('status', 'disetujui')
-        .order('created_at', { ascending: false })
+      // Step 1: Ambil alumni_profiles yang publik
+      const { data: apRows } = await supabase
+        .from('alumni_profiles')
+        .select('id, user_id')
+        .eq('is_publik', true)
 
-      if (!profiles?.length) { setAlumniList([]); return }
+      if (!apRows?.length) { setAlumniList([]); return }
 
-      const userIds = profiles.map((p) => p.id)
-      const apIds   = profiles.map((p) => p.alumni_profiles?.[0]?.id).filter(Boolean)
+      const userIds = apRows.map((ap) => ap.user_id)
+      const apIds   = apRows.map((ap) => ap.id)
 
-      const [pekerjaanRes, keahlianRes] = await Promise.all([
-        supabase.from('pekerjaan').select('alumni_id, posisi, perusahaan').in('alumni_id', apIds).eq('is_current', true).limit(1),
-        supabase.from('keahlian_alumni').select('alumni_id, nama').in('alumni_id', apIds),
+      // Map user_id → alumni_profiles.id
+      const apIdByUserId = {}
+      apRows.forEach((ap) => { apIdByUserId[ap.user_id] = ap.id })
+
+      // Step 2: Ambil profiles, pekerjaan, keahlian secara paralel
+      const [profilesRes, pekerjaanRes, keahlianRes] = await Promise.all([
+        supabase
+          .from('profiles')
+          .select('id, nama_lengkap, angkatan, bidang, domisili, foto_url')
+          .in('id', userIds)
+          .eq('status', 'disetujui'),
+        supabase
+          .from('pekerjaan')
+          .select('alumni_id, posisi, perusahaan, is_current')
+          .in('alumni_id', apIds),
+        supabase
+          .from('keahlian_alumni')
+          .select('alumni_id, nama')
+          .in('alumni_id', apIds),
       ])
 
-      // Map by alumni_profiles.id
-      const apIdByUserId = {}
-      profiles.forEach((p) => { if (p.alumni_profiles?.[0]) apIdByUserId[p.id] = p.alumni_profiles[0].id })
-
+      // Prioritaskan pekerjaan is_current=true, fallback ke entri pertama
       const pekerjaanMap = {}
-      ;(pekerjaanRes.data ?? []).forEach((pek) => { pekerjaanMap[pek.alumni_id] = pek })
+      ;(pekerjaanRes.data ?? []).forEach((pek) => {
+        const existing = pekerjaanMap[pek.alumni_id]
+        if (!existing || pek.is_current) pekerjaanMap[pek.alumni_id] = pek
+      })
 
       const keahlianMap = {}
       ;(keahlianRes.data ?? []).forEach((k) => {
@@ -109,18 +124,18 @@ export default function AlumniDirectoryPage() {
         keahlianMap[k.alumni_id].push(k.nama)
       })
 
-      const result = profiles.map((p) => {
+      const result = (profilesRes.data ?? []).map((p) => {
         const apId = apIdByUserId[p.id]
         return {
           id:         p.id,
-          name:       p.nama_lengkap || '-',
+          name:       p.nama_lengkap || p.id,
           angkatan:   p.angkatan,
           bidang:     p.bidang ?? '',
-          profesi:    apId ? (pekerjaanMap[apId]?.posisi ?? '') : '',
-          perusahaan: apId ? (pekerjaanMap[apId]?.perusahaan ?? '') : '',
+          profesi:    pekerjaanMap[apId]?.posisi ?? '',
+          perusahaan: pekerjaanMap[apId]?.perusahaan ?? '',
           domisili:   p.domisili ?? '',
           wilayah:    p.domisili ?? '',
-          keahlian:   apId ? (keahlianMap[apId] ?? []) : [],
+          keahlian:   keahlianMap[apId] ?? [],
           isVerified: true,
           avatar:     p.foto_url ?? null,
         }
@@ -575,33 +590,41 @@ export default function AlumniDirectoryPage() {
                       Angkatan {alumni.angkatan}
                     </div>
 
-                    <div className="flex items-start gap-1.5 text-xs text-gray-600 mb-1.5">
-                      <Briefcase className="w-3.5 h-3.5 flex-shrink-0 mt-0.5 text-gray-400" />
-                      <span className="line-clamp-1">
-                        {alumni.profesi} at {alumni.perusahaan}
-                      </span>
-                    </div>
-
-                    <div className="flex items-center gap-1.5 text-xs text-gray-500 mb-4">
-                      <MapPin className="w-3.5 h-3.5 flex-shrink-0 text-gray-400" />
-                      <span>{alumni.domisili}</span>
-                    </div>
-
-                    <div className="flex flex-wrap gap-1.5">
-                      {alumni.keahlian.slice(0, 2).map((tag) => (
-                        <span
-                          key={tag}
-                          className="text-[10px] bg-[#F8FAF9] text-gray-600 px-2.5 py-1 rounded-full border border-gray-100"
-                        >
-                          {tag}
+                    {(alumni.profesi || alumni.perusahaan) && (
+                      <div className="flex items-start gap-1.5 text-xs text-gray-600 mb-1.5">
+                        <Briefcase className="w-3.5 h-3.5 flex-shrink-0 mt-0.5 text-gray-400" />
+                        <span className="line-clamp-1">
+                          {alumni.profesi && alumni.perusahaan
+                            ? `${alumni.profesi} at ${alumni.perusahaan}`
+                            : alumni.profesi || alumni.perusahaan}
                         </span>
-                      ))}
-                      {alumni.keahlian.length > 2 && (
-                        <span className="text-[10px] text-gray-400 py-1">
-                          +{alumni.keahlian.length - 2} lainnya
-                        </span>
-                      )}
-                    </div>
+                      </div>
+                    )}
+
+                    {alumni.domisili && (
+                      <div className="flex items-center gap-1.5 text-xs text-gray-500 mb-3">
+                        <MapPin className="w-3.5 h-3.5 flex-shrink-0 text-gray-400" />
+                        <span className="line-clamp-1">{alumni.domisili}</span>
+                      </div>
+                    )}
+
+                    {alumni.keahlian.length > 0 && (
+                      <div className="flex flex-wrap gap-1.5 mt-1">
+                        {alumni.keahlian.slice(0, 3).map((tag) => (
+                          <span
+                            key={tag}
+                            className="text-[10px] font-medium bg-[#F0FDF4] text-[#15803D] px-2.5 py-1 rounded-full border border-[#bbf7d0]"
+                          >
+                            {tag}
+                          </span>
+                        ))}
+                        {alumni.keahlian.length > 3 && (
+                          <span className="text-[10px] text-gray-400 py-1">
+                            +{alumni.keahlian.length - 3} lainnya
+                          </span>
+                        )}
+                      </div>
+                    )}
                   </motion.div>
                   </Link>
                 ))}

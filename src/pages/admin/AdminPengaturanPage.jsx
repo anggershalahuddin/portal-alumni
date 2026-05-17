@@ -5,6 +5,7 @@ import AdminSidebar from '../../components/admin/AdminSidebar'
 import AdminHeader from '../../components/admin/AdminHeader'
 import ConfirmDialog from '../../components/admin/ConfirmDialog'
 import { siteConfig as defaultConfig } from '../../data/siteConfig'
+import { useSiteConfig } from '@/context/SiteConfigContext'
 import { supabase } from '@/lib/supabase'
 
 const defaultRoles = [
@@ -72,6 +73,8 @@ function RoleRow({ role, onSave }) {
 }
 
 export default function AdminPengaturanPage() {
+  const { config: globalConfig, setConfig: setGlobalConfig } = useSiteConfig()
+
   const [roles, setRoles] = useState(defaultRoles)
   const [laporan, setLaporan] = useState([])
   const [loadingLaporan, setLoadingLaporan] = useState(true)
@@ -81,14 +84,21 @@ export default function AdminPengaturanPage() {
   const [saved, setSaved] = useState(false)
   const [confirm, setConfirm] = useState({ open: false })
 
+  // Sync local form state when global context loads from DB
+  useEffect(() => { setSiteConfig(globalConfig) }, [globalConfig])
+
   const loadSiteConfig = useCallback(async () => {
     setLoadingConfig(true)
-    const { data } = await supabase.from('pengaturan').select('value').eq('key', 'site_config').single()
+    const { data } = await supabase.from('pengaturan').select('value').eq('key', 'site_config').maybeSingle()
     if (data?.value) {
-      try { setSiteConfig(JSON.parse(data.value)) } catch {}
+      try {
+        const parsed = JSON.parse(data.value)
+        setSiteConfig(parsed)
+        setGlobalConfig(parsed)
+      } catch {}
     }
     setLoadingConfig(false)
-  }, [])
+  }, [setGlobalConfig])
 
   const loadLaporan = useCallback(async () => {
     setLoadingLaporan(true)
@@ -125,8 +135,16 @@ export default function AdminPengaturanPage() {
 
   async function handleSaveConfig() {
     await supabase.from('pengaturan').upsert({ key: 'site_config', value: JSON.stringify(siteConfig) })
+    setGlobalConfig(siteConfig)
     setSaved(true)
     setTimeout(() => setSaved(false), 2500)
+  }
+
+  async function handleToggle(key) {
+    const next = { ...siteConfig, [key]: !siteConfig[key] }
+    setSiteConfig(next)
+    await supabase.from('pengaturan').upsert({ key: 'site_config', value: JSON.stringify(next) })
+    setGlobalConfig(next)
   }
 
   const tabs = [
@@ -182,15 +200,7 @@ export default function AdminPengaturanPage() {
           {activeTab === 'umum' && (
             <div className="space-y-4">
               <div className="bg-white rounded-2xl border border-gray-100 p-6 space-y-4">
-                <h2 className="text-sm font-bold text-gray-900">Informasi Portal</h2>
-                <div>
-                  <label className="text-xs font-semibold text-gray-700 mb-1 block">Nama Portal</label>
-                  <input value={siteConfig.namaSite} onChange={e => setSiteConfig(s => ({ ...s, namaSite: e.target.value }))} className="w-full px-3 py-2 rounded-xl border border-gray-200 text-sm outline-none focus:border-green-400" />
-                </div>
-                <div>
-                  <label className="text-xs font-semibold text-gray-700 mb-1 block">Deskripsi</label>
-                  <textarea value={siteConfig.deskripsiSite} onChange={e => setSiteConfig(s => ({ ...s, deskripsiSite: e.target.value }))} rows={3} className="w-full px-3 py-2 rounded-xl border border-gray-200 text-sm outline-none focus:border-green-400 resize-none" />
-                </div>
+                <h2 className="text-sm font-bold text-gray-900">Informasi Kontak</h2>
                 <div className="grid grid-cols-2 gap-3">
                   <div>
                     <label className="text-xs font-semibold text-gray-700 mb-1 block">Email Kontak</label>
@@ -208,27 +218,19 @@ export default function AdminPengaturanPage() {
               </div>
 
               <div className="bg-white rounded-2xl border border-gray-100 p-6 space-y-4">
-                <h2 className="text-sm font-bold text-gray-900">Konfigurasi Sistem</h2>
+                <div className="flex items-start justify-between gap-2">
+                  <h2 className="text-sm font-bold text-gray-900">Konfigurasi Sistem</h2>
+                  <span className="text-[10px] font-semibold px-2 py-0.5 rounded-full bg-amber-50 text-amber-600 border border-amber-200 flex-shrink-0">Disimpan otomatis</span>
+                </div>
                 <label className="flex items-center justify-between cursor-pointer">
                   <div>
                     <p className="text-sm font-semibold text-gray-800">Verifikasi Alumni Otomatis</p>
                     <p className="text-xs text-gray-400">Jika aktif, akun alumni baru langsung diverifikasi tanpa perlu persetujuan admin</p>
                   </div>
-                  <button onClick={() => setSiteConfig(s => ({ ...s, verifikasiOtomatis: !s.verifikasiOtomatis }))}
-                    className="w-10 h-6 rounded-full transition-colors flex-shrink-0 relative"
+                  <button onClick={() => handleToggle('verifikasiOtomatis')}
+                    className="w-11 h-6 rounded-full transition-colors flex-shrink-0 relative ml-4"
                     style={{ backgroundColor: siteConfig.verifikasiOtomatis ? '#1A5C38' : '#D1D5DB' }}>
-                    <span className={`absolute top-0.5 w-5 h-5 bg-white rounded-full shadow transition-transform ${siteConfig.verifikasiOtomatis ? 'translate-x-4' : 'translate-x-0.5'}`} />
-                  </button>
-                </label>
-                <label className="flex items-center justify-between cursor-pointer">
-                  <div>
-                    <p className="text-sm font-semibold text-gray-800">Notifikasi Email Admin</p>
-                    <p className="text-xs text-gray-400">Kirim email ke admin setiap ada permintaan verifikasi atau laporan masalah baru</p>
-                  </div>
-                  <button onClick={() => setSiteConfig(s => ({ ...s, notifikasiEmail: !s.notifikasiEmail }))}
-                    className="w-10 h-6 rounded-full transition-colors flex-shrink-0 relative"
-                    style={{ backgroundColor: siteConfig.notifikasiEmail ? '#1A5C38' : '#D1D5DB' }}>
-                    <span className={`absolute top-0.5 w-5 h-5 bg-white rounded-full shadow transition-transform ${siteConfig.notifikasiEmail ? 'translate-x-4' : 'translate-x-0.5'}`} />
+                    <span className={`absolute top-[3px] w-[18px] h-[18px] bg-white rounded-full shadow transition-all duration-200 ${siteConfig.verifikasiOtomatis ? 'left-[25px]' : 'left-[3px]'}`} />
                   </button>
                 </label>
               </div>

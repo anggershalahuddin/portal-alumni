@@ -1,7 +1,8 @@
 import { useState } from 'react'
 import { Link, useNavigate } from 'react-router-dom'
-import { Mail, Lock, Eye, EyeOff, Shield, AlertCircle } from 'lucide-react'
+import { Mail, Lock, Eye, EyeOff, Shield, AlertCircle, ArrowLeft } from 'lucide-react'
 import heroImg from '@/assets/hero.jpg'
+import logoUrl from '@/assets/Logo DM Fix.jpg'
 import { useAuth } from '@/context/AuthContext'
 import { supabase } from '@/lib/supabase'
 
@@ -48,6 +49,8 @@ export default function LoginPage() {
 
       if (status === 'menunggu' || status === 'ditolak') {
         redirectTo = `/verifikasi-status?status=${status}`
+      } else if (ADMIN_ROLES.includes(role)) {
+        redirectTo = '/pilih-dashboard'
       } else {
         redirectTo = '/dashboard'
       }
@@ -134,6 +137,24 @@ export default function LoginPage() {
           <div className="absolute inset-0" style={{ background: 'linear-gradient(160deg, rgba(10,36,21,0.80) 0%, rgba(10,36,21,0.88) 100%)' }} />
         </div>
         <div className="w-full max-w-[420px] relative z-10 bg-white rounded-2xl p-7 shadow-2xl lg:shadow-none lg:rounded-none lg:p-0 lg:bg-transparent">
+          {/* Logo + back to home */}
+          <div className="flex items-center justify-between mb-6">
+            <Link to="/" className="flex items-center gap-2.5">
+              <img src={logoUrl} alt="Logo Daarul Mughni" className="w-9 h-9 object-contain rounded flex-shrink-0" />
+              <div>
+                <p className="text-sm font-extrabold text-[#0A2415] leading-tight">Portal Alumni</p>
+                <p className="text-[10px] font-semibold text-[#1A5C38] leading-tight">Daarul Mughni</p>
+              </div>
+            </Link>
+            <Link
+              to="/"
+              className="flex items-center gap-1.5 text-xs font-semibold text-gray-400 hover:text-gray-700 transition-colors"
+            >
+              <ArrowLeft className="w-3.5 h-3.5" />
+              Beranda
+            </Link>
+          </div>
+
           <h2 className="text-[1.9rem] font-extrabold text-gray-900 mb-1 leading-tight">
             Selamat Datang Kembali
           </h2>

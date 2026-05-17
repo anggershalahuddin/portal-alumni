@@ -23,7 +23,7 @@ export default function GuestRoute({ children }) {
   const role   = profile?.role   ?? null
   const status = profile?.status ?? null
 
-  if (ADMIN_ROLES.includes(role)) return <Navigate to="/dashboard" replace />
+  if (ADMIN_ROLES.includes(role)) return <Navigate to="/pilih-dashboard" replace />
   if (status === 'menunggu' || status === 'ditolak') {
     return <Navigate to={`/verifikasi-status?status=${status}`} replace />
   }

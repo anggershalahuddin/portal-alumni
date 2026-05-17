@@ -368,11 +368,11 @@ export default function AdminDataAlumniPage() {
     setPageLoading(true)
     setLoadError(null)
     try {
-      // Profiles with role alumni + their alumni_profile
+      // Semua profiles yang punya alumni_profiles + status disetujui (inkl. super_admin/admin)
       const { data: profiles, error: profErr } = await supabase
         .from('profiles')
-        .select('id, nama_lengkap, no_hp, angkatan, bidang, domisili, status, role')
-        .eq('role', 'alumni')
+        .select('id, nama_lengkap, no_hp, angkatan, bidang, domisili, status, role, alumni_profiles!inner(user_id)')
+        .eq('status', 'disetujui')
         .order('created_at', { ascending: false })
 
       if (profErr) throw profErr
@@ -383,7 +383,7 @@ export default function AdminDataAlumniPage() {
       // alumni_profiles + all sub-tables + angkatan in parallel
       const [apRes, keahlianRes, bahasaRes, pekerjaanRes, pendidikanRes, lembagaRes, angkatanRes] =
         await Promise.all([
-          supabase.from('alumni_profiles').select('*').in('id', ids),
+          supabase.from('alumni_profiles').select('*').in('user_id', ids),
           supabase.from('keahlian_alumni').select('*').in('alumni_id', ids),
           supabase.from('bahasa_alumni').select('*').in('alumni_id', ids),
           supabase.from('pekerjaan').select('*').in('alumni_id', ids),
@@ -403,7 +403,7 @@ export default function AdminDataAlumniPage() {
       const lembagaAll   = lembagaRes.data ?? []
 
       const enrichedData = profiles.map((p) => {
-        const ap  = apAll.find((a) => a.id === p.id) ?? {}
+        const ap  = apAll.find((a) => a.user_id === p.id) ?? {}
         const pid = p.id
 
         const alumni = {
@@ -446,11 +446,11 @@ export default function AdminDataAlumniPage() {
           lembaga: lembagaAll
             .filter((l) => l.alumni_id === pid)
             .map((l) => ({
-              nama:          l.nama_lembaga ?? '',
-              jenis:         l.jenis_lembaga ?? '',
-              sebagai:       l.peran ?? '',
-              bidang:        l.bidang_usaha ?? '',
-              lokasi:        l.domisili ?? '',
+              nama:          l.nama ?? '',
+              jenis:         l.jenis ?? '',
+              sebagai:       l.sebagai ?? '',
+              bidang:        l.bidang ?? '',
+              lokasi:        l.lokasi ?? '',
               tahun:         l.tahun_berdiri ?? '',
               openKerjasama: l.open_kerjasama ?? false,
               deskripsi:     l.deskripsi ?? '',

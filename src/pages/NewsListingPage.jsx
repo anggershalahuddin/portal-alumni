@@ -3,18 +3,14 @@ import { Link } from 'react-router-dom'
 import { motion } from 'framer-motion'
 import { Search, Calendar, ArrowUpRight, Bell, Loader2, AlertCircle } from 'lucide-react'
 import logoUrl from '@/assets/Logo DM Fix.jpg'
-import { categories, popularTags, getCategoryStyle, getCategoryLabel } from '@/data/news'
+import { categories, getCategoryStyle, getCategoryLabel } from '@/data/news'
 import { PaginationBar, PerPageSelector } from '@/components/PaginationBar'
 import { fadeUp, stagger, viewport } from '@/lib/animations'
 import Navbar from '@/components/landing/Navbar'
 import Footer from '@/components/landing/Footer'
 import { supabase } from '@/lib/supabase'
 
-const sidebarAgenda = [
-  { day: '20', month: 'DES', title: 'Reuni Akbar Dasawarsa', location: 'Auditorium Utama Pondok' },
-  { day: '15', month: 'JAN', title: 'Seminar Karier Alumni Teknologi', location: 'Zoom Online' },
-  { day: '05', month: 'MAR', title: 'Haul Guru & Doa Bersama', location: "Masjid Jami' Sa'ad Mughni" },
-]
+const BULAN = ['JAN','FEB','MAR','APR','MEI','JUN','JUL','AGU','SEP','OKT','NOV','DES']
 
 function formatTanggal(iso) {
   if (!iso) return '—'
@@ -50,6 +46,7 @@ export default function NewsListingPage() {
   const [page, setPage] = useState(1)
   const [perPage, setPerPage] = useState(6)
   const [email, setEmail] = useState('')
+  const [sidebarAgenda, setSidebarAgenda] = useState([])
 
   const loadNews = useCallback(async () => {
     setLoading(true)
@@ -73,6 +70,33 @@ export default function NewsListingPage() {
   useEffect(() => {
     loadNews()
   }, [loadNews])
+
+  useEffect(() => {
+    const today = new Date().toISOString().split('T')[0]
+    supabase
+      .from('agenda')
+      .select('id, judul, tanggal, lokasi')
+      .gte('tanggal', today)
+      .order('tanggal', { ascending: true })
+      .limit(3)
+      .then(({ data }) => {
+        setSidebarAgenda((data ?? []).map(a => {
+          const d = new Date(a.tanggal)
+          return {
+            day: String(d.getDate()).padStart(2, '0'),
+            month: BULAN[d.getMonth()],
+            title: a.judul,
+            location: a.lokasi ?? '',
+          }
+        }))
+      })
+  }, [])
+
+  const popularTags = (() => {
+    const freq = {}
+    newsList.forEach(n => (n.tags ?? []).forEach(t => { freq[t] = (freq[t] ?? 0) + 1 }))
+    return Object.entries(freq).sort((a, b) => b[1] - a[1]).slice(0, 8).map(([t]) => t)
+  })()
 
   const filtered = newsList.filter((n) => {
     const matchCat = activeCategory === 'semua' || n.category === activeCategory
@@ -270,6 +294,8 @@ export default function NewsListingPage() {
                 <div className="flex justify-center py-4">
                   <Loader2 className="w-5 h-5 animate-spin text-gray-300" />
                 </div>
+              ) : newsList.length === 0 ? (
+                <p className="text-xs text-gray-400 text-center py-4">Belum ada berita.</p>
               ) : (
                 <div className="space-y-4">
                   {newsList.slice(0, 4).map((item, i) => (
@@ -295,22 +321,26 @@ export default function NewsListingPage() {
                 <span className="w-1 h-4 bg-[#1A5C38] rounded-full inline-block" />
                 Agenda Alumni
               </h3>
-              <div className="space-y-3">
-                {sidebarAgenda.map(({ day, month, title, location }) => (
-                  <div key={title} className="flex gap-3">
-                    <div className="flex-shrink-0 w-10 text-center bg-[#F8FAF9] rounded-lg py-1.5">
-                      <div className="text-sm font-bold text-[#0A2415] leading-none">{day}</div>
-                      <div className="text-[9px] font-bold text-[#F0A500] uppercase tracking-widest mt-0.5">
-                        {month}
+              {sidebarAgenda.length === 0 ? (
+                <p className="text-xs text-gray-400 text-center py-4">Belum ada agenda mendatang.</p>
+              ) : (
+                <div className="space-y-3">
+                  {sidebarAgenda.map(({ day, month, title, location }) => (
+                    <div key={title} className="flex gap-3">
+                      <div className="flex-shrink-0 w-10 text-center bg-[#F8FAF9] rounded-lg py-1.5">
+                        <div className="text-sm font-bold text-[#0A2415] leading-none">{day}</div>
+                        <div className="text-[9px] font-bold text-[#F0A500] uppercase tracking-widest mt-0.5">
+                          {month}
+                        </div>
+                      </div>
+                      <div>
+                        <p className="text-[#0A2415] text-xs font-bold leading-snug">{title}</p>
+                        <p className="text-gray-400 text-xs mt-0.5">{location}</p>
                       </div>
                     </div>
-                    <div>
-                      <p className="text-[#0A2415] text-xs font-bold leading-snug">{title}</p>
-                      <p className="text-gray-400 text-xs mt-0.5">{location}</p>
-                    </div>
-                  </div>
-                ))}
-              </div>
+                  ))}
+                </div>
+              )}
               <Link
                 to="/agenda"
                 className="inline-flex items-center gap-1 text-[#1A5C38] text-xs font-bold mt-4 hover:gap-2 transition-all"
@@ -348,16 +378,20 @@ export default function NewsListingPage() {
                 <span className="w-1 h-4 bg-[#F0A500] rounded-full inline-block" />
                 Tag Populer
               </h3>
-              <div className="flex flex-wrap gap-2">
-                {popularTags.map((tag) => (
-                  <button
-                    key={tag}
-                    className="px-3 py-1 text-xs bg-[#F8FAF9] hover:bg-[#E8F5EE] text-gray-600 hover:text-[#1A5C38] rounded-full border border-gray-100 hover:border-[#1A5C38]/20 transition-colors"
-                  >
-                    {tag}
-                  </button>
-                ))}
-              </div>
+              {popularTags.length === 0 ? (
+                <p className="text-xs text-gray-400">Belum ada tag.</p>
+              ) : (
+                <div className="flex flex-wrap gap-2">
+                  {popularTags.map((tag) => (
+                    <button
+                      key={tag}
+                      className="px-3 py-1 text-xs bg-[#F8FAF9] hover:bg-[#E8F5EE] text-gray-600 hover:text-[#1A5C38] rounded-full border border-gray-100 hover:border-[#1A5C38]/20 transition-colors"
+                    >
+                      {tag}
+                    </button>
+                  ))}
+                </div>
+              )}
             </div>
           </aside>
         </div>

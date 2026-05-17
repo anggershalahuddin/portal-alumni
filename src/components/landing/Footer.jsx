@@ -1,6 +1,6 @@
 import { Mail, Phone, MapPin } from 'lucide-react'
 import logoUrl from '@/assets/Logo DM Fix.jpg'
-import { siteConfig } from '@/data/siteConfig'
+import { useSiteConfig } from '@/context/SiteConfigContext'
 
 const portalLinks = [
   { label: 'Direktori Alumni', href: '/direktori' },
@@ -40,6 +40,7 @@ const socialLinks = [
 ]
 
 export default function Footer() {
+  const { config } = useSiteConfig()
   return (
     <footer style={{ background: '#060F09' }}>
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-16">
@@ -51,9 +52,9 @@ export default function Footer() {
               <img src={logoUrl} alt="Logo Daarul Mughni" className="w-12 h-12 object-contain rounded flex-shrink-0" />
               <div>
                 <p className="text-[10px] text-white/35 uppercase tracking-widest leading-none mb-0.5">
-                  Alumni Portal
+                  Portal Alumni
                 </p>
-                <p className="text-xs font-bold text-white leading-tight">
+                <p className="text-xs font-bold text-white leading-tight text-nowrap">
                   Pondok Pesantren Modern Perpaduan
                 </p>
                 <p className="text-xs font-bold leading-tight" style={{ color: '#F0A500' }}>
@@ -127,15 +128,15 @@ export default function Footer() {
             <ul className="space-y-4">
               <li className="flex items-start gap-2.5">
                 <MapPin className="w-3.5 h-3.5 mt-0.5 flex-shrink-0 text-[#F0A500]" />
-                <span className="text-white/40 text-xs leading-relaxed">{siteConfig.alamat}</span>
+                <span className="text-white/40 text-xs leading-relaxed">{config.alamat}</span>
               </li>
               <li className="flex items-center gap-2.5">
                 <Mail className="w-3.5 h-3.5 flex-shrink-0 text-[#F0A500]" />
-                <span className="text-white/40 text-xs">{siteConfig.emailKontak}</span>
+                <span className="text-white/40 text-xs">{config.emailKontak}</span>
               </li>
               <li className="flex items-center gap-2.5">
                 <Phone className="w-3.5 h-3.5 flex-shrink-0 text-[#F0A500]" />
-                <span className="text-white/40 text-xs">{siteConfig.telepon}</span>
+                <span className="text-white/40 text-xs">{config.telepon}</span>
               </li>
             </ul>
           </div>

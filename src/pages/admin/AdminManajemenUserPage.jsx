@@ -492,11 +492,11 @@ export default function AdminManajemenUserPage() {
       const ids = (profiles ?? []).map((p) => p.id)
       const { data: apRows } = await supabase
         .from('alumni_profiles')
-        .select('id, profesi')
-        .in('id', ids)
+        .select('user_id, profesi')
+        .in('user_id', ids)
 
       const apMap = {}
-      ;(apRows ?? []).forEach((ap) => { apMap[ap.id] = ap })
+      ;(apRows ?? []).forEach((ap) => { apMap[ap.user_id] = ap })
 
       const usersData = (profiles ?? []).map((p) => {
         const peran = ROLE_TO_PERAN[p.role] ?? 'Alumni'
@@ -511,7 +511,8 @@ export default function AdminManajemenUserPage() {
           aktif:       isSA ? true : (p.is_active ?? true),
           lastLogin:   formatLastLogin(p.updated_at),
           avatar:      '',
-          profesi:     apMap[p.id]?.profesi ?? '',
+          profesi:          apMap[p.id]?.profesi ?? '',
+          hasAlumniProfile: !!apMap[p.id],
           kota:        p.domisili ?? '',
           permissions: isSA
             ? ALL_PERMISSIONS.map((pm) => pm.id)
@@ -795,7 +796,7 @@ export default function AdminManajemenUserPage() {
             {[
               { icon: Users,       iconBg: '#F0FDFF', iconColor: '#0E7490', value: users.length, label: 'Total User' },
               { icon: CheckCircle, iconBg: '#F0FDF4', iconColor: '#22C55E', value: totalAktif,   label: 'User Aktif' },
-              { icon: Shield,      iconBg: '#FFF7ED', iconColor: '#F59E0B', value: users.filter(u => u.peran === 'Alumni' && u.aktif).length, label: 'Alumni Aktif' },
+              { icon: Shield,      iconBg: '#FFF7ED', iconColor: '#F59E0B', value: users.filter(u => u.hasAlumniProfile && u.aktif).length, label: 'Alumni Aktif' },
             ].map((s, i) => {
               const Icon = s.icon
               return (

@@ -15,23 +15,9 @@ import { kategoriGaleri } from '@/data/galeri'
 import { getGurPhotoSrc } from '@/data/guru'
 import { supabase } from '@/lib/supabase'
 
-/* ─── Data ─── */
-const timeline = [
-  { year: '1999', title: 'Pendirian Awal', desc: 'Pondok Pesantren Daarul Mughni resmi berdiri dengan 5 santri perdana di bawah pimpinan KH. Mustopa Mughni, MA.' },
-  { year: '2005', title: 'Peresmian Mahkamah', desc: 'Pembangunan gedung utama dan peresmian program pendidikan formal yang terintegrasi dengan kurikulum nasional.' },
-  { year: '2010', title: 'Pembukaan Fasilitas', desc: 'Penambahan asrama baru, perpustakaan modern, dan laboratorium komputer untuk menunjang pembelajaran digital.' },
-  { year: '2015', title: 'Akreditasi Unggul', desc: 'Meraih akreditasi A (Unggul) dari BAN-SM, menjadi pesantren terbaik tingkat provinsi Jawa Barat.' },
-  { year: '2019', title: 'Transformasi Digital', desc: 'Implementasi sistem pembelajaran digital dan pendirian studio multimedia pesantren.' },
-  { year: '2024', title: 'Alumni Global', desc: 'Alumni tersebar di 15+ negara dengan kontribusi nyata di bidang dakwah, akademik, dan profesional.' },
-]
-
-const misi = [
-  'Menyelenggarakan pendidikan Islam yang berkualitas dan berorientasi masa depan',
-  'Membentuk karakter santri yang berakhlak mulia dan berwawasan global',
-  'Mengintegrasikan ilmu agama dan ilmu pengetahuan umum secara harmonis',
-  'Mengembangkan potensi santri secara holistik dalam bidang akademik dan non-akademik',
-  'Berkontribusi aktif dalam pemberdayaan masyarakat dan dakwah Islam',
-]
+function Skeleton({ className }) {
+  return <div className={`bg-gray-200 rounded animate-pulse ${className}`} />
+}
 
 
 const fasilitas = [
@@ -93,17 +79,25 @@ export default function PesantrenPage() {
   const [organisasiList, setOrganisasiList] = useState([])
   const [galeriList, setGaleriList] = useState([])
   const [guru, setGuru] = useState([])
+  const [timeline, setTimeline] = useState([])
+  const [visi, setVisi] = useState('')
+  const [misi, setMisi] = useState([])
+  const [judulTentang, setJudulTentang] = useState('')
+  const [deskripsiTentang, setDeskripsiTentang] = useState('')
+  const [loadingContent, setLoadingContent] = useState(true)
   const pengasuhScrollRef = useRef(null)
   const orgScrollRef = useRef(null)
 
   useEffect(() => {
     let cancelled = false
     async function loadData() {
-      const [angkatanRes, orgRes, galeriRes, guruRes] = await Promise.all([
+      const [angkatanRes, orgRes, galeriRes, guruRes, milestoneRes, tentangRes] = await Promise.all([
         supabase.from('angkatan').select('id, tahun_lulus, nama_angkatan, logo_url').order('tahun_lulus', { ascending: true }),
         supabase.from('organisasi').select('id, nama, singkatan, deskripsi, logo_url, tahun_berdiri, ketua, kontak, is_aktif').eq('is_aktif', true),
         supabase.from('galeri').select('id, judul, foto_url, kategori').eq('is_aktif', true).order('created_at', { ascending: false }),
         supabase.from('guru').select('id, nama, jabatan, deskripsi, foto_url, is_pengasuh').eq('is_aktif', true).order('urutan', { ascending: true }),
+        supabase.from('milestone').select('id, tahun, judul, keterangan').eq('is_aktif', true).order('tahun', { ascending: true }),
+        supabase.from('pengaturan').select('value').eq('key', 'tentang_kami').single(),
       ])
       if (cancelled) return
       setAngkatanList((angkatanRes.data ?? []).map(mapAngkatan))
@@ -124,6 +118,23 @@ export default function PesantrenPage() {
         foto: row.foto_url ?? null,
         isPengasuh: row.is_pengasuh ?? false,
       })))
+      if (milestoneRes.data?.length) {
+        setTimeline(milestoneRes.data.map(row => ({
+          year: String(row.tahun),
+          title: row.judul,
+          desc: row.keterangan ?? '',
+        })))
+      }
+      if (tentangRes.data?.value) {
+        try {
+          const t = JSON.parse(tentangRes.data.value)
+          if (t.visi) setVisi(t.visi)
+          if (Array.isArray(t.misi) && t.misi.length) setMisi(t.misi)
+          if (t.judul) setJudulTentang(t.judul)
+          if (t.deskripsi) setDeskripsiTentang(t.deskripsi)
+        } catch {}
+      }
+      if (!cancelled) setLoadingContent(false)
     }
     loadData()
     return () => { cancelled = true }
@@ -190,27 +201,39 @@ export default function PesantrenPage() {
           {/* Kiri: cerita */}
           <motion.div variants={fadeLeft} initial="hidden" whileInView="show" viewport={viewport}>
             <p className="text-xs font-bold tracking-widest uppercase mb-3" style={{ color: '#F0A500' }}>Tentang Kami</p>
-            <h2 className="text-3xl font-extrabold text-gray-900 mb-6 leading-tight">
-              Perjalanan Panjang Dakwah<br />Melalui Pendidikan Islam
-            </h2>
-            <div className="space-y-4 text-gray-600 text-sm leading-relaxed">
-              <p>
-                Berdiri sejak 1999, Pondok Pesantren Daarul Mughni telah menjadi mercusuar pendidikan Islam
-                di Jawa Barat. Didirikan oleh KH. Mustopa Mughni, MA., pesantren ini lahir dari keyakinan
-                bahwa pendidikan Islam yang berkualitas adalah kunci kemajuan umat.
-              </p>
-              <p>
-                Pondok Pesantren Daarul Mughni Al Maaliki adalah lembaga pendidikan Islam yang telah berdiri
-                lebih dari dua dekade dan terus berkembang menjadi salah satu pusat pendidikan terkemuka
-                di kawasan Jawa Barat. Dengan visi yang jelas dan kepemimpinan yang kuat, pesantren ini
-                telah melahirkan ribuan alumni yang kini berkiprah di berbagai bidang kehidupan.
-              </p>
-              <p>
-                Nama "Daarul Mughni" mencerminkan tujuan mulia pondok ini — menjadi rumah yang mencukupi,
-                tempat santri mendapatkan bekal ilmu, iman, dan amal untuk menghadapi tantangan zaman
-                dengan penuh keyakinan dan integritas.
-              </p>
-            </div>
+            {loadingContent ? (
+              <div className="space-y-2 mb-6">
+                <Skeleton className="h-8 w-3/4" />
+                <Skeleton className="h-8 w-1/2" />
+              </div>
+            ) : (
+              <h2 className="text-3xl font-extrabold text-gray-900 mb-6 leading-tight">
+                {judulTentang || 'Perjalanan Panjang Dakwah Melalui Pendidikan Islam'}
+              </h2>
+            )}
+            {loadingContent ? (
+              <div className="space-y-3">
+                <Skeleton className="h-4 w-full" />
+                <Skeleton className="h-4 w-full" />
+                <Skeleton className="h-4 w-5/6" />
+                <Skeleton className="h-4 w-full mt-2" />
+                <Skeleton className="h-4 w-4/5" />
+              </div>
+            ) : (
+              <div className="space-y-4 text-gray-600 text-sm leading-relaxed">
+                {deskripsiTentang
+                  ? deskripsiTentang.split('\n\n').filter(Boolean).map((para, i) => (
+                      <p key={i}>{para}</p>
+                    ))
+                  : (
+                    <>
+                      <p>Berdiri sejak 1999, Pondok Pesantren Daarul Mughni telah menjadi mercusuar pendidikan Islam di Jawa Barat. Didirikan oleh KH. Mustopa Mughni, MA., pesantren ini lahir dari keyakinan bahwa pendidikan Islam yang berkualitas adalah kunci kemajuan umat.</p>
+                      <p>Pondok Pesantren Daarul Mughni Al Maaliki adalah lembaga pendidikan Islam yang telah berdiri lebih dari dua dekade dan terus berkembang menjadi salah satu pusat pendidikan terkemuka di kawasan Jawa Barat.</p>
+                    </>
+                  )
+                }
+              </div>
+            )}
             <div className="flex gap-12 mt-10">
               <div>
                 <div className="text-4xl font-extrabold" style={{ color: '#1A5C38' }}>25+</div>
@@ -229,17 +252,27 @@ export default function PesantrenPage() {
             <div className="relative">
               <div className="absolute left-[5px] top-2 bottom-2 w-px bg-gray-200" />
               <div className="space-y-7">
-                {timeline.map((item, i) => (
-                  <div key={i} className="pl-8 relative">
-                    <div
-                      className="absolute left-0 top-1.5 w-2.5 h-2.5 rounded-full border-2 bg-white"
-                      style={{ borderColor: '#1A5C38' }}
-                    />
-                    <div className="text-xs font-extrabold mb-0.5" style={{ color: '#F0A500' }}>{item.year}</div>
-                    <div className="font-bold text-gray-900 text-sm mb-1">{item.title}</div>
-                    <p className="text-gray-500 text-xs leading-relaxed">{item.desc}</p>
-                  </div>
-                ))}
+                {loadingContent
+                  ? Array.from({ length: 5 }).map((_, i) => (
+                      <div key={i} className="pl-8 relative">
+                        <div className="absolute left-0 top-1.5 w-2.5 h-2.5 rounded-full bg-gray-200 animate-pulse" />
+                        <Skeleton className="h-3 w-10 mb-1.5" />
+                        <Skeleton className="h-4 w-40 mb-2" />
+                        <Skeleton className="h-3 w-full" />
+                      </div>
+                    ))
+                  : timeline.map((item, i) => (
+                      <div key={i} className="pl-8 relative">
+                        <div
+                          className="absolute left-0 top-1.5 w-2.5 h-2.5 rounded-full border-2 bg-white"
+                          style={{ borderColor: '#1A5C38' }}
+                        />
+                        <div className="text-xs font-extrabold mb-0.5" style={{ color: '#F0A500' }}>{item.year}</div>
+                        <div className="font-bold text-gray-900 text-sm mb-1">{item.title}</div>
+                        <p className="text-gray-500 text-xs leading-relaxed">{item.desc}</p>
+                      </div>
+                    ))
+                }
               </div>
             </div>
           </motion.div>
@@ -279,9 +312,17 @@ export default function PesantrenPage() {
               <div className="rounded-2xl p-8 h-full" style={{ backgroundColor: '#1A5C38' }}>
                 <p className="text-xs font-bold tracking-widest uppercase text-white/50 mb-4">Visi</p>
                 <div className="text-6xl font-serif leading-none mb-4" style={{ color: '#F0A500' }}>"</div>
-                <blockquote className="text-xl font-bold text-white leading-relaxed mb-6">
-                  Terwujudnya lembaga pendidikan Islam yang unggul, kompetitif, dan berkontribusi pada kemaslahatan umat.
-                </blockquote>
+                {loadingContent ? (
+                  <div className="space-y-2.5 mb-6">
+                    <div className="h-5 bg-white/20 rounded animate-pulse w-full" />
+                    <div className="h-5 bg-white/20 rounded animate-pulse w-5/6" />
+                    <div className="h-5 bg-white/20 rounded animate-pulse w-3/4" />
+                  </div>
+                ) : (
+                  <blockquote className="text-xl font-bold text-white leading-relaxed mb-6">
+                    {visi}
+                  </blockquote>
+                )}
                 <p className="text-white/50 text-xs font-semibold tracking-widest uppercase">
                   — Visi Pondok Pesantren Daarul Mughni
                 </p>
@@ -293,12 +334,20 @@ export default function PesantrenPage() {
               <p className="text-xs font-bold tracking-widest uppercase mb-4" style={{ color: '#F0A500' }}>Misi</p>
               <h3 className="text-xl font-extrabold text-gray-900 mb-6">Misi Kami</h3>
               <div className="space-y-4">
-                {misi.map((item, i) => (
-                  <div key={i} className="flex gap-3">
-                    <CheckCircle className="w-5 h-5 flex-shrink-0 mt-0.5" style={{ color: '#1A5C38' }} />
-                    <p className="text-gray-600 text-sm leading-relaxed">{item}</p>
-                  </div>
-                ))}
+                {loadingContent
+                  ? Array.from({ length: 5 }).map((_, i) => (
+                      <div key={i} className="flex gap-3 items-start">
+                        <Skeleton className="w-5 h-5 rounded-full flex-shrink-0 mt-0.5" />
+                        <Skeleton className={`h-4 flex-1 ${i % 2 === 0 ? 'w-full' : 'w-4/5'}`} />
+                      </div>
+                    ))
+                  : misi.map((item, i) => (
+                      <div key={i} className="flex gap-3">
+                        <CheckCircle className="w-5 h-5 flex-shrink-0 mt-0.5" style={{ color: '#1A5C38' }} />
+                        <p className="text-gray-600 text-sm leading-relaxed">{item}</p>
+                      </div>
+                    ))
+                }
               </div>
             </motion.div>
           </div>

@@ -32,7 +32,8 @@ export default function AdminSidebar({ active }) {
   }
 
   return (
-    <aside className="w-56 bg-white border-r border-gray-100 flex flex-col min-h-screen flex-shrink-0 sticky top-0 h-screen overflow-y-auto">
+    <aside className="w-56 bg-white border-r border-gray-100 flex-shrink-0 self-stretch">
+      <div className="sticky top-0 h-screen flex flex-col overflow-y-auto">
       {/* Logo */}
       <div className="px-5 py-4 border-b border-gray-100">
         <div className="flex items-center gap-2.5">
@@ -111,6 +112,7 @@ export default function AdminSidebar({ active }) {
           Keluar
         </button>
       </div>
+    </div>
     </aside>
   )
 }

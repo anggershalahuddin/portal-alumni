@@ -175,22 +175,16 @@ function BeritaModal({ berita, kategoris, onClose, onSave }) {
         judul: berita.judul,
         kategori: berita.kategori || '',
         status: berita.status,
-        tanggal: '',
+        tanggal: berita.published_at_raw ? berita.published_at_raw.slice(0, 10) : '',
         penulis: berita.penulis || '',
-        penulisSingkatan: berita.penulisSingkatan || '',
-        excerpt: berita.excerpt || '',
-        thumbnail: berita.thumbnail || '',
         banner: berita.banner || '',
       }
     : {
         judul: '',
         kategori: '',
-        status: 'Draft',
+        status: 'Menunggu Verifikasi Admin',
         tanggal: '',
         penulis: '',
-        penulisSingkatan: '',
-        excerpt: '',
-        thumbnail: '',
         banner: '',
       }
   )
@@ -310,33 +304,15 @@ function BeritaModal({ berita, kategoris, onClose, onSave }) {
           </div>
 
           {/* Penulis */}
-          <div className="space-y-4 pt-1 border-t border-gray-100">
-            <SectionLabel>Penulis / Redaksi</SectionLabel>
-            <div className="grid grid-cols-[1fr_auto] gap-3 items-end">
-              <div>
-                <label className="block text-sm font-semibold text-gray-700 mb-1.5">Nama Penulis</label>
-                <input type="text" value={form.penulis} onChange={e => setForm({ ...form, penulis: e.target.value })}
-                  placeholder="contoh: Redaksi IKA Daarul Mughni" className={inputCls} />
-              </div>
-              <div>
-                <label className="block text-sm font-semibold text-gray-700 mb-1.5">Singkatan</label>
-                <input
-                  type="text"
-                  value={form.penulisSingkatan}
-                  onChange={e => setForm({ ...form, penulisSingkatan: e.target.value.toUpperCase().slice(0, 3) })}
-                  placeholder="RI"
-                  maxLength={3}
-                  className="w-16 px-3 py-3 rounded-xl border border-gray-200 text-sm outline-none focus:border-green-500 transition-colors text-center font-bold"
-                />
-              </div>
-            </div>
-            <div>
-              <label className="block text-sm font-semibold text-gray-700 mb-1.5">Ringkasan (Excerpt)</label>
-              <textarea value={form.excerpt} onChange={e => setForm({ ...form, excerpt: e.target.value })}
-                placeholder="Ringkasan singkat berita yang tampil di halaman daftar..."
-                rows={2}
-                className="w-full px-4 py-3 rounded-xl border border-gray-200 text-sm outline-none focus:border-green-500 transition-colors resize-none" />
-            </div>
+          <div className="pt-1 border-t border-gray-100 space-y-3">
+            <SectionLabel>Penulis</SectionLabel>
+            <input
+              type="text"
+              value={form.penulis}
+              onChange={e => setForm({ ...form, penulis: e.target.value })}
+              placeholder="Nama penulis artikel..."
+              className={inputCls}
+            />
           </div>
 
           {/* Konten */}
@@ -399,19 +375,25 @@ function BeritaModal({ berita, kategoris, onClose, onSave }) {
                       <div className="grid grid-cols-2 gap-2">
                         <ImageUploadBox
                           hint="Foto 1"
+                          value={block.items?.[0] || ''}
                           onChange={url => {
                             const items = [...(block.items || [])]
                             items[0] = url
                             updateBlock(block.id, { items })
                           }}
+                          bucket="berita-images"
+                          pathPrefix="berita/konten"
                         />
                         <ImageUploadBox
                           hint="Foto 2 (opsional)"
+                          value={block.items?.[1] || ''}
                           onChange={url => {
                             const items = [...(block.items || [])]
                             items[1] = url
                             updateBlock(block.id, { items })
                           }}
+                          bucket="berita-images"
+                          pathPrefix="berita/konten"
                         />
                       </div>
                     )}
@@ -471,10 +453,14 @@ function BeritaModal({ berita, kategoris, onClose, onSave }) {
           {/* Gambar */}
           <div className="space-y-3 pt-1 border-t border-gray-100">
             <SectionLabel>Gambar Berita</SectionLabel>
-            <div className="grid grid-cols-2 gap-3">
-              <ImageUploadBox label="Thumbnail (Card List)" hint="Rasio 4:3 · JPG/PNG · maks. 2MB" value={form.thumbnail} onChange={url => setForm(f => ({ ...f, thumbnail: url }))} />
-              <ImageUploadBox label="Banner (Halaman Detail)" hint="Rasio 16:9 · JPG/PNG · maks. 5MB" value={form.banner} onChange={url => setForm(f => ({ ...f, banner: url }))} />
-            </div>
+            <ImageUploadBox
+              label="Gambar Berita"
+              hint="Rasio 16:9 · JPG/PNG · maks. 5MB · Digunakan sebagai thumbnail kartu dan gambar header halaman detail"
+              value={form.banner}
+              onChange={url => setForm(f => ({ ...f, banner: url }))}
+              bucket="berita-images"
+              pathPrefix="berita"
+            />
           </div>
 
         </div>
@@ -521,24 +507,23 @@ export default function AdminBeritaPage() {
     try {
       const { data, error: err } = await supabase
         .from('berita')
-        .select('id, judul, slug, ringkasan, konten, foto_url, kategori, tag, status, published_at, author_id, profiles(nama_lengkap)')
+        .select('id, judul, slug, konten, foto_url, kategori, tag, status, published_at, author_id, penulis')
         .order('created_at', { ascending: false })
       if (err) throw err
       setBerita((data ?? []).map((row) => {
         let content = []
         try { const p = JSON.parse(row.konten); if (Array.isArray(p)) content = p } catch {}
-        const authorName = row.profiles?.nama_lengkap ?? ''
         return {
           id: row.id,
           judul: row.judul,
           slug: row.slug,
           kategori: row.kategori ?? '',
           status: STATUS_DB_TO_UI[row.status] ?? 'Menunggu Verifikasi Admin',
-          penulis: authorName,
-          penulisSingkatan: getInitials(authorName),
+          penulis: row.penulis ?? '',
+          penulisSingkatan: getInitials(row.penulis ?? ''),
           tanggal: formatTanggal(row.published_at),
-          excerpt: row.ringkasan ?? '',
-          thumbnail: row.foto_url ?? '',
+          published_at_raw: row.published_at ?? null,
+          banner: row.foto_url ?? '',
           tags: row.tag ?? [],
           content,
         }
@@ -580,9 +565,9 @@ export default function AdminBeritaPage() {
           : (dbStatus === 'published' ? new Date().toISOString() : null)
         const payload = {
           judul: form.judul,
-          ringkasan: form.excerpt,
+          penulis: form.penulis || null,
           konten: JSON.stringify(form.content ?? []),
-          foto_url: form.thumbnail || null,
+          foto_url: form.banner || null,
           kategori: form.kategori || null,
           tag: form.tags ?? [],
           status: dbStatus,

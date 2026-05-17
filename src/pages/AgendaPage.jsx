@@ -1,5 +1,6 @@
 import { useState, useMemo, useEffect, useCallback } from 'react'
-import { Link } from 'react-router-dom'
+import { Link, useNavigate } from 'react-router-dom'
+import { useAuth } from '@/context/AuthContext'
 import { motion } from 'framer-motion'
 import {
   Calendar, Clock, MapPin, Users, ChevronLeft, ChevronRight,
@@ -29,7 +30,10 @@ function mapAgenda(row) {
   const monthShort = ['Jan','Feb','Mar','Apr','Mei','Jun','Jul','Agu','Sep','Okt','Nov','Des']
   const iso = tgl.toISOString().slice(0, 10)
   const tanggalLabel = `${dayNames[tgl.getDay()]}, ${tgl.getDate()} ${monthShort[tgl.getMonth()]} ${tgl.getFullYear()}`
-  const waktu = tgl.toLocaleTimeString('id-ID', { hour: '2-digit', minute: '2-digit' }) + ' WIB'
+  const startTime = tgl.toLocaleTimeString('id-ID', { hour: '2-digit', minute: '2-digit' })
+  const waktu = row.tanggal_selesai
+    ? `${startTime} s.d ${new Date(row.tanggal_selesai).toLocaleTimeString('id-ID', { hour: '2-digit', minute: '2-digit' })} WIB`
+    : `${startTime} s.d Selesai`
   const kat = row.kategori ?? ''
   const katObj = agendaKategori.find(k => k.value === kat)
   return {
@@ -44,19 +48,20 @@ function mapAgenda(row) {
     lokasiSingkat: row.lokasi ?? '—',
     lokasiDetail: row.lokasi ?? '',
     lokasiKategori: inferLokasiKategori(row.lokasi),
-    mapsUrl: '',
+    mapsUrl: row.maps_url ?? '',
+    linkRegistrasi: row.link_registrasi ?? '',
     image: row.foto_url || FALLBACK_IMAGE,
-    imageHero: row.foto_url || FALLBACK_IMAGE.replace('w=600', 'w=1200'),
+    imageHero: row.image_hero || row.foto_url || FALLBACK_IMAGE.replace('w=600', 'w=1200'),
     excerpt: row.deskripsi ?? '',
     deskripsi: (row.deskripsi ?? '').split('\n\n').filter(Boolean).length
       ? (row.deskripsi ?? '').split('\n\n').filter(Boolean)
       : [row.deskripsi ?? ''],
-    status: row.link_registrasi ? 'Terbuka untuk Umum Alumni' : 'Terbuka untuk Umum',
-    htm: row.link_registrasi ? 'Lihat Tautan' : 'Gratis',
-    hasSertifikat: false,
-    pembicara: [],
-    pamflet: null,
-    publishedBy: 'IKA Daarul Mughni',
+    status: row.status_pendaftaran || (row.link_registrasi ? 'Terbuka untuk Umum Alumni' : 'Terbuka untuk Umum'),
+    htm: row.htm || 'Gratis',
+    hasSertifikat: row.has_sertifikat || false,
+    pembicara: Array.isArray(row.pembicara) ? row.pembicara : [],
+    pamflet: row.pamflet_url || null,
+    publishedBy: row.published_by || 'IKA Daarul Mughni',
   }
 }
 
@@ -361,10 +366,31 @@ function EventModal({ event, onClose }) {
               </p>
               <p className="text-sm font-bold text-[#0A2415] mb-4">{event.htm}</p>
 
-              <button className="w-full bg-[#1A5C38] hover:bg-[#0A2415] text-white font-bold text-sm py-2.5 rounded-xl transition-colors flex items-center justify-center gap-2">
-                Daftar Sekarang
-                <span>→</span>
-              </button>
+              {event.linkRegistrasi ? (
+                supaUser ? (
+                  <a
+                    href={event.linkRegistrasi}
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    className="w-full bg-[#1A5C38] hover:bg-[#0A2415] text-white font-bold text-sm py-2.5 rounded-xl transition-colors flex items-center justify-center gap-2"
+                  >
+                    Daftar Sekarang
+                    <ExternalLink className="w-4 h-4" />
+                  </a>
+                ) : (
+                  <button
+                    onClick={() => navigate('/masuk')}
+                    className="w-full bg-[#1A5C38] hover:bg-[#0A2415] text-white font-bold text-sm py-2.5 rounded-xl transition-colors flex items-center justify-center gap-2"
+                  >
+                    Login untuk Daftar
+                    <ExternalLink className="w-4 h-4" />
+                  </button>
+                )
+              ) : (
+                <button disabled className="w-full bg-gray-200 text-gray-400 font-bold text-sm py-2.5 rounded-xl cursor-not-allowed flex items-center justify-center gap-2">
+                  Pendaftaran Belum Dibuka
+                </button>
+              )}
 
               {event.hasSertifikat && (
                 <p className="text-[10px] text-gray-400 text-center mt-2 leading-relaxed italic">
@@ -390,15 +416,19 @@ function EventModal({ event, onClose }) {
               <div className="p-3">
                 <p className="text-xs font-bold text-[#0A2415] mb-1">Lokasi:</p>
                 <p className="text-xs text-gray-500 leading-relaxed mb-2">{event.lokasiDetail}</p>
-                <a
-                  href={event.mapsUrl}
-                  target="_blank"
-                  rel="noopener noreferrer"
-                  className="inline-flex items-center gap-1 text-xs text-[#1A5C38] font-semibold hover:underline"
-                >
-                  Buka di Google Maps
-                  <ExternalLink className="w-3 h-3" />
-                </a>
+                {event.mapsUrl ? (
+                  <a
+                    href={event.mapsUrl}
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    className="inline-flex items-center gap-1 text-xs text-[#1A5C38] font-semibold hover:underline"
+                  >
+                    Buka di Google Maps
+                    <ExternalLink className="w-3 h-3" />
+                  </a>
+                ) : (
+                  <span className="text-xs text-gray-400 italic">Tautan peta tidak tersedia</span>
+                )}
               </div>
             </div>
             {/* Pamflet card */}
@@ -446,6 +476,8 @@ function EventModal({ event, onClose }) {
 }
 
 export default function AgendaPage() {
+  const { supaUser } = useAuth()
+  const navigate = useNavigate()
   const [agendaList, setAgendaList] = useState([])
   const [loadingAgenda, setLoadingAgenda] = useState(true)
   const [selectedDate, setSelectedDate] = useState(null)
@@ -461,7 +493,7 @@ export default function AgendaPage() {
     try {
       const { data } = await supabase
         .from('agenda')
-        .select('id, judul, deskripsi, lokasi, tanggal_mulai, kategori, foto_url, link_registrasi')
+        .select('id, judul, deskripsi, lokasi, tanggal_mulai, tanggal_selesai, kategori, foto_url, link_registrasi, maps_url, pembicara, status_pendaftaran, htm, has_sertifikat, published_by, image_hero, pamflet_url')
         .eq('is_aktif', true)
         .order('tanggal_mulai', { ascending: true })
       setAgendaList((data ?? []).map(mapAgenda))
@@ -722,9 +754,25 @@ export default function AgendaPage() {
                             {event.excerpt}
                           </p>
                           <div className="flex gap-2">
-                            <button className="bg-[#1A5C38] hover:bg-[#0A2415] text-white text-xs font-bold px-4 py-2 rounded-lg transition-colors">
-                              RSVP Sekarang
-                            </button>
+                            {event.linkRegistrasi && (
+                              supaUser ? (
+                                <a
+                                  href={event.linkRegistrasi}
+                                  target="_blank"
+                                  rel="noopener noreferrer"
+                                  className="bg-[#1A5C38] hover:bg-[#0A2415] text-white text-xs font-bold px-4 py-2 rounded-lg transition-colors"
+                                >
+                                  RSVP Sekarang
+                                </a>
+                              ) : (
+                                <button
+                                  onClick={() => navigate('/masuk')}
+                                  className="bg-[#1A5C38] hover:bg-[#0A2415] text-white text-xs font-bold px-4 py-2 rounded-lg transition-colors"
+                                >
+                                  Login untuk RSVP
+                                </button>
+                              )
+                            )}
                             <button
                               onClick={() => setOpenEvent(event)}
                               className="border border-[#1A5C38] text-[#1A5C38] hover:bg-[#E8F5EE] text-xs font-bold px-4 py-2 rounded-lg transition-colors"

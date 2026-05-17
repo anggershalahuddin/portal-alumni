@@ -1,5 +1,5 @@
 ﻿import { useState, useEffect, useCallback } from 'react'
-import { Plus, Trash2, Edit2, Briefcase, X, Check, MapPin, Clock, ChevronDown, ChevronUp, Tag, Layers, Loader2, AlertCircle } from 'lucide-react'
+import { Plus, Trash2, Edit2, Briefcase, X, Check, MapPin, Clock, ChevronDown, ChevronUp, Layers, Loader2, AlertCircle } from 'lucide-react'
 import { motion } from 'framer-motion'
 import AdminSidebar from '../../components/admin/AdminSidebar'
 import AdminHeader from '../../components/admin/AdminHeader'
@@ -59,22 +59,13 @@ function LowonganModal({ item, onClose, onSave, bidangs }) {
   const [form, setForm] = useState(
     item ?? {
       judul: '', instansi: '', tipe: 'full-time', bidang: 'pendidikan',
-      lokasi: 'Klapanunggal, Bogor', deskripsi: '', syarat: [''],
-      gaji_min: '', gaji_max: '', deadline: '', tanggalPosting: today, tags: [], aktif: true, slug: '',
+      lokasi: '', deskripsi: '', syarat: [''],
+      gaji_min: '', gaji_max: '', deadline: '', tanggalPosting: today, aktif: true, slug: '',
     }
   )
   const [syaratInput, setSyaratInput] = useState((item?.syarat ?? ['']).join('\n'))
-  const [tagInput, setTagInput] = useState('')
 
   function set(field, val) { setForm(f => ({ ...f, [field]: val })) }
-
-  function addTag() {
-    const t = tagInput.trim()
-    if (t && !(form.tags ?? []).includes(t)) set('tags', [...(form.tags ?? []), t])
-    setTagInput('')
-  }
-
-  function removeTag(t) { set('tags', (form.tags ?? []).filter(x => x !== t)) }
 
   function handleSave() {
     if (!form.judul.trim() || !form.instansi.trim()) return
@@ -135,20 +126,6 @@ function LowonganModal({ item, onClose, onSave, bidangs }) {
             <label className="text-xs font-semibold text-gray-700 mb-1 block">Persyaratan (satu per baris)</label>
             <textarea value={syaratInput} onChange={e => setSyaratInput(e.target.value)} rows={4} placeholder={'S1 Pendidikan atau relevan\nPengalaman min. 1 tahun\nMuslim/ah, berakhlak mulia'} className="w-full px-3 py-2 rounded-xl border border-gray-200 text-sm outline-none focus:border-green-400 resize-none font-mono" />
           </div>
-          <div>
-            <label className="text-xs font-semibold text-gray-700 mb-1 block flex items-center gap-1"><Tag className="w-3.5 h-3.5" /> Tag Lowongan</label>
-            <div className="flex flex-wrap gap-1.5 mb-2">
-              {(form.tags ?? []).map(t => (
-                <span key={t} className="inline-flex items-center gap-1 text-xs px-2.5 py-1 bg-gray-100 text-gray-600 rounded-full">
-                  {t}<button type="button" onClick={() => removeTag(t)} className="opacity-60 hover:opacity-100"><X className="w-2.5 h-2.5" /></button>
-                </span>
-              ))}
-            </div>
-            <div className="flex gap-2">
-              <input value={tagInput} onChange={e => setTagInput(e.target.value)} onKeyDown={e => { if (e.key === 'Enter') { e.preventDefault(); addTag() } }} placeholder="cth. Full Time, Guru, Akuntansi..." className="flex-1 px-3 py-2 rounded-xl border border-gray-200 text-sm outline-none focus:border-green-400" />
-              <button type="button" onClick={addTag} className="px-3 py-2 rounded-xl border border-gray-200 text-gray-600 hover:bg-gray-50"><Plus className="w-4 h-4" /></button>
-            </div>
-          </div>
           <div className="grid grid-cols-2 gap-3">
             <div>
               <label className="text-xs font-semibold text-gray-700 mb-1 block">Tanggal Posting</label>
@@ -205,11 +182,6 @@ function DetailCard({ item, onEdit, onDelete, onToggle, bidangs }) {
           {gajiDisplay && <div className="flex items-center gap-1 text-[11px] text-gray-500"><span className="font-semibold">Gaji:</span> {gajiDisplay}</div>}
           {item.deadline && <div className="flex items-center gap-1 text-[11px] text-gray-500"><Clock className="w-3 h-3" />Deadline: {new Date(item.deadline).toLocaleDateString('id-ID', { day: 'numeric', month: 'short', year: 'numeric' })}</div>}
         </div>
-        {item.tags?.length > 0 && (
-          <div className="flex flex-wrap gap-1.5 mt-2">
-            {item.tags.map(t => <span key={t} className="text-[10px] px-2 py-0.5 bg-gray-100 text-gray-500 rounded-full">{t}</span>)}
-          </div>
-        )}
         {open && (
           <div className="mt-4 pt-4 border-t border-gray-50 space-y-3">
             {item.deskripsi && <p className="text-sm text-gray-600">{item.deskripsi}</p>}

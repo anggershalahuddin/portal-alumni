@@ -147,7 +147,7 @@ export default function AdminDashboardPage() {
         { data: latestBerita },
         { data: latestVerifikasi },
       ] = await Promise.all([
-        supabase.from('profiles').select('id', { count: 'exact', head: true }).eq('role', 'alumni'),
+        supabase.from('alumni_profiles').select('id', { count: 'exact', head: true }),
         supabase.from('profiles').select('id', { count: 'exact', head: true }).eq('status', 'menunggu'),
         supabase.from('berita').select('id', { count: 'exact', head: true }),
         supabase.from('agenda').select('id', { count: 'exact', head: true }),

@@ -1,6 +1,7 @@
 import { BrowserRouter, Routes, Route, Navigate } from 'react-router-dom'
 import ScrollToTop from './components/ScrollToTop'
 import { AuthProvider } from './context/AuthContext'
+import { SiteConfigProvider } from './context/SiteConfigContext'
 import ProtectedAdminRoute from './components/admin/ProtectedAdminRoute'
 import ProtectedRoute from './components/ProtectedRoute'
 import GuestRoute from './components/GuestRoute'
@@ -38,12 +39,15 @@ import AdminPengaturanPage from './pages/admin/AdminPengaturanPage'
 import AdminNotifikasiPage from './pages/admin/AdminNotifikasiPage'
 import AdminLogPage from './pages/admin/AdminLogPage'
 import AdminLandingPage from './pages/admin/AdminLandingPage'
+import IdleWarningModal from './components/IdleWarningModal'
 
 function App() {
   return (
+    <SiteConfigProvider>
     <AuthProvider>
       <BrowserRouter>
         <ScrollToTop />
+        <IdleWarningModal />
         <Routes>
           {/* ── Public routes ── */}
           <Route path="/" element={<LandingPage />} />
@@ -141,6 +145,7 @@ function App() {
         </Routes>
       </BrowserRouter>
     </AuthProvider>
+  </SiteConfigProvider>
   )
 }
 

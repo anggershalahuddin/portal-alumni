@@ -1,9 +1,7 @@
-import { useState, useEffect } from 'react'
 import { Link } from 'react-router-dom'
 import { motion } from 'framer-motion'
 import { ArrowUpRight, Calendar } from 'lucide-react'
 import { fadeUp, stagger, viewport } from '@/lib/animations'
-import { supabase } from '@/lib/supabase'
 
 const BULAN = ['Jan','Feb','Mar','Apr','Mei','Jun','Jul','Agu','Sep','Okt','Nov','Des']
 
@@ -24,20 +22,21 @@ function formatTanggal(iso) {
   return `${d.getDate()} ${BULAN[d.getMonth()]} ${d.getFullYear()}`
 }
 
-export default function News() {
-  const [news, setNews] = useState([])
+function extractDesc(konten) {
+  try {
+    const blocks = JSON.parse(konten)
+    if (!Array.isArray(blocks)) return ''
+    const para = blocks.find(b => b.type === 'paragraph' && b.text?.trim())
+    if (!para) return ''
+    const text = para.text.trim()
+    return text.length > 150 ? text.slice(0, 150) + '…' : text
+  } catch {
+    return ''
+  }
+}
 
-  useEffect(() => {
-    supabase
-      .from('berita')
-      .select('slug, judul, ringkasan, foto_url, kategori, published_at')
-      .eq('status', 'published')
-      .order('published_at', { ascending: false })
-      .limit(3)
-      .then(({ data }) => setNews(data ?? []))
-  }, [])
-
-  if (news.length === 0) return null
+export default function News({ news = [], loading }) {
+  if (loading || news.length === 0) return null
 
   return (
     <section className="bg-white py-24">
@@ -105,7 +104,7 @@ export default function News() {
                       {item.judul}
                     </h3>
                     <p className="text-gray-500 text-sm leading-relaxed mb-4 line-clamp-2">
-                      {item.ringkasan}
+                      {extractDesc(item.konten)}
                     </p>
                     <span className="inline-flex items-center gap-1 text-[#1A5C38] text-sm font-bold">
                       Selengkapnya

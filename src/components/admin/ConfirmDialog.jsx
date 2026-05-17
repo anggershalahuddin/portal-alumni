@@ -1,4 +1,5 @@
-import { AlertTriangle, Trash2, CheckCircle, ToggleLeft } from 'lucide-react'
+import { useState } from 'react'
+import { AlertTriangle, Trash2, CheckCircle, ToggleLeft, Loader2 } from 'lucide-react'
 
 const VARIANTS = {
   danger:  { Icon: Trash2,       iconBg: '#FFF1F2', iconColor: '#BE123C', btnBg: '#DC2626' },
@@ -8,8 +9,19 @@ const VARIANTS = {
 }
 
 export default function ConfirmDialog({ open, title, message, confirmLabel = 'Ya, Lanjutkan', cancelLabel = 'Batal', variant = 'danger', onConfirm, onCancel }) {
+  const [saving, setSaving] = useState(false)
+
   if (!open) return null
   const { Icon, iconBg, iconColor, btnBg } = VARIANTS[variant] ?? VARIANTS.danger
+
+  async function handleConfirm() {
+    setSaving(true)
+    try {
+      await onConfirm()
+    } finally {
+      setSaving(false)
+    }
+  }
 
   return (
     <div className="fixed inset-0 z-[70] flex items-center justify-center p-4" style={{ backgroundColor: 'rgba(0,0,0,0.5)' }}>
@@ -28,16 +40,19 @@ export default function ConfirmDialog({ open, title, message, confirmLabel = 'Ya
         <div className="flex gap-2.5 px-6 pb-6">
           <button
             onClick={onCancel}
-            className="flex-1 py-2.5 rounded-xl border border-gray-200 text-sm font-semibold text-gray-700 hover:bg-gray-50 transition-colors"
+            disabled={saving}
+            className="flex-1 py-2.5 rounded-xl border border-gray-200 text-sm font-semibold text-gray-700 hover:bg-gray-50 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
           >
             {cancelLabel}
           </button>
           <button
-            onClick={onConfirm}
-            className="flex-1 py-2.5 rounded-xl text-sm font-semibold text-white transition-opacity hover:opacity-90"
+            onClick={handleConfirm}
+            disabled={saving}
+            className="flex-1 py-2.5 rounded-xl text-sm font-semibold text-white transition-opacity hover:opacity-90 disabled:opacity-70 disabled:cursor-not-allowed flex items-center justify-center gap-2"
             style={{ backgroundColor: btnBg }}
           >
-            {confirmLabel}
+            {saving && <Loader2 className="w-4 h-4 animate-spin" />}
+            {saving ? 'Memproses...' : confirmLabel}
           </button>
         </div>
       </div>

@@ -45,7 +45,7 @@ function OrganisasiModal({ item, onClose, onSave }) {
               <input type="number" value={form.tahunBerdiri} onChange={e => set('tahunBerdiri', parseInt(e.target.value))} min="1900" max="2030" className="w-full px-3 py-2 rounded-xl border border-gray-200 text-sm outline-none focus:border-green-400" />
             </div>
           </div>
-          <ImageUploadBox label="Logo Organisasi" hint="Upload file atau paste URL" value={form.logo} onChange={url => set('logo', url)} />
+          <ImageUploadBox label="Logo Organisasi" hint="Upload file atau paste URL" value={form.logo} onChange={url => set('logo', url)} bucket="site-assets" pathPrefix="organisasi" />
           <div>
             <label className="text-xs font-semibold text-gray-700 mb-1 block">Deskripsi</label>
             <textarea value={form.deskripsi} onChange={e => set('deskripsi', e.target.value)} rows={3} placeholder="Deskripsi singkat organisasi..." className="w-full px-3 py-2 rounded-xl border border-gray-200 text-sm outline-none focus:border-green-400 resize-none" />

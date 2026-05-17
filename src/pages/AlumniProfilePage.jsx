@@ -185,7 +185,8 @@ export default function AlumniProfilePage() {
           .eq('id', id)
           .single()
 
-        if (profErr || !p || cancelled) { setLoading(false); return }
+        if (cancelled) return
+        if (profErr || !p) { setLoading(false); return }
 
         // FIX: query by user_id, bukan id
         const { data: ap } = await supabase
@@ -351,20 +352,17 @@ export default function AlumniProfilePage() {
       <Navbar />
 
       <div className="pt-16">
-        {/* Spacer for avatar overlap */}
-        <div className="h-28 bg-[#F8FAF9]" />
-
         {/* Profile header */}
         <div className="bg-white border-b border-gray-100 shadow-sm">
           <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 pb-0">
-            <div className="flex flex-col sm:flex-row gap-5 -mt-14">
+            <div className="flex flex-col sm:flex-row gap-5 pt-6">
               {/* Avatar */}
               <div className="flex-shrink-0">
                 <AlumniAvatar alumni={alumni} size="lg" />
               </div>
 
               {/* Info */}
-              <div className="flex-1 pt-2 sm:pt-16 pb-5">
+              <div className="flex-1 pt-2 pb-5">
                 <div className="flex flex-col sm:flex-row sm:items-start sm:justify-between gap-4">
                   <div>
                     <div className="flex items-center gap-2 flex-wrap">
@@ -773,7 +771,7 @@ export default function AlumniProfilePage() {
 
                   {/* LinkedIn */}
                   {detail.kontak.linkedin && (
-                    <a href={`https://${detail.kontak.linkedin}`} target="_blank" rel="noreferrer"
+                    <a href={/^https?:\/\//.test(detail.kontak.linkedin) ? detail.kontak.linkedin : `https://${detail.kontak.linkedin}`} target="_blank" rel="noreferrer"
                       className="flex items-center gap-3 py-3 hover:bg-gray-50 -mx-1 px-1 rounded-lg transition-colors">
                       <IconLinkedIn size={16} />
                       <div className="flex-1 min-w-0">
@@ -784,12 +782,12 @@ export default function AlumniProfilePage() {
                     </a>
                   )}
 
-                  {/* Website */}
+                  {/* Website / Portofolio */}
                   {detail.kontak.website && (
-                    <a href={`https://${detail.kontak.website}`} target="_blank" rel="noreferrer" className="flex items-center gap-3 py-3 hover:bg-gray-50 -mx-1 px-1 rounded-lg transition-colors">
+                    <a href={/^https?:\/\//.test(detail.kontak.website) ? detail.kontak.website : `https://${detail.kontak.website}`} target="_blank" rel="noreferrer" className="flex items-center gap-3 py-3 hover:bg-gray-50 -mx-1 px-1 rounded-lg transition-colors">
                       <IconWebsite size={16} />
                       <div className="flex-1 min-w-0">
-                        <p className="text-[10px] font-bold text-gray-400 uppercase tracking-widest">Website</p>
+                        <p className="text-[10px] font-bold text-gray-400 uppercase tracking-widest">Website / Portofolio</p>
                         <p className="text-xs text-gray-700 truncate">{detail.kontak.website}</p>
                       </div>
                       <ExternalLink className="w-3.5 h-3.5 text-gray-300 flex-shrink-0" />

@@ -1,4 +1,4 @@
-import { createContext, useContext, useState, useEffect, useCallback } from 'react'
+import { createContext, useContext, useState, useEffect, useCallback, useRef } from 'react'
 import { supabase } from '../lib/supabase'
 import { DEFAULT_PERMISSIONS } from '../data/adminMenus'
 
@@ -29,18 +29,62 @@ export function AuthProvider({ children }) {
   const [profile, setProfile]           = useState(null)
   const [loading, setLoading]           = useState(true)
   const [profileReady, setProfileReady] = useState(false)
+  const [idleWarning, setIdleWarning]   = useState(false)
 
-  // Ambil profile — retry 3x karena kadang row belum terbuat saat OAuth selesai
+  const IDLE_MS   = 10 * 60 * 1000  // 10 menit
+  const WARN_MS   =  9 * 60 * 1000  //  9 menit → tampilkan warning
+  const warnRef          = useRef(null)
+  const logoutRef        = useRef(null)
+  const fetchedUserIdRef = useRef(null) // track user ID yang sudah di-fetch, cegah re-fetch berulang
+
+  const ACTIVITY_KEY = 'dm_last_activity'
+
+  const resetIdleTimers = useCallback(() => {
+    clearTimeout(warnRef.current)
+    clearTimeout(logoutRef.current)
+    setIdleWarning(false)
+    // Broadcast aktivitas ke tab lain
+    localStorage.setItem(ACTIVITY_KEY, Date.now().toString())
+    warnRef.current   = setTimeout(() => setIdleWarning(true), WARN_MS)
+    logoutRef.current = setTimeout(() => supabase.auth.signOut(), IDLE_MS)
+  }, [])
+
+  // Aktifkan idle timer hanya saat user sedang login
+  useEffect(() => {
+    if (!supaUser) {
+      clearTimeout(warnRef.current)
+      clearTimeout(logoutRef.current)
+      setIdleWarning(false)
+      return
+    }
+
+    // Dengarkan aktivitas dari tab lain via localStorage
+    function onStorage(e) {
+      if (e.key === ACTIVITY_KEY) resetIdleTimers()
+    }
+    window.addEventListener('storage', onStorage)
+
+    const events = ['mousemove', 'keydown', 'click', 'touchstart', 'scroll']
+    events.forEach(ev => window.addEventListener(ev, resetIdleTimers, { passive: true }))
+    resetIdleTimers()
+    return () => {
+      clearTimeout(warnRef.current)
+      clearTimeout(logoutRef.current)
+      events.forEach(ev => window.removeEventListener(ev, resetIdleTimers))
+      window.removeEventListener('storage', onStorage)
+    }
+  }, [supaUser, resetIdleTimers])
+
+  // Ambil profile — retry 2x, timeout 6 detik per percobaan
   async function fetchProfile(userId) {
-    for (let i = 0; i < 3; i++) {
-      const { data, error } = await supabase
-        .from('profiles')
-        .select('*')
-        .eq('id', userId)
-        .maybeSingle()
+    for (let i = 0; i < 2; i++) {
+      const { data, error } = await Promise.race([
+        supabase.from('profiles').select('*').eq('id', userId).maybeSingle(),
+        new Promise(resolve => setTimeout(() => resolve({ data: null, error: { message: 'timeout' } }), 6000)),
+      ])
       if (data) return data
-      if (error) console.warn('[fetchProfile]', error.code, error.message)
-      if (i < 2) await new Promise(r => setTimeout(r, 800))
+      console.warn(`[fetchProfile] attempt ${i + 1} failed — userId: ${userId}`, error?.message ?? 'no data')
+      if (i < 1) await new Promise(r => setTimeout(r, 300))
     }
     return null
   }
@@ -48,40 +92,35 @@ export function AuthProvider({ children }) {
   useEffect(() => {
     let active = true
 
-    async function init() {
-      try {
-        const { data: { session } } = await supabase.auth.getSession()
-        if (!active) return
-        if (session?.user) {
-          setSupaUser(session.user)
-          const p = await fetchProfile(session.user.id)
-          if (active) setProfile(p)
-        } else {
-          setSupaUser(null)
-          setProfile(null)
-        }
-      } catch (e) {
-        console.warn('[AuthContext] init error', e)
-      } finally {
-        if (active) {
-          setLoading(false)
-          setProfileReady(true)
-        }
+    // Safety fallback: paksa loading selesai setelah 14 detik (cover 2 retry × 6s + jeda)
+    const safetyTimer = setTimeout(() => {
+      if (active) {
+        setLoading(false)
+        setProfileReady(true)
       }
-    }
-
-    init()
+    }, 14000)
 
     const { data: { subscription } } = supabase.auth.onAuthStateChange(
       async (event, session) => {
-        if (event === 'INITIAL_SESSION') return
         if (!active) return
+
+        // TOKEN_REFRESHED: token diperbarui otomatis, user & profile tidak berubah — skip
+        if (event === 'TOKEN_REFRESHED') return
+
         try {
           if (session?.user) {
+            const uid = session.user.id
             setSupaUser(session.user)
-            const p = await fetchProfile(session.user.id)
-            if (active) setProfile(p)
+            // Hanya fetch profile kalau user-nya beda atau belum pernah di-fetch
+            // Cegah re-fetch pada SIGNED_IN berulang (tab fokus, session refresh, dll)
+            if (fetchedUserIdRef.current !== uid) {
+              fetchedUserIdRef.current = uid
+              if (event === 'SIGNED_IN') await new Promise(r => setTimeout(r, 800))
+              const p = await fetchProfile(uid)
+              if (active) setProfile(p)
+            }
           } else {
+            fetchedUserIdRef.current = null
             setSupaUser(null)
             setProfile(null)
           }
@@ -89,6 +128,7 @@ export function AuthProvider({ children }) {
           console.warn('[AuthContext] auth change error', e)
         } finally {
           if (active) {
+            clearTimeout(safetyTimer)
             setLoading(false)
             setProfileReady(true)
           }
@@ -98,6 +138,7 @@ export function AuthProvider({ children }) {
 
     return () => {
       active = false
+      clearTimeout(safetyTimer)
       subscription.unsubscribe()
     }
   }, [])
@@ -187,7 +228,8 @@ export function AuthProvider({ children }) {
       signUp,
       signOut,
       signInWithGoogle,
-      // Expose refreshProfile agar komponen bisa reload setelah update
+      idleWarning,
+      extendSession: resetIdleTimers,
       refreshProfile: () => supaUser && fetchProfile(supaUser.id).then(setProfile),
     }}>
       {children}

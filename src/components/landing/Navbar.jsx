@@ -1,8 +1,10 @@
 import { useState } from 'react'
 import { Link, useLocation } from 'react-router-dom'
 import { motion } from 'framer-motion'
-import { Menu, X } from 'lucide-react'
+import { Menu, X, LayoutDashboard } from 'lucide-react'
 import logoUrl from '@/assets/Logo DM Fix.jpg'
+import { useSiteConfig } from '@/context/SiteConfigContext'
+import { useAuth } from '@/context/AuthContext'
 
 const navLinks = [
   { label: 'Beranda', href: '/' },
@@ -55,6 +57,9 @@ function NavLink({ label, href, onClick, mobile }) {
 
 export default function Navbar() {
   const [open, setOpen] = useState(false)
+  const { config } = useSiteConfig()
+  const { user } = useAuth()
+  const dashboardHref = '/dashboard'
 
   return (
     <motion.nav
@@ -71,7 +76,7 @@ export default function Navbar() {
             <img src={logoUrl} alt="Logo Daarul Mughni" className="w-9 h-9 sm:w-10 sm:h-10 object-contain rounded flex-shrink-0" />
             <div className="min-w-0">
               <p className="text-[10px] text-white/50 uppercase tracking-widest leading-none mb-0.5 hidden sm:block">
-                Alumni Portal
+                Portal Alumni
               </p>
               <p className="text-xs font-bold text-white leading-tight whitespace-nowrap">
                 <span className="sm:hidden">Daarul Mughni</span>
@@ -93,18 +98,30 @@ export default function Navbar() {
 
           {/* CTA buttons */}
           <div className="hidden lg:flex items-center gap-3">
-            <Link
-              to="/masuk"
-              className="text-white/80 hover:text-white text-sm font-medium transition-colors px-3 py-2"
-            >
-              Masuk
-            </Link>
-            <Link
-              to="/daftar"
-              className="bg-[#F0A500] hover:bg-[#D4920A] text-[#0A2415] text-sm font-bold px-5 py-2.5 rounded transition-colors"
-            >
-              Daftar Alumni
-            </Link>
+            {user ? (
+              <Link
+                to={dashboardHref}
+                className="flex items-center gap-2 bg-[#F0A500] hover:bg-[#D4920A] text-[#0A2415] text-sm font-bold px-5 py-2.5 rounded transition-colors"
+              >
+                <LayoutDashboard className="w-4 h-4" />
+                Dashboard
+              </Link>
+            ) : (
+              <>
+                <Link
+                  to="/masuk"
+                  className="text-white/80 hover:text-white text-sm font-medium transition-colors px-3 py-2"
+                >
+                  Masuk
+                </Link>
+                <Link
+                  to="/daftar"
+                  className="bg-[#F0A500] hover:bg-[#D4920A] text-[#0A2415] text-sm font-bold px-5 py-2.5 rounded transition-colors"
+                >
+                  Daftar Alumni
+                </Link>
+              </>
+            )}
           </div>
 
           {/* Mobile hamburger */}
@@ -138,20 +155,33 @@ export default function Navbar() {
               ))}
             </div>
             <div className="flex gap-3 px-3">
-              <Link
-                to="/masuk"
-                onClick={() => setOpen(false)}
-                className="flex-1 text-center border border-white/30 text-white text-sm font-medium px-4 py-2.5 rounded"
-              >
-                Masuk
-              </Link>
-              <Link
-                to="/daftar"
-                onClick={() => setOpen(false)}
-                className="flex-1 text-center bg-[#F0A500] text-[#0A2415] text-sm font-bold px-4 py-2.5 rounded"
-              >
-                Daftar Alumni
-              </Link>
+              {user ? (
+                <Link
+                  to={dashboardHref}
+                  onClick={() => setOpen(false)}
+                  className="flex-1 flex items-center justify-center gap-2 bg-[#F0A500] text-[#0A2415] text-sm font-bold px-4 py-2.5 rounded"
+                >
+                  <LayoutDashboard className="w-4 h-4" />
+                  Dashboard
+                </Link>
+              ) : (
+                <>
+                  <Link
+                    to="/masuk"
+                    onClick={() => setOpen(false)}
+                    className="flex-1 text-center border border-white/30 text-white text-sm font-medium px-4 py-2.5 rounded"
+                  >
+                    Masuk
+                  </Link>
+                  <Link
+                    to="/daftar"
+                    onClick={() => setOpen(false)}
+                    className="flex-1 text-center bg-[#F0A500] text-[#0A2415] text-sm font-bold px-4 py-2.5 rounded"
+                  >
+                    Daftar Alumni
+                  </Link>
+                </>
+              )}
             </div>
           </motion.div>
         )}

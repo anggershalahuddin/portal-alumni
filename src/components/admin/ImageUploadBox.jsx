@@ -1,17 +1,46 @@
 import { useState } from 'react'
-import { ImageIcon, Link2, Upload, X } from 'lucide-react'
+import { ImageIcon, Link2, Upload, X, Loader2 } from 'lucide-react'
+import { supabase } from '@/lib/supabase'
 
-export default function ImageUploadBox({ label, hint, onChange, value }) {
+export default function ImageUploadBox({ label, hint, onChange, value, bucket, pathPrefix }) {
   const [mode, setMode] = useState('upload')
   const [preview, setPreview] = useState(value || null)
   const [urlInput, setUrlInput] = useState(value || '')
+  const [uploading, setUploading] = useState(false)
+  const [uploadError, setUploadError] = useState(null)
 
-  function handleFile(e) {
+  async function handleFile(e) {
     const file = e.target.files?.[0]
     if (!file) return
-    const url = URL.createObjectURL(file)
-    setPreview(url)
-    onChange?.(url)
+    setUploadError(null)
+
+    if (!bucket) {
+      const url = URL.createObjectURL(file)
+      setPreview(url)
+      onChange?.(url)
+      return
+    }
+
+    setUploading(true)
+    const ext = file.name.split('.').pop()
+    const path = pathPrefix
+      ? `${pathPrefix}/${Date.now()}.${ext}`
+      : `${Date.now()}.${ext}`
+
+    const { error } = await supabase.storage
+      .from(bucket)
+      .upload(path, file, { upsert: true })
+
+    if (error) {
+      setUploadError('Gagal upload: ' + error.message)
+      setUploading(false)
+      return
+    }
+
+    const { data: urlData } = supabase.storage.from(bucket).getPublicUrl(path)
+    setPreview(urlData.publicUrl)
+    onChange?.(urlData.publicUrl)
+    setUploading(false)
   }
 
   function handleUrlApply() {
@@ -24,6 +53,7 @@ export default function ImageUploadBox({ label, hint, onChange, value }) {
   function clearPreview() {
     setPreview(null)
     setUrlInput('')
+    setUploadError(null)
     onChange?.('')
   }
 
@@ -56,17 +86,26 @@ export default function ImageUploadBox({ label, hint, onChange, value }) {
           </button>
         </div>
       ) : mode === 'upload' ? (
-        <label className="block cursor-pointer">
-          <input type="file" accept="image/*" className="hidden" onChange={handleFile} />
-          <div className="border-2 border-dashed border-gray-200 rounded-xl p-5 text-center hover:border-green-400 hover:bg-green-50/30 transition-all">
+        <label className={`block ${uploading ? 'cursor-wait' : 'cursor-pointer'}`}>
+          <input type="file" accept="image/*" className="hidden" onChange={handleFile} disabled={uploading} />
+          <div className={`border-2 border-dashed rounded-xl p-5 text-center transition-all ${uploading ? 'border-green-300 bg-green-50/50' : 'border-gray-200 hover:border-green-400 hover:bg-green-50/30'}`}>
             <div className="w-8 h-8 rounded-lg bg-gray-100 flex items-center justify-center mx-auto mb-2">
-              <ImageIcon className="w-4 h-4 text-gray-400" />
+              {uploading
+                ? <Loader2 className="w-4 h-4 text-green-600 animate-spin" />
+                : <ImageIcon className="w-4 h-4 text-gray-400" />
+              }
             </div>
-            <p className="text-xs font-semibold text-gray-500">Klik untuk upload gambar</p>
-            {hint && <p className="text-[11px] text-gray-400 mt-0.5">{hint}</p>}
+            <p className="text-xs font-semibold text-gray-500">
+              {uploading ? 'Mengupload...' : 'Klik untuk upload gambar'}
+            </p>
+            {hint && !uploading && <p className="text-[11px] text-gray-400 mt-0.5">{hint}</p>}
           </div>
         </label>
       ) : null}
+
+      {uploadError && (
+        <p className="text-[11px] text-red-500 mt-1">{uploadError}</p>
+      )}
 
       {/* URL input */}
       {mode === 'url' && !preview && (

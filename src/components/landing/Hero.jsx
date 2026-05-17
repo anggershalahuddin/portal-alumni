@@ -2,6 +2,7 @@ import { motion } from 'framer-motion'
 import { ArrowRight, ChevronRight } from 'lucide-react'
 import heroImg from '@/assets/hero.jpg'
 import { TOTAL_ALUMNI } from '@/data/alumni'
+import { useSiteConfig } from '@/context/SiteConfigContext'
 
 const up = (delay = 0) => ({
   initial: { opacity: 0, y: 28 },
@@ -10,6 +11,7 @@ const up = (delay = 0) => ({
 })
 
 export default function Hero() {
+  const { config } = useSiteConfig()
   return (
     <section className="relative min-h-screen flex items-center pt-16 overflow-hidden">
       {/* Background photo */}
@@ -58,9 +60,7 @@ export default function Hero() {
 
           {/* Description */}
           <motion.p {...up(0.4)} className="text-white/60 text-lg leading-relaxed mb-10 max-w-xl">
-            Selamat datang di wadah kolaborasi profesional dan silaturahmi seluruh
-            lulusan Pondok Pesantren Daarul Mughni. Terus terhubung dengan almamater
-            dan sesama alumni.
+            Selamat datang di wadah kolaborasi profesional dan silaturahmi seluruh lulusan Pondok Pesantren Daarul Mughni Al Maaliki. Terus terhubung dengan almamater dan sesama alumni.
           </motion.p>
 
           {/* CTAs */}

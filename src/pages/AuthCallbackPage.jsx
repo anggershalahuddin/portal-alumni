@@ -10,7 +10,7 @@ export default function AuthCallbackPage() {
     function goToPilih() {
       if (didNavigate.current) return
       didNavigate.current = true
-      navigate('/dashboard', { replace: true })
+      navigate('/pilih-dashboard', { replace: true })
     }
 
     // Tangkap SIGNED_IN dari OAuth redirect

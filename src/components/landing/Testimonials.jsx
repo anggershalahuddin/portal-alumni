@@ -1,43 +1,86 @@
-import { useState, useEffect, useRef } from 'react'
+import { useRef } from 'react'
 import { motion } from 'framer-motion'
 import { ChevronLeft, ChevronRight } from 'lucide-react'
-import { supabase } from '@/lib/supabase'
 import { fadeUp, viewport } from '@/lib/animations'
 
-function mapTestimoni(row) {
-  const words = (row.nama ?? '').split(' ').filter(Boolean)
-  const initials = words.length >= 2
-    ? (words[0][0] + words[words.length - 1][0]).toUpperCase()
-    : (words[0]?.[0] ?? 'A').toUpperCase()
-  return {
-    id: row.id,
-    name: row.nama ?? '',
-    batch: row.angkatan ?? '',
-    role: row.jabatan ?? '',
-    quote: row.isi ?? '',
-    foto: row.foto_url ?? null,
-    initials,
+// Konten statis — edit langsung di sini untuk mengubah/menambah testimoni
+const TESTIMONI = [
+  {
+    id: 1,
+    name: 'Ahmad Fauzi',
+    batch: 'Angkatan 5 (2010)',
+    role: 'Software Engineer di Tokopedia',
+    quote: 'Nilai-nilai keislaman dan kedisiplinan yang ditanamkan Daarul Mughni menjadi fondasi karir saya. Portal ini memudahkan saya terhubung kembali dengan kawan-kawan lama.',
+    initials: 'AF',
     color: '#1A5C38',
-    aktif: row.is_aktif,
-  }
-}
+  },
+  {
+    id: 2,
+    name: 'Siti Maryam',
+    batch: 'Angkatan 8 (2013)',
+    role: 'Dokter Umum RS Cipto Mangunkusumo',
+    quote: 'Pondok mengajarkan saya untuk tidak pernah berhenti belajar. Senang sekali ada wadah resmi seperti ini untuk alumni Daarul Mughni.',
+    initials: 'SM',
+    color: '#0E7490',
+  },
+  {
+    id: 3,
+    name: 'Rizky Pratama',
+    batch: 'Angkatan 12 (2017)',
+    role: 'Pengusaha & Founder Startup EdTech',
+    quote: 'Portal alumni ini bukan hanya tempat nostalgia, tapi juga jembatan peluang. Saya sudah merekrut 3 alumni lewat fitur karir di sini!',
+    initials: 'RP',
+    color: '#7C3AED',
+  },
+  {
+    id: 4,
+    name: 'Hendra Kusuma',
+    batch: 'Angkatan 3 (2008)',
+    role: 'Pegawai Kementerian Agama RI',
+    quote: 'Pengalaman belajar di Daarul Mughni membentuk karakter saya sebagai abdi negara yang amanah. Bangga bisa berkontribusi lewat jalur pemerintahan.',
+    initials: 'HK',
+    color: '#0369A1',
+  },
+  {
+    id: 5,
+    name: 'Nurul Hidayah',
+    batch: 'Angkatan 10 (2015)',
+    role: 'Guru & Kepala Sekolah MI Al-Falah',
+    quote: 'Semangat mendidik yang saya miliki lahir dari pondok ini. Kini saya bahagia bisa meneruskan estafet itu kepada generasi berikutnya.',
+    initials: 'NH',
+    color: '#DB2777',
+  },
+  {
+    id: 6,
+    name: 'Fajar Ramadhan',
+    batch: 'Angkatan 14 (2019)',
+    role: 'Mahasiswa S2 Universitas Indonesia',
+    quote: 'Disiplin dan akhlak yang tertanam di pondok jadi bekal saya bersaing di lingkungan akademik nasional. Daarul Mughni bukan sekadar sekolah, tapi rumah kedua.',
+    initials: 'FR',
+    color: '#D97706',
+  },
+  {
+    id: 7,
+    name: 'Aisyah Rahmawati',
+    batch: 'Angkatan 7 (2012)',
+    role: 'Konsultan Keuangan Syariah',
+    quote: 'Pemahaman ekonomi Islam yang kuat saya dapatkan sejak di pondok. Kini ilmu itu menjadi profesi dan ladang amal sekaligus. Terima kasih Daarul Mughni!',
+    initials: 'AR',
+    color: '#065F46',
+  },
+  {
+    id: 8,
+    name: 'Muhamad Ilham',
+    batch: 'Angkatan 16 (2021)',
+    role: 'Content Creator & Da\'i Muda',
+    quote: 'Pondok mengajarkan saya keberanian berbicara di depan umum dan kedalaman ilmu agama. Dua hal itu kini jadi modal saya berdakwah di era digital.',
+    initials: 'MI',
+    color: '#4F46E5',
+  },
+]
 
 export default function Testimonials() {
   const scrollRef = useRef(null)
-  const [active, setActive] = useState([])
-
-  useEffect(() => {
-    let cancelled = false
-    supabase
-      .from('testimoni')
-      .select('id, nama, angkatan, jabatan, isi, foto_url, is_aktif, urutan')
-      .eq('is_aktif', true)
-      .order('urutan', { ascending: true })
-      .then(({ data }) => {
-        if (!cancelled) setActive((data ?? []).map(mapTestimoni))
-      })
-    return () => { cancelled = true }
-  }, [])
 
   function scroll(dir) {
     scrollRef.current?.scrollBy({ left: dir * 320, behavior: 'smooth' })
@@ -64,7 +107,7 @@ export default function Testimonials() {
               Kisah inspiratif dari para alumni yang telah berkarya di berbagai bidang.
             </p>
           </div>
-          {active.length > 1 && (
+          {TESTIMONI.length > 1 && (
             <div className="flex gap-2 flex-shrink-0 ml-4">
               <button
                 onClick={() => scroll(-1)}
@@ -88,7 +131,7 @@ export default function Testimonials() {
           className="flex gap-6 overflow-x-auto pb-4 snap-x snap-mandatory scroll-smooth"
           style={{ scrollbarWidth: 'none', msOverflowStyle: 'none' }}
         >
-          {active.map(({ id, name, batch, role, initials, color, foto, quote }) => (
+          {TESTIMONI.map(({ id, name, batch, role, initials, color, foto, quote }) => (
             <div
               key={id}
               className="min-w-[280px] max-w-[340px] flex-shrink-0 snap-start bg-[#F8FAF9] border border-gray-100 rounded-xl p-6 flex flex-col hover:shadow-lg transition-shadow duration-300"
@@ -109,17 +152,14 @@ export default function Testimonials() {
               <div className="flex items-center gap-3 pt-5 border-t border-gray-100">
                 <div className="w-10 h-10 rounded-full flex-shrink-0 overflow-hidden">
                   {foto
-                    ? <img src={foto} alt={name} className="w-full h-full object-cover" />
+                    ? <img src={foto} alt={name} className="w-full h-full object-cover" loading="lazy" decoding="async" />
                     : <div className="w-full h-full flex items-center justify-center text-white text-sm font-bold" style={{ background: color }}>{initials}</div>
                   }
                 </div>
                 <div>
                   <div className="text-[#0A2415] font-bold text-sm">{name}</div>
-                  <div className="text-gray-400 text-xs mt-0.5">
-                    {batch}                   </div>
-                  <div className="text-gray-400 text-xs mt-0.5">
-                    {role}
-                  </div>
+                  <div className="text-gray-400 text-xs mt-0.5">{batch}</div>
+                  <div className="text-gray-400 text-xs mt-0.5">{role}</div>
                 </div>
               </div>
             </div>

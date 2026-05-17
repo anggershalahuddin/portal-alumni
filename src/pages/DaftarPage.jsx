@@ -2,7 +2,7 @@ import { useState, useRef } from 'react'
 import { Link, useNavigate } from 'react-router-dom'
 import {
   Eye, EyeOff, CheckCircle,
-  ChevronDown, Upload, X, Camera, AlertCircle, Lock,
+  ChevronDown, Upload, X, Camera, AlertCircle, Lock, ArrowLeft,
 } from 'lucide-react'
 import heroImg from '../assets/hero.jpg'
 import logoUrl from '@/assets/Logo DM Fix.jpg'
@@ -377,10 +377,19 @@ export default function DaftarPage() {
                 <p className="text-[10px] font-semibold text-[#1A5C38] leading-tight">Daarul Mughni</p>
               </div>
             </Link>
-            <p className="hidden lg:block text-xs text-gray-400">
-              Sudah punya akun?{' '}
-              <Link to="/masuk" className="font-bold hover:underline" style={{ color: '#1A5C38' }}>Masuk</Link>
-            </p>
+            <div className="flex items-center gap-3">
+              <Link
+                to="/"
+                className="flex items-center gap-1.5 text-xs font-semibold text-gray-400 hover:text-gray-700 transition-colors"
+              >
+                <ArrowLeft className="w-3.5 h-3.5" />
+                Beranda
+              </Link>
+              <p className="hidden lg:block text-xs text-gray-400">
+                Sudah punya akun?{' '}
+                <Link to="/masuk" className="font-bold hover:underline" style={{ color: '#1A5C38' }}>Masuk</Link>
+              </p>
+            </div>
           </div>
 
           <h1 className="text-xl font-extrabold text-[#0A2415] mb-0.5">Buat Akun Alumni</h1>

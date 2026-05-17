@@ -1,6 +1,7 @@
-import { useState, useEffect, useRef } from 'react'
+import { useState, useEffect, useRef, useCallback } from 'react'
 import { Link, useNavigate } from 'react-router-dom'
 import { motion, AnimatePresence } from 'framer-motion'
+import Cropper from 'react-easy-crop'
 import logoUrl from '@/assets/Logo DM Fix.jpg'
 import {
   Bell, GraduationCap, Briefcase, Plus, Pencil, Trash2,
@@ -10,11 +11,36 @@ import {
   Shield, AlertCircle, ExternalLink, Loader2, Star, Image as ImageIcon,
   Phone, Mail, Building2, ShoppingBag, Heart, Handshake, Layers, Upload, Paperclip,
 } from 'lucide-react'
-import Footer from '../components/landing/Footer'
 import { kategoriStyle } from '../data/agenda'
 import { useAuth } from '@/context/AuthContext'
 import { supabase } from '@/lib/supabase'
 import ConfirmDialog from '../components/admin/ConfirmDialog'
+
+function createImage(url) {
+  return new Promise((resolve, reject) => {
+    const img = new Image()
+    img.addEventListener('load', () => resolve(img))
+    img.addEventListener('error', reject)
+    img.setAttribute('crossOrigin', 'anonymous')
+    img.src = url
+  })
+}
+
+async function getCroppedImg(imageSrc, croppedAreaPixels) {
+  const image = await createImage(imageSrc)
+  const canvas = document.createElement('canvas')
+  const ctx = canvas.getContext('2d')
+  const size = Math.min(croppedAreaPixels.width, croppedAreaPixels.height)
+  canvas.width = size
+  canvas.height = size
+  ctx.drawImage(
+    image,
+    croppedAreaPixels.x, croppedAreaPixels.y,
+    croppedAreaPixels.width, croppedAreaPixels.height,
+    0, 0, size, size,
+  )
+  return new Promise((resolve) => canvas.toBlob((blob) => resolve(blob), 'image/jpeg', 0.92))
+}
 
 const SEBAGAI_OPTIONS = [
   'Pendiri / Founder',
@@ -162,21 +188,73 @@ function EditProfilModal({ profil, onSave, onClose }) {
   const fileRef = useRef(null)
   const s = k => e => setForm(p => ({ ...p, [k]: e.target.value }))
 
+  // Crop state
+  const [cropSrc, setCropSrc] = useState(null)
+  const [crop, setCrop] = useState({ x: 0, y: 0 })
+  const [zoom, setZoom] = useState(1)
+  const [croppedAreaPixels, setCroppedAreaPixels] = useState(null)
+  const onCropComplete = useCallback((_, pixels) => setCroppedAreaPixels(pixels), [])
+
   function handleFotoChange(e) {
     const f = e.target.files?.[0]
     if (!f) return
-    if (f.size > 2 * 1024 * 1024) { alert('Ukuran foto maks. 2MB'); return }
-    setFotoFile(f)
-    setFotoPreview(URL.createObjectURL(f))
+    if (f.size > 5 * 1024 * 1024) { alert('Ukuran foto maks. 5MB'); return }
+    setCropSrc(URL.createObjectURL(f))
+    setCrop({ x: 0, y: 0 })
+    setZoom(1)
+    // reset input so same file can be re-selected
+    e.target.value = ''
+  }
+
+  async function handleConfirmCrop() {
+    if (!cropSrc || !croppedAreaPixels) return
+    const blob = await getCroppedImg(cropSrc, croppedAreaPixels)
+    const file = new File([blob], 'avatar.jpg', { type: 'image/jpeg' })
+    setFotoFile(file)
+    setFotoPreview(URL.createObjectURL(blob))
+    setCropSrc(null)
   }
 
   return (
     <ModalWrapper onClose={onClose}>
       <div className="relative bg-white rounded-2xl shadow-2xl w-full max-w-md max-h-[90vh] flex flex-col">
         <div className="flex items-center justify-between px-6 py-4 border-b border-gray-100">
-          <h2 className="text-base font-bold text-gray-900">Edit Profil</h2>
+          <h2 className="text-base font-bold text-gray-900">{cropSrc ? 'Crop Foto Profil' : 'Edit Profil'}</h2>
           <button onClick={onClose}><X className="w-5 h-5 text-gray-400" /></button>
         </div>
+
+        {/* ── Crop mode ── */}
+        {cropSrc ? (
+          <>
+            <div className="relative bg-black" style={{ height: 300 }}>
+              <Cropper
+                image={cropSrc}
+                crop={crop}
+                zoom={zoom}
+                aspect={1}
+                cropShape="round"
+                showGrid={false}
+                onCropChange={setCrop}
+                onZoomChange={setZoom}
+                onCropComplete={onCropComplete}
+              />
+            </div>
+            <div className="px-6 py-3 bg-gray-50 border-t border-gray-100">
+              <label className="text-[10px] font-semibold text-gray-500 mb-1 block">Zoom</label>
+              <input
+                type="range" min={1} max={3} step={0.01}
+                value={zoom}
+                onChange={e => setZoom(Number(e.target.value))}
+                className="w-full accent-[#1A5C38]"
+              />
+            </div>
+            <div className="flex justify-end gap-3 px-6 py-4 border-t border-gray-100">
+              <button onClick={() => setCropSrc(null)} className="px-5 py-2.5 rounded-xl border border-gray-200 text-sm font-medium text-gray-700 hover:bg-gray-50">Batal</button>
+              <button onClick={handleConfirmCrop} className="px-5 py-2.5 rounded-xl text-sm font-bold text-white hover:opacity-90" style={{ backgroundColor: '#1A5C38' }}>Gunakan Foto</button>
+            </div>
+          </>
+        ) : (<>
+
         <div className="p-6 space-y-4 overflow-y-auto flex-1">
 
           {/* Foto Profil */}
@@ -191,9 +269,9 @@ function EditProfilModal({ profil, onSave, onClose }) {
               <div className="flex-1">
                 <button onClick={() => fileRef.current?.click()}
                   className="flex items-center gap-1.5 px-3 py-2 rounded-xl border border-gray-200 text-xs font-semibold text-gray-600 hover:bg-gray-50 transition-colors">
-                  <Upload className="w-3.5 h-3.5" /> Pilih Foto
+                  <Upload className="w-3.5 h-3.5" /> {fotoPreview ? 'Ganti Foto' : 'Pilih Foto'}
                 </button>
-                <p className="text-[10px] text-gray-400 mt-1">JPG, PNG, WebP — maks. 2MB</p>
+                <p className="text-[10px] text-gray-400 mt-1">JPG, PNG, WebP — maks. 5MB</p>
                 <input ref={fileRef} type="file" className="hidden" accept=".jpg,.jpeg,.png,.webp" onChange={handleFotoChange} />
               </div>
             </div>
@@ -233,6 +311,7 @@ function EditProfilModal({ profil, onSave, onClose }) {
           <button onClick={() => onSave({ ...form, fotoFile })}
             className="px-5 py-2.5 rounded-xl text-sm font-bold text-white hover:opacity-90" style={{ backgroundColor: '#1A5C38' }}>Simpan</button>
         </div>
+        </>)}
       </div>
     </ModalWrapper>
   )
@@ -746,36 +825,91 @@ function BerkasModal({ onSave, onClose }) {
 }
 
 // ── Kartu Alumni Modal ─────────────────────────────────────────────────────────
-function KartuAlumniModal({ user, profil, onClose }) {
+function KartuAlumniModal({ user, profil, pekerjaan = [], onClose }) {
   useScrollLock()
   const cardRef = useRef(null)
   const [downloading, setDownloading] = useState(false)
+
+  const angkatanLabel = user.angkatan
+    ? `Angkatan ${user.angkatanKe ?? user.angkatan} · Lulusan ${user.tahunLulus ?? user.angkatan}`
+    : 'Alumni'
+
+  // Ambil pekerjaan aktif, atau pekerjaan paling akhir jika tidak ada yang aktif
+  const currentJob = pekerjaan.find(p => p.is_current || p.current)
+    ?? pekerjaan.sort((a, b) => (b.tahun_selesai ?? 9999) - (a.tahun_selesai ?? 9999))[0]
+    ?? null
+
+  const jobLine = currentJob
+    ? `${currentJob.posisi} · ${currentJob.perusahaan}`
+    : profil.bidang || null
+
+  async function imgToBase64(src) {
+    const res = await fetch(src, { mode: 'cors', cache: 'no-cache' })
+    const blob = await res.blob()
+    return new Promise((resolve, reject) => {
+      const fr = new FileReader()
+      fr.onload = () => resolve(fr.result)
+      fr.onerror = reject
+      fr.readAsDataURL(blob)
+    })
+  }
 
   async function handleDownload() {
     setDownloading(true)
     try {
       const html2canvas = (await import('html2canvas')).default
-      const { jsPDF } = await import('jspdf')
       await document.fonts.ready
-      const canvas = await html2canvas(cardRef.current, {
-        scale: 4, useCORS: true, logging: false, backgroundColor: null,
+
+      // Clone card ke off-screen agar card asli tidak berubah tampilannya
+      const clone = cardRef.current.cloneNode(true)
+      clone.style.position = 'fixed'
+      clone.style.top = '-9999px'
+      clone.style.left = '-9999px'
+      clone.style.zIndex = '-1'
+      document.body.appendChild(clone)
+
+      // Pre-fetch semua gambar di clone ke base64 (bypass CORS html2canvas)
+      for (const img of clone.querySelectorAll('img')) {
+        try { img.src = await imgToBase64(img.src) } catch { /* pakai src asli */ }
+      }
+
+      await new Promise(r => setTimeout(r, 80))
+
+      const canvas = await html2canvas(clone, {
+        scale: 4,
+        useCORS: true,
+        allowTaint: false,
+        logging: false,
+        backgroundColor: '#0A2415',
+        imageTimeout: 10000,
       })
-      const imgData = canvas.toDataURL('image/png')
-      const pdf = new jsPDF({ orientation: 'landscape', unit: 'mm', format: [85.6, 54] })
-      pdf.addImage(imgData, 'PNG', 0, 0, 85.6, 54)
-      pdf.save(`kartu-alumni-${user.id}.pdf`)
-    } catch (e) { console.error(e) }
+
+      document.body.removeChild(clone)
+
+      // Download sebagai JPG
+      canvas.toBlob((blob) => {
+        const url = URL.createObjectURL(blob)
+        const a = document.createElement('a')
+        a.href = url
+        a.download = `kartu-alumni-${user.id}.jpg`
+        document.body.appendChild(a)
+        a.click()
+        document.body.removeChild(a)
+        URL.revokeObjectURL(url)
+      }, 'image/jpeg', 0.96)
+    } catch (e) {
+      console.error('[KartuDownload]', e)
+      alert('Gagal mengunduh kartu. Coba lagi.')
+    }
     finally { setDownloading(false) }
   }
 
-  // KTP ratio: 85.6 × 54mm → width 360px → height = 360×54/85.6 ≈ 227px
+  // KTP ratio: 85.6 × 54mm → width 360px → height ≈ 227px
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center p-4">
       <div className="absolute inset-0 bg-black/75" onClick={onClose} />
       <div className="relative z-10 flex flex-col items-center gap-4">
-        <div className="text-center">
-          <p className="text-white/70 text-xs font-semibold">Pratinjau Kartu Alumni · Ukuran KTP (85.6 × 54 mm)</p>
-        </div>
+        <p className="text-white/70 text-xs font-semibold">Pratinjau Kartu Alumni · Ukuran KTP (85.6 × 54 mm)</p>
 
         {/* Card — 360 × 227px = KTP proportions */}
         <div
@@ -788,56 +922,80 @@ function KartuAlumniModal({ user, profil, onClose }) {
           }}
         >
           {/* Decorative circles */}
-          <div style={{ position: 'absolute', top: -40, right: -40, width: 120, height: 120, borderRadius: '50%', border: '1.5px solid rgba(240,165,0,0.2)', pointerEvents: 'none' }} />
-          <div style={{ position: 'absolute', top: -20, right: -20, width: 72, height: 72, borderRadius: '50%', border: '1.5px solid rgba(240,165,0,0.15)', pointerEvents: 'none' }} />
-          <div style={{ position: 'absolute', bottom: -24, left: -24, width: 80, height: 80, borderRadius: '50%', border: '1.5px solid rgba(255,255,255,0.06)', pointerEvents: 'none' }} />
+          <div style={{ position: 'absolute', top: -40, right: -40, width: 130, height: 130, borderRadius: '50%', border: '1.5px solid rgba(240,165,0,0.18)', pointerEvents: 'none' }} />
+          <div style={{ position: 'absolute', top: -18, right: -18, width: 78, height: 78, borderRadius: '50%', border: '1.5px solid rgba(240,165,0,0.12)', pointerEvents: 'none' }} />
+          <div style={{ position: 'absolute', bottom: -28, left: -28, width: 90, height: 90, borderRadius: '50%', border: '1.5px solid rgba(255,255,255,0.05)', pointerEvents: 'none' }} />
 
           {/* Header */}
-          <div style={{ display: 'flex', alignItems: 'flex-start', justifyContent: 'space-between', padding: '16px 20px 0' }}>
-            <div>
-              <div style={{ fontSize: 6.5, color: 'rgba(255,255,255,0.4)', letterSpacing: 2.5, textTransform: 'uppercase', marginBottom: 3 }}>KARTU ALUMNI RESMI</div>
-              <div style={{ fontSize: 9.5, fontWeight: 800, color: '#fff', lineHeight: 1.4 }}>Pondok Pesantren<br />Daarul Mughni Al Maaliki</div>
+          <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: '14px 18px 0' }}>
+            <div style={{ display: 'flex', alignItems: 'center', gap: 9 }}>
+              <img
+                src={logoUrl}
+                alt="Logo DM"
+                crossOrigin="anonymous"
+                style={{ width: 34, height: 34, borderRadius: 8, objectFit: 'contain', flexShrink: 0, backgroundColor: '#fff', padding: 2 }}
+              />
+              <div>
+                <div style={{ fontSize: 6, color: 'rgba(255,255,255,0.4)', letterSpacing: 2.5, textTransform: 'uppercase', marginBottom: 2 }}>KARTU ALUMNI RESMI</div>
+                <div style={{ fontSize: 9, fontWeight: 800, color: '#fff', lineHeight: 1.35 }}>Pondok Pesantren<br />Daarul Mughni Al Maaliki</div>
+              </div>
             </div>
-            <div style={{ width: 38, height: 38, borderRadius: '50%', backgroundColor: '#F0A500', display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0 }}>
-              <span style={{ color: '#0A2415', fontWeight: 900, fontSize: 13, letterSpacing: -0.5 }}>DM</span>
+            <div style={{ textAlign: 'right' }}>
+              <div style={{ fontSize: 6, color: 'rgba(255,255,255,0.3)', letterSpacing: 1, marginBottom: 2 }}>TAHUN LULUS</div>
+              <div style={{ fontSize: 15, fontWeight: 900, color: '#F0A500', lineHeight: 1 }}>{user.tahunLulus ?? user.angkatan ?? '—'}</div>
             </div>
           </div>
 
-          {/* Divider line */}
-          <div style={{ margin: '10px 20px 0', height: 1, backgroundColor: 'rgba(255,255,255,0.08)' }} />
+          {/* Divider */}
+          <div style={{ margin: '10px 18px 0', height: 1, backgroundColor: 'rgba(255,255,255,0.08)' }} />
 
           {/* Main info */}
-          <div style={{ display: 'flex', alignItems: 'center', gap: 14, padding: '10px 20px' }}>
-            <div style={{ width: 54, height: 54, borderRadius: '50%', backgroundColor: 'rgba(255,255,255,0.12)', border: '2px solid rgba(240,165,0,0.5)', display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0, fontSize: 20, fontWeight: 900, color: '#fff' }}>
-              {initials(user.name)}
+          <div style={{ display: 'flex', alignItems: 'center', gap: 14, padding: '10px 18px' }}>
+            {/* Photo */}
+            <div style={{
+              width: 62, height: 62, borderRadius: '50%',
+              border: '2.5px solid rgba(240,165,0,0.6)',
+              overflow: 'hidden', flexShrink: 0,
+              backgroundColor: '#0A2415',
+              display: 'flex', alignItems: 'center', justifyContent: 'center',
+            }}>
+              {profil.fotoUrl
+                ? <img src={profil.fotoUrl} alt={user.name} crossOrigin="anonymous" style={{ width: '100%', height: '100%', objectFit: 'cover' }} />
+                : <span style={{ fontSize: 22, fontWeight: 900, color: '#fff' }}>{initials(user.name)}</span>
+              }
             </div>
-            <div style={{ flex: 1 }}>
-              <div style={{ fontSize: 15, fontWeight: 900, color: '#fff', marginBottom: 3, letterSpacing: -0.3 }}>{user.name}</div>
-              <div style={{ fontSize: 8.5, color: 'rgba(255,255,255,0.55)', marginBottom: 2 }}>{profil.bidang || 'Alumni'}</div>
-              <div style={{ fontSize: 8.5, color: 'rgba(255,255,255,0.55)', marginBottom: 6 }}>
-                {user.tahunLulus ? `Lulusan ${user.tahunLulus}` : (user.angkatan ? `Angkatan ${user.angkatan}` : 'Alumni')}
-                {user.angkatanKe ? ` · Angkatan Ke-${user.angkatanKe}` : ''}
-              </div>
+
+            {/* Info */}
+            <div style={{ flex: 1, minWidth: 0 }}>
+              <div style={{ fontSize: 14.5, fontWeight: 900, color: '#fff', marginBottom: 2, letterSpacing: -0.3, whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>{user.name}</div>
+              {jobLine && (
+                <div style={{ fontSize: 8, color: 'rgba(255,255,255,0.6)', marginBottom: 1, whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>{jobLine}</div>
+              )}
+              <div style={{ fontSize: 8, color: 'rgba(255,255,255,0.5)', marginBottom: 1 }}>{angkatanLabel}</div>
+              {profil.domisili && (
+                <div style={{ fontSize: 8, color: 'rgba(255,255,255,0.45)', marginBottom: 6 }}>{profil.domisili}, Indonesia</div>
+              )}
               <div style={{ display: 'inline-flex', alignItems: 'center', gap: 5, backgroundColor: 'rgba(74,222,128,0.15)', border: '1px solid rgba(74,222,128,0.3)', borderRadius: 20, padding: '2px 8px' }}>
-                <div style={{ width: 5, height: 5, borderRadius: '50%', backgroundColor: '#4ADE80' }} />
-                <span style={{ fontSize: 7.5, color: '#4ADE80', fontWeight: 700, letterSpacing: 0.5 }}>TERVERIFIKASI</span>
+                <div style={{ width: 4.5, height: 4.5, borderRadius: '50%', backgroundColor: '#4ADE80', flexShrink: 0 }} />
+                <span style={{ fontSize: 7, color: '#4ADE80', fontWeight: 700, letterSpacing: 0.5 }}>TERVERIFIKASI</span>
               </div>
             </div>
           </div>
 
           {/* Bottom bar */}
-          <div style={{ position: 'absolute', bottom: 0, left: 0, right: 0, backgroundColor: 'rgba(0,0,0,0.35)', padding: '7px 20px', display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
+          <div style={{ position: 'absolute', bottom: 0, left: 0, right: 0, backgroundColor: 'rgba(0,0,0,0.35)', padding: '6px 18px', display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
             <div>
-              <div style={{ fontSize: 6.5, color: 'rgba(255,255,255,0.35)', letterSpacing: 1.5, textTransform: 'uppercase', marginBottom: 2 }}>ID ALUMNI</div>
-              <div style={{ fontSize: 12, fontWeight: 900, color: '#F0A500', fontFamily: 'monospace', letterSpacing: 1 }}>{user.id}</div>
+              <div style={{ fontSize: 6, color: 'rgba(255,255,255,0.3)', letterSpacing: 1.5, textTransform: 'uppercase', marginBottom: 1.5 }}>ID ALUMNI</div>
+              <div style={{ fontSize: 11.5, fontWeight: 900, color: '#F0A500', fontFamily: 'monospace', letterSpacing: 1 }}>{user.id}</div>
             </div>
-            {/* Barcode decoration */}
-            <div style={{ display: 'flex', gap: 1.5, alignItems: 'flex-end', height: 22 }}>
-              {[10, 16, 8, 20, 12, 22, 9, 18, 11, 16, 8, 14].map((h, i) => (
-                <div key={i} style={{ width: 2, height: h, backgroundColor: 'rgba(255,255,255,0.25)', borderRadius: 1 }} />
+            <div style={{ display: 'flex', gap: 1.5, alignItems: 'flex-end', height: 20 }}>
+              {[9, 15, 7, 19, 11, 21, 8, 17, 10, 15, 7, 13].map((h, i) => (
+                <div key={i} style={{ width: 2, height: h, backgroundColor: 'rgba(255,255,255,0.22)', borderRadius: 1 }} />
               ))}
             </div>
-            <div style={{ fontSize: 6.5, color: 'rgba(255,255,255,0.2)', textAlign: 'right' }}>Bogor, Jawa Barat<br />© 2026 Daarul Mughni</div>
+            <div style={{ fontSize: 6, color: 'rgba(255,255,255,0.2)', textAlign: 'right' }}>
+              {profil.domisili || 'Bogor'}, Jawa Barat<br />© 2026 Daarul Mughni
+            </div>
           </div>
         </div>
 
@@ -850,13 +1008,13 @@ function KartuAlumniModal({ user, profil, onClose }) {
             style={{ backgroundColor: '#F0A500' }}
           >
             {downloading ? <Loader2 className="w-4 h-4 animate-spin" /> : <Download className="w-4 h-4" />}
-            {downloading ? 'Mengunduh...' : 'Unduh PDF (KTP)'}
+            {downloading ? 'Mengunduh...' : 'Unduh Kartu (JPG)'}
           </button>
           <button onClick={onClose} className="px-5 py-2.5 rounded-xl border border-white/30 text-sm font-medium text-white hover:bg-white/10 transition-colors">
             Tutup
           </button>
         </div>
-        <p className="text-white/35 text-[10px]">File PDF akan tersimpan dalam ukuran fisik KTP (85.6 × 54 mm) — siap cetak</p>
+        <p className="text-white/35 text-[10px]">File JPG resolusi tinggi — ukuran fisik KTP (85.6 × 54 mm)</p>
       </div>
     </div>
   )
@@ -899,6 +1057,7 @@ export default function AlumniDashboardPage() {
   const [modal, setModal]           = useState(null)
   const [showBell, setShowBell]     = useState(false)
   const [showProfile, setShowProfile] = useState(false)
+  const [aksiOpen, setAksiOpen]     = useState(false)
   const bellRef    = useRef(null)
   const profileRef = useRef(null)
 
@@ -1124,13 +1283,18 @@ export default function AlumniDashboardPage() {
         const { error: profErr } = await supabase.from('profiles').update(profilesPayload).eq('id', user.id)
         if (profErr) console.error('[update profiles]', profErr)
 
-        const { error: apErr } = await supabase.from('alumni_profiles').update({
+        const { error: apErr, data: apData } = await supabase.from('alumni_profiles').update({
           bio: form.bio, bidang: form.bidang, domisili: form.domisili, no_hp: form.phone,
           linkedin_url: form.linkedin, website_url: form.website,
           instagram_url: form.instagram, youtube_url: form.youtube,
           twitter_url: form.twitter, facebook_url: form.facebook,
-        }).eq('user_id', user.id)
-        if (apErr) console.error('[update alumni_profiles]', apErr)
+        }).eq('user_id', user.id).select('website_url')
+        if (apErr) {
+          console.error('[update alumni_profiles]', apErr)
+          alert('Gagal menyimpan data profil: ' + apErr.message)
+        } else {
+          console.log('[update alumni_profiles] website_url tersimpan:', apData?.[0]?.website_url)
+        }
 
         setProfil({ ...form, foto: !!fotoUrl, fotoUrl: fotoUrl ?? '' })
         await refreshProfile()
@@ -1452,7 +1616,7 @@ export default function AlumniDashboardPage() {
   }
 
   return (
-    <div className="min-h-screen bg-[#F8FAF9] flex flex-col">
+    <div className="min-h-screen flex flex-col" style={{ background: 'linear-gradient(160deg, #E8F5EE 0%, #F4F9F6 40%, #EEF2FF 100%)' }}>
 
       {/* ── Navbar ── */}
       <header className="bg-white border-b border-gray-100 sticky top-0 z-40">
@@ -1552,10 +1716,12 @@ export default function AlumniDashboardPage() {
                         className="w-full flex items-center gap-2.5 px-4 py-2.5 text-sm text-gray-700 hover:bg-gray-50 transition-colors">
                         <Settings className="w-3.5 h-3.5 text-gray-400" /> Edit Profil
                       </button>
-                      <Link to="/profil-alumni" onClick={() => setShowProfile(false)}
-                        className="flex items-center gap-2.5 px-4 py-2.5 text-sm text-gray-700 hover:bg-gray-50 transition-colors">
-                        <Users className="w-3.5 h-3.5 text-gray-400" /> Halaman Profil Publik
-                      </Link>
+                      {user?.id && (
+                        <Link to={`/direktori/${user.id}`} onClick={() => setShowProfile(false)}
+                          className="flex items-center gap-2.5 px-4 py-2.5 text-sm text-gray-700 hover:bg-gray-50 transition-colors">
+                          <Users className="w-3.5 h-3.5 text-gray-400" /> Halaman Profil Publik
+                        </Link>
+                      )}
                       <button onClick={() => { setModal({ type: 'kartu' }); setShowProfile(false) }}
                         className="w-full flex items-center gap-2.5 px-4 py-2.5 text-sm text-gray-700 hover:bg-gray-50 transition-colors">
                         <FileText className="w-3.5 h-3.5 text-gray-400" /> Unduh Kartu Alumni
@@ -1589,7 +1755,7 @@ export default function AlumniDashboardPage() {
           <div className="grid grid-cols-1 lg:grid-cols-[1fr_296px] gap-6">
 
             {/* ── LEFT COLUMN ── */}
-            <div className="space-y-5">
+            <div className="space-y-5 order-1">
 
               {/* Welcome + Stats */}
               <div className="rounded-2xl p-5 sm:p-6" style={{ background: 'linear-gradient(135deg, #FEFCE8 0%, #F0FDF4 100%)', border: '1px solid #E9F5EE' }}>
@@ -1612,11 +1778,10 @@ export default function AlumniDashboardPage() {
                         </span>
                       )}
                     </div>
-                    {/* Stat chips */}
                     <div className="flex items-center gap-2 flex-wrap mb-5">
                       {[
                         { label: 'ID: ' + (idAlumni ?? '-'), icon: FileText, color: '#7C3AED' },
-                        { label: `${pekerjaan.length} Pengalaman Kerja`, icon: Briefcase, color: '#D97706' },
+                        { label: `${pekerjaan.length} Pengalaman`, icon: Briefcase, color: '#D97706' },
                         { label: `${sertifikasi.length} Sertifikasi`, icon: Award, color: '#0E7490' },
                       ].map(({ label, icon: Icon, color }) => (
                         <span key={label} className="flex items-center gap-1.5 text-xs font-semibold px-2.5 py-1 rounded-full border"
@@ -1639,7 +1804,6 @@ export default function AlumniDashboardPage() {
                       </button>
                     </div>
                   </div>
-                  {/* Profile completion */}
                   <div className="flex flex-col items-center gap-2 shrink-0">
                     <CircularProgress pct={profileCompletion} />
                     <p className="text-xs font-bold text-[#0A2415]">Kelengkapan Profil</p>
@@ -1652,11 +1816,46 @@ export default function AlumniDashboardPage() {
                 </div>
               </div>
 
+              {/* Aksi Cepat — accordion khusus mobile */}
+              <div className="lg:hidden rounded-2xl overflow-hidden" style={{ background: 'linear-gradient(135deg, #0A2415 0%, #1A5C38 100%)', border: '1px solid #1A5C38' }}>
+                <button
+                  onClick={() => setAksiOpen(v => !v)}
+                  className="w-full flex items-center justify-between px-4 py-3.5"
+                >
+                  <span className="text-xs font-bold text-white uppercase tracking-wider">Aksi Cepat</span>
+                  <ChevronRight className={`w-4 h-4 text-white/60 transition-transform ${aksiOpen ? 'rotate-90' : ''}`} />
+                </button>
+                <div className={`${aksiOpen ? 'block' : 'hidden'} px-3 pb-3`}>
+                  <div className="grid grid-cols-3 sm:grid-cols-4 gap-2">
+                    {[
+                      { label: 'Edit Profil',       icon: Pencil,     action: () => setModal({ type: 'editProfil' }) },
+                      { label: 'Tambah Karir',       icon: Briefcase,  action: () => setModal({ type: 'addPekerjaan' }) },
+                      { label: 'Keahlian & Bahasa',  icon: Star,       action: () => setModal({ type: 'editKeahlianBahasa' }) },
+                      { label: 'Sertifikasi',        icon: Award,      action: () => setModal({ type: 'addSertifikasi' }) },
+                      { label: 'Publikasi',          icon: BookOpen,   action: () => setModal({ type: 'addPublikasi' }) },
+                      { label: 'Lembaga',            icon: Building2,  action: () => setModal({ type: 'addUsaha' }) },
+                      { label: 'Berkas',             icon: Paperclip,  action: () => setModal({ type: 'addBerkas' }) },
+                      { label: 'Kartu Alumni',       icon: FileText,   action: () => setModal({ type: 'kartu' }) },
+                      { label: 'Direktori',          icon: Users,      action: () => navigate('/direktori') },
+                    ].map(({ label, icon: Icon, action }) => (
+                      <button key={label} onClick={action}
+                        className="flex flex-col items-center gap-1.5 py-3 px-2 rounded-xl hover:bg-white/30 transition-all"
+                        style={{ backgroundColor: 'rgba(255,255,255,0.15)', border: '1px solid rgba(255,255,255,0.35)' }}>
+                        <Icon className="w-4 h-4 text-[#F0A500]" />
+                        <span className="text-[10px] font-semibold text-white/90 text-center leading-tight">{label}</span>
+                      </button>
+                    ))}
+                  </div>
+                </div>
+              </div>
+
               {/* Riwayat Pendidikan */}
-              <section className="bg-white rounded-2xl p-5 sm:p-6 border border-gray-100">
+              <section className="bg-white rounded-2xl p-5 sm:p-6 border border-gray-100 border-l-4" style={{ borderLeftColor: '#F0A500' }}>
                 <div className="flex items-center justify-between mb-5">
-                  <div className="flex items-center gap-2">
-                    <GraduationCap className="w-4.5 h-4.5 text-[#1A5C38]" />
+                  <div className="flex items-center gap-2.5">
+                    <div className="w-8 h-8 rounded-xl flex items-center justify-center" style={{ backgroundColor: '#FFF8EE' }}>
+                      <GraduationCap className="w-4 h-4" style={{ color: '#F0A500' }} />
+                    </div>
                     <h2 className="text-sm font-bold text-[#0A2415]">Riwayat Pendidikan</h2>
                   </div>
                   <button onClick={() => setModal({ type: 'addPendidikan' })}
@@ -1718,10 +1917,12 @@ export default function AlumniDashboardPage() {
               </section>
 
               {/* Riwayat Pekerjaan */}
-              <section className="bg-white rounded-2xl p-5 sm:p-6 border border-gray-100">
+              <section className="bg-white rounded-2xl p-5 sm:p-6 border border-gray-100 border-l-4" style={{ borderLeftColor: '#1D4ED8' }}>
                 <div className="flex items-center justify-between mb-5">
-                  <div className="flex items-center gap-2">
-                    <Briefcase className="w-4.5 h-4.5 text-[#1A5C38]" />
+                  <div className="flex items-center gap-2.5">
+                    <div className="w-8 h-8 rounded-xl flex items-center justify-center" style={{ backgroundColor: '#EFF6FF' }}>
+                      <Briefcase className="w-4 h-4" style={{ color: '#1D4ED8' }} />
+                    </div>
                     <h2 className="text-sm font-bold text-[#0A2415]">Riwayat Pekerjaan</h2>
                   </div>
                   <button onClick={() => setModal({ type: 'addPekerjaan' })}
@@ -1776,10 +1977,12 @@ export default function AlumniDashboardPage() {
               </section>
 
               {/* Sertifikasi */}
-              <section className="bg-white rounded-2xl p-5 sm:p-6 border border-gray-100">
+              <section className="bg-white rounded-2xl p-5 sm:p-6 border border-gray-100 border-l-4" style={{ borderLeftColor: '#0E7490' }}>
                 <div className="flex items-center justify-between mb-5">
-                  <div className="flex items-center gap-2">
-                    <Award className="w-4.5 h-4.5 text-[#1A5C38]" />
+                  <div className="flex items-center gap-2.5">
+                    <div className="w-8 h-8 rounded-xl flex items-center justify-center" style={{ backgroundColor: '#ECFEFF' }}>
+                      <Award className="w-4 h-4" style={{ color: '#0E7490' }} />
+                    </div>
                     <h2 className="text-sm font-bold text-[#0A2415]">Sertifikasi & Kompetensi</h2>
                   </div>
                   <button onClick={() => setModal({ type: 'addSertifikasi' })}
@@ -1819,10 +2022,12 @@ export default function AlumniDashboardPage() {
               </section>
 
               {/* Keahlian & Bahasa */}
-              <section className="bg-white rounded-2xl p-5 sm:p-6 border border-gray-100">
+              <section className="bg-white rounded-2xl p-5 sm:p-6 border border-gray-100 border-l-4" style={{ borderLeftColor: '#7C3AED' }}>
                 <div className="flex items-center justify-between mb-5">
-                  <div className="flex items-center gap-2">
-                    <Star className="w-4.5 h-4.5 text-[#1A5C38]" />
+                  <div className="flex items-center gap-2.5">
+                    <div className="w-8 h-8 rounded-xl flex items-center justify-center" style={{ backgroundColor: '#FAF5FF' }}>
+                      <Star className="w-4 h-4" style={{ color: '#7C3AED' }} />
+                    </div>
                     <h2 className="text-sm font-bold text-[#0A2415]">Keahlian & Bahasa</h2>
                   </div>
                   <button onClick={() => setModal({ type: 'editKeahlianBahasa' })}
@@ -1859,10 +2064,12 @@ export default function AlumniDashboardPage() {
               </section>
 
               {/* Publikasi */}
-              <section className="bg-white rounded-2xl p-5 sm:p-6 border border-gray-100">
+              <section className="bg-white rounded-2xl p-5 sm:p-6 border border-gray-100 border-l-4" style={{ borderLeftColor: '#DB2777' }}>
                 <div className="flex items-center justify-between mb-5">
-                  <div className="flex items-center gap-2">
-                    <BookOpen className="w-4.5 h-4.5 text-[#1A5C38]" />
+                  <div className="flex items-center gap-2.5">
+                    <div className="w-8 h-8 rounded-xl flex items-center justify-center" style={{ backgroundColor: '#FDF2F8' }}>
+                      <BookOpen className="w-4 h-4" style={{ color: '#DB2777' }} />
+                    </div>
                     <h2 className="text-sm font-bold text-[#0A2415]">Publikasi & Karya</h2>
                   </div>
                   <button onClick={() => setModal({ type: 'addPublikasi' })}
@@ -1903,10 +2110,12 @@ export default function AlumniDashboardPage() {
               </section>
 
               {/* Usaha & Kepemilikan */}
-              <section className="bg-white rounded-2xl p-5 sm:p-6 border border-gray-100">
+              <section className="bg-white rounded-2xl p-5 sm:p-6 border border-gray-100 border-l-4" style={{ borderLeftColor: '#D97706' }}>
                 <div className="flex items-center justify-between mb-5">
-                  <div className="flex items-center gap-2">
-                    <Building2 className="w-4.5 h-4.5 text-[#1A5C38]" />
+                  <div className="flex items-center gap-2.5">
+                    <div className="w-8 h-8 rounded-xl flex items-center justify-center" style={{ backgroundColor: '#FFFBEB' }}>
+                      <Building2 className="w-4 h-4" style={{ color: '#D97706' }} />
+                    </div>
                     <h2 className="text-sm font-bold text-[#0A2415]">Lembaga & Badan Usaha</h2>
                   </div>
                   <button onClick={() => setModal({ type: 'addUsaha' })}
@@ -1980,10 +2189,12 @@ export default function AlumniDashboardPage() {
               </section>
 
               {/* Dokumen & Lampiran */}
-              <section className="bg-white rounded-2xl p-5 sm:p-6 border border-gray-100">
+              <section className="bg-white rounded-2xl p-5 sm:p-6 border border-gray-100 border-l-4" style={{ borderLeftColor: '#DC2626' }}>
                 <div className="flex items-center justify-between mb-5">
-                  <div className="flex items-center gap-2">
-                    <Paperclip className="w-4.5 h-4.5 text-[#1A5C38]" />
+                  <div className="flex items-center gap-2.5">
+                    <div className="w-8 h-8 rounded-xl flex items-center justify-center" style={{ backgroundColor: '#FEF2F2' }}>
+                      <Paperclip className="w-4 h-4" style={{ color: '#DC2626' }} />
+                    </div>
                     <h2 className="text-sm font-bold text-[#0A2415]">Dokumen & Lampiran</h2>
                   </div>
                   <button onClick={() => setModal({ type: 'addBerkas' })}
@@ -2040,29 +2251,34 @@ export default function AlumniDashboardPage() {
             </div>
 
             {/* ── RIGHT SIDEBAR ── */}
-            <div className="space-y-4">
+            <div className="space-y-4 order-2">
 
-              {/* Aksi Cepat */}
-              <div className="bg-white rounded-2xl p-4 border border-gray-100">
-                <h3 className="text-xs font-bold text-[#0A2415] uppercase tracking-wider mb-3">Aksi Cepat</h3>
-                <div className="grid grid-cols-2 gap-2">
-                  {[
-                    { label: 'Edit Profil', icon: Pencil, action: () => setModal({ type: 'editProfil' }) },
-                    { label: 'Tambah Karir', icon: Briefcase, action: () => setModal({ type: 'addPekerjaan' }) },
-                    { label: 'Keahlian & Bahasa', icon: Star, action: () => setModal({ type: 'editKeahlianBahasa' }) },
-                    { label: 'Sertifikasi', icon: Award, action: () => setModal({ type: 'addSertifikasi' }) },
-                    { label: 'Publikasi', icon: BookOpen, action: () => setModal({ type: 'addPublikasi' }) },
-                    { label: 'Lembaga', icon: Building2, action: () => setModal({ type: 'addUsaha' }) },
-                    { label: 'Berkas', icon: Paperclip, action: () => setModal({ type: 'addBerkas' }) },
-                    { label: 'Kartu Alumni', icon: FileText, action: () => setModal({ type: 'kartu' }) },
-                    { label: 'Direktori', icon: Users, action: () => navigate('/direktori') },
-                  ].map(({ label, icon: Icon, action }) => (
-                    <button key={label} onClick={action}
-                      className="flex flex-col items-center gap-1.5 py-3 px-2 rounded-xl border border-gray-100 hover:border-[#1A5C38]/30 hover:bg-[#1A5C38]/5 transition-all">
-                      <Icon className="w-4 h-4 text-[#1A5C38]" />
-                      <span className="text-[10px] font-semibold text-gray-600 text-center leading-tight">{label}</span>
-                    </button>
-                  ))}
+              {/* Aksi Cepat — hanya tampil di desktop */}
+              <div className="hidden lg:block rounded-2xl overflow-hidden" style={{ background: 'linear-gradient(135deg, #0A2415 0%, #1A5C38 100%)', border: '1px solid #1A5C38' }}>
+                <div className="px-4 py-3" style={{ borderBottom: '1px solid rgba(255,255,255,0.6)' }}>
+                  <h3 className="text-xs font-bold text-white uppercase tracking-wider">Aksi Cepat</h3>
+                </div>
+                <div className="p-3">
+                  <div className="grid grid-cols-3 gap-2">
+                    {[
+                      { label: 'Edit Profil',       icon: Pencil,     action: () => setModal({ type: 'editProfil' }) },
+                      { label: 'Tambah Karir',       icon: Briefcase,  action: () => setModal({ type: 'addPekerjaan' }) },
+                      { label: 'Keahlian & Bahasa',  icon: Star,       action: () => setModal({ type: 'editKeahlianBahasa' }) },
+                      { label: 'Sertifikasi',        icon: Award,      action: () => setModal({ type: 'addSertifikasi' }) },
+                      { label: 'Publikasi',          icon: BookOpen,   action: () => setModal({ type: 'addPublikasi' }) },
+                      { label: 'Lembaga',            icon: Building2,  action: () => setModal({ type: 'addUsaha' }) },
+                      { label: 'Berkas',             icon: Paperclip,  action: () => setModal({ type: 'addBerkas' }) },
+                      { label: 'Kartu Alumni',       icon: FileText,   action: () => setModal({ type: 'kartu' }) },
+                      { label: 'Direktori',          icon: Users,      action: () => navigate('/direktori') },
+                    ].map(({ label, icon: Icon, action }) => (
+                      <button key={label} onClick={action}
+                        className="flex flex-col items-center gap-1.5 py-3 px-1 rounded-xl hover:bg-white/30 transition-all"
+                        style={{ backgroundColor: 'rgba(255,255,255,0.15)', border: '1px solid rgba(255,255,255,0.35)' }}>
+                        <Icon className="w-4 h-4 text-[#F0A500]" />
+                        <span className="text-[10px] font-semibold text-white/90 text-center leading-tight">{label}</span>
+                      </button>
+                    ))}
+                  </div>
                 </div>
               </div>
 
@@ -2251,7 +2467,12 @@ export default function AlumniDashboardPage() {
         </motion.div>
       </main>
 
-      <Footer />
+      <footer className="border-t border-gray-100 bg-white py-4 px-6 mt-auto">
+        <div className="max-w-7xl mx-auto flex flex-col sm:flex-row items-center justify-between gap-1 text-[11px] text-gray-400">
+          <span>© 2026 Alumni Portal – Pondok Pesantren Daarul Mughni. All rights reserved.</span>
+          <span>Powered by Daarul Mughni · 8.0</span>
+        </div>
+      </footer>
 
       {/* ── Modals ── */}
       {modal?.type === 'editProfil' && (
@@ -2307,6 +2528,7 @@ export default function AlumniDashboardPage() {
             id: idAlumni ?? '-',
           }}
           profil={profil}
+          pekerjaan={pekerjaan}
           onClose={() => setModal(null)} />
       )}
 

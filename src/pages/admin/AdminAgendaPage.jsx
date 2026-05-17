@@ -48,34 +48,72 @@ function formatTanggal(iso) {
 
 function formatWaktu(iso) {
   if (!iso) return ''
-  return new Date(iso).toLocaleTimeString('id-ID', { hour: '2-digit', minute: '2-digit' }) + ' WIB'
+  return new Date(iso).toLocaleTimeString('id-ID', { hour: '2-digit', minute: '2-digit' })
+}
+
+function extractTime(iso) {
+  if (!iso) return ''
+  const d = new Date(iso)
+  return String(d.getHours()).padStart(2, '0') + ':' + String(d.getMinutes()).padStart(2, '0')
+}
+
+const HOURS   = Array.from({ length: 24 }, (_, i) => String(i).padStart(2, '0'))
+const MINUTES = ['00','05','10','15','20','25','30','35','40','45','50','55']
+
+function TimeSelect({ value, onChange, placeholder = 'Jam' }) {
+  const parts = value ? value.split(':') : ['', '']
+  const h = parts[0] ?? ''
+  const m = parts[1] ?? ''
+
+  function update(newH, newM) {
+    if (!newH && !newM) { onChange(''); return }
+    onChange(`${newH || '00'}:${newM || '00'}`)
+  }
+
+  const sel = 'px-3 py-3 rounded-xl border border-gray-200 text-sm outline-none focus:border-green-500 transition-colors bg-white'
+  return (
+    <div className="flex gap-2">
+      <select value={h} onChange={e => update(e.target.value, m)} className={`flex-1 ${sel}`}>
+        <option value="">{placeholder}</option>
+        {HOURS.map(v => <option key={v} value={v}>{v}</option>)}
+      </select>
+      <select value={m} onChange={e => update(h, e.target.value)} className={`flex-1 ${sel}`}>
+        <option value="">Menit</option>
+        {MINUTES.map(v => <option key={v} value={v}>{v}</option>)}
+      </select>
+    </div>
+  )
 }
 
 function mapAgendaRow(row) {
+  const start = formatWaktu(row.tanggal_mulai)
+  const end = row.tanggal_selesai ? formatWaktu(row.tanggal_selesai) : null
+  const waktu = start ? (end ? `${start} s.d ${end} WIB` : `${start} s.d Selesai`) : '—'
   return {
     id: row.id,
     nama: row.judul,
     tanggal: formatTanggal(row.tanggal_mulai),
-    waktu: formatWaktu(row.tanggal_mulai),
+    waktu,
     lokasi: row.lokasi ?? '—',
     lokasiDetail: row.lokasi ?? '',
-    mapsUrl: '',
+    mapsUrl: row.maps_url ?? '',
     kapasitas: 0,
     terdaftar: 0,
     status: deriveStatus(row),
     kategori: row.kategori ?? '',
-    htm: row.link_registrasi ? 'Lihat tautan' : 'Gratis',
-    statusPendaftaran: row.link_registrasi ? 'Lihat tautan pendaftaran' : 'Terbuka untuk Umum Alumni',
-    hasSertifikat: false,
-    pembicara: [],
+    htm: row.htm ?? '',
+    statusPendaftaran: row.status_pendaftaran ?? '',
+    hasSertifikat: row.has_sertifikat ?? false,
+    pembicara: Array.isArray(row.pembicara) ? row.pembicara : [],
     deskripsi: row.deskripsi ?? '',
-    publishedBy: 'IKA Daarul Mughni',
+    publishedBy: row.published_by ?? '',
     thumbnail: row.foto_url ?? '',
-    imageHero: row.foto_url ?? '',
-    pamflet: '',
+    imageHero: row.image_hero ?? row.foto_url ?? '',
+    pamflet: row.pamflet_url ?? '',
     link_registrasi: row.link_registrasi ?? '',
     is_aktif: row.is_aktif ?? true,
     tanggal_mulai_raw: row.tanggal_mulai,
+    tanggal_selesai_raw: row.tanggal_selesai ?? null,
   }
 }
 
@@ -320,11 +358,13 @@ function AgendaModal({ agenda, tags, onClose, onSave }) {
     isEdit
       ? {
           nama: agenda.nama,
-          tanggal: '',
-          waktu: agenda.waktu || '',
-          lokasi: agenda.lokasi,
+          tanggal: agenda.tanggal_mulai_raw ? agenda.tanggal_mulai_raw.slice(0, 10) : '',
+          jam_mulai: extractTime(agenda.tanggal_mulai_raw),
+          jam_selesai: extractTime(agenda.tanggal_selesai_raw),
+          lokasi: agenda.lokasi === '—' ? '' : (agenda.lokasi ?? ''),
           lokasiDetail: agenda.lokasiDetail || '',
           mapsUrl: agenda.mapsUrl || '',
+          link_registrasi: agenda.link_registrasi || '',
           kapasitas: String(agenda.kapasitas),
           deskripsi: agenda.deskripsi || '',
           status: agenda.status,
@@ -340,10 +380,12 @@ function AgendaModal({ agenda, tags, onClose, onSave }) {
       : {
           nama: '',
           tanggal: '',
-          waktu: '',
+          jam_mulai: '',
+          jam_selesai: '',
           lokasi: '',
           lokasiDetail: '',
           mapsUrl: '',
+          link_registrasi: '',
           kapasitas: '',
           deskripsi: '',
           status: 'Akan Datang',
@@ -435,10 +477,16 @@ function AgendaModal({ agenda, tags, onClose, onSave }) {
                   className={inputCls} />
               </div>
               <div>
-                <label className="block text-sm font-semibold text-gray-700 mb-1.5">Waktu</label>
-                <input type="text" value={form.waktu} onChange={(e) => setForm({ ...form, waktu: e.target.value })}
-                  placeholder="08.00 WIB" className={inputCls} />
+                <label className="block text-sm font-semibold text-gray-700 mb-1.5">Jam Mulai</label>
+                <TimeSelect value={form.jam_mulai} onChange={v => setForm({ ...form, jam_mulai: v })} />
               </div>
+            </div>
+            <div>
+              <label className="block text-sm font-semibold text-gray-700 mb-1.5">Jam Selesai</label>
+              <TimeSelect value={form.jam_selesai} onChange={v => setForm({ ...form, jam_selesai: v })} placeholder="Jam (kosongkan = Selesai)" />
+              <p className="text-[11px] text-gray-400 mt-1">
+                Kosongkan jika waktu selesai belum ditentukan — akan tampil sebagai <span className="font-semibold">s.d Selesai</span>.
+              </p>
             </div>
             <div className="grid grid-cols-2 gap-4">
               <div>
@@ -489,6 +537,12 @@ function AgendaModal({ agenda, tags, onClose, onSave }) {
               <label className="block text-sm font-semibold text-gray-700 mb-1.5">HTM / Kontribusi</label>
               <input type="text" value={form.htm} onChange={(e) => setForm({ ...form, htm: e.target.value })}
                 placeholder="contoh: Gratis atau Rp 100.000,- (Infaq)" className={inputCls} />
+            </div>
+            <div>
+              <label className="block text-sm font-semibold text-gray-700 mb-1.5">Link Pendaftaran</label>
+              <input type="url" value={form.link_registrasi} onChange={(e) => setForm({ ...form, link_registrasi: e.target.value })}
+                placeholder="https://forms.google.com/..." className={inputCls} />
+              <p className="text-[11px] text-gray-400 mt-1">URL formulir pendaftaran (Google Form, Eventbrite, dll.)</p>
             </div>
             <label className="flex items-center gap-3 cursor-pointer select-none">
               <input type="checkbox" checked={form.hasSertifikat}
@@ -549,10 +603,10 @@ function AgendaModal({ agenda, tags, onClose, onSave }) {
           <div className="space-y-3 pt-1 border-t border-gray-100">
             <SectionLabel>Gambar Kegiatan</SectionLabel>
             <div className="grid grid-cols-2 gap-3">
-              <ImageUploadBox label="Thumbnail (Card List)" hint="Rasio 4:3 · maks. 2MB" value={form.thumbnail} onChange={url => setForm(f => ({ ...f, thumbnail: url }))} />
-              <ImageUploadBox label="Banner (Header Detail)" hint="Rasio 16:9 · maks. 5MB" value={form.imageHero} onChange={url => setForm(f => ({ ...f, imageHero: url }))} />
+              <ImageUploadBox label="Thumbnail (Card List)" hint="Rasio 4:3 · maks. 2MB" value={form.thumbnail} onChange={url => setForm(f => ({ ...f, thumbnail: url }))} bucket="galeri-images" pathPrefix="agenda" />
+              <ImageUploadBox label="Banner (Header Detail)" hint="Rasio 16:9 · maks. 5MB" value={form.imageHero} onChange={url => setForm(f => ({ ...f, imageHero: url }))} bucket="galeri-images" pathPrefix="agenda" />
             </div>
-            <ImageUploadBox label="Pamflet Acara (opsional)" hint="Tampil di detail acara, bisa dibuka penuh · maks. 5MB" value={form.pamflet} onChange={url => setForm(f => ({ ...f, pamflet: url }))} />
+            <ImageUploadBox label="Pamflet Acara (opsional)" hint="Tampil di detail acara, bisa dibuka penuh · maks. 5MB" value={form.pamflet} onChange={url => setForm(f => ({ ...f, pamflet: url }))} bucket="galeri-images" pathPrefix="agenda" />
           </div>
 
         </div>
@@ -597,7 +651,7 @@ export default function AdminAgendaPage() {
     try {
       const { data, error: err } = await supabase
         .from('agenda')
-        .select('id, judul, deskripsi, lokasi, tanggal_mulai, tanggal_selesai, kategori, foto_url, link_registrasi, is_aktif')
+        .select('id, judul, deskripsi, lokasi, tanggal_mulai, tanggal_selesai, kategori, foto_url, link_registrasi, is_aktif, maps_url, pembicara, status_pendaftaran, htm, has_sertifikat, published_by, image_hero, pamflet_url')
         .order('tanggal_mulai', { ascending: false })
       if (err) throw err
       setAgenda((data ?? []).map(mapAgendaRow))
@@ -633,17 +687,29 @@ export default function AdminAgendaPage() {
       variant: 'success',
       onConfirm: async () => {
         const tanggalMulai = form.tanggal
-          ? new Date(form.tanggal + (form.waktu ? `T${form.waktu.replace('.', ':').slice(0, 5)}` : 'T00:00')).toISOString()
+          ? new Date(form.tanggal + 'T' + (form.jam_mulai || '00:00')).toISOString()
           : new Date().toISOString()
+        const tanggalSelesai = form.tanggal && form.jam_selesai
+          ? new Date(form.tanggal + 'T' + form.jam_selesai).toISOString()
+          : null
         const payload = {
           judul: form.nama,
           deskripsi: form.deskripsi || null,
           lokasi: form.lokasi || null,
           tanggal_mulai: tanggalMulai,
+          tanggal_selesai: tanggalSelesai,
           kategori: form.kategori || null,
           foto_url: form.thumbnail || null,
-          link_registrasi: form.mapsUrl || null,
+          link_registrasi: form.link_registrasi || null,
           is_aktif: form.status !== 'Dibatalkan',
+          maps_url: form.mapsUrl || null,
+          pembicara: (form.pembicara || []).filter(p => p.nama && p.nama.trim()),
+          status_pendaftaran: form.statusPendaftaran || null,
+          htm: form.htm || null,
+          has_sertifikat: form.hasSertifikat,
+          published_by: form.publishedBy || null,
+          image_hero: form.imageHero || null,
+          pamflet_url: form.pamflet || null,
         }
         if (!isEdit) {
           const { error: err } = await supabase.from('agenda').insert(payload)
