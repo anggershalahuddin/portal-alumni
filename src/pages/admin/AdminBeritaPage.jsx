@@ -297,10 +297,13 @@ function BeritaModal({ berita, kategoris, canPublish, onClose, onSave }) {
               <div>
                 <label className="block text-sm font-semibold text-gray-700 mb-1.5">Status</label>
                 <select value={form.status} onChange={e => setForm({ ...form, status: e.target.value })} className={inputCls}>
-                  {STATUS_LIST.filter(s => canPublish || s !== 'Terbit').map(s => <option key={s}>{s}</option>)}
+                  {STATUS_LIST.filter(s => s !== 'Terbit' || (isEdit && canPublish)).map(s => <option key={s}>{s}</option>)}
                 </select>
-                {!canPublish && (
-                  <p className="text-[11px] text-gray-400 mt-1">Hanya Admin yang dapat menerbitkan berita langsung.</p>
+                {!isEdit && (
+                  <p className="text-[11px] text-gray-400 mt-1">Berita baru wajib diverifikasi admin sebelum terbit.</p>
+                )}
+                {isEdit && !canPublish && (
+                  <p className="text-[11px] text-gray-400 mt-1">Hanya Admin yang dapat menerbitkan berita.</p>
                 )}
               </div>
             </div>
@@ -562,7 +565,9 @@ export default function AdminBeritaPage() {
       confirmLabel: 'Ya, Simpan',
       variant: 'success',
       onConfirm: async () => {
-        const dbStatus = STATUS_UI_TO_DB[form.status] ?? 'draft'
+        const rawStatus = STATUS_UI_TO_DB[form.status] ?? 'draft'
+        // Berita baru tidak boleh langsung published, apapun pilihan di UI
+        const dbStatus = (!isEdit && rawStatus === 'published') ? 'draft' : rawStatus
         const publishedAt = form.tanggal
           ? new Date(form.tanggal).toISOString()
           : (dbStatus === 'published' ? new Date().toISOString() : null)
