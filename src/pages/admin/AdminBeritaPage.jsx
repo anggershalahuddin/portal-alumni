@@ -174,7 +174,7 @@ function BeritaModal({ berita, kategoris, canPublish, onClose, onSave }) {
     ? {
         judul: berita.judul,
         kategori: berita.kategori || '',
-        status: (!canPublish && berita.status === 'Terbit') ? 'Menunggu Verifikasi Admin' : berita.status,
+        status: (!canPublish && berita.status === 'Terbit') ? 'Menunggu Verifikasi Admin' : berita.status,  // editor tidak bisa buka berita terbit lalu simpan ulang
         tanggal: berita.published_at_raw ? berita.published_at_raw.slice(0, 10) : '',
         penulis: berita.penulis || '',
         banner: berita.banner || '',
@@ -297,12 +297,9 @@ function BeritaModal({ berita, kategoris, canPublish, onClose, onSave }) {
               <div>
                 <label className="block text-sm font-semibold text-gray-700 mb-1.5">Status</label>
                 <select value={form.status} onChange={e => setForm({ ...form, status: e.target.value })} className={inputCls}>
-                  {STATUS_LIST.filter(s => s !== 'Terbit' || (isEdit && canPublish)).map(s => <option key={s}>{s}</option>)}
+                  {STATUS_LIST.filter(s => s !== 'Terbit' || canPublish).map(s => <option key={s}>{s}</option>)}
                 </select>
-                {!isEdit && (
-                  <p className="text-[11px] text-gray-400 mt-1">Berita baru wajib diverifikasi admin sebelum terbit.</p>
-                )}
-                {isEdit && !canPublish && (
+                {!canPublish && (
                   <p className="text-[11px] text-gray-400 mt-1">Hanya Admin yang dapat menerbitkan berita.</p>
                 )}
               </div>
@@ -574,8 +571,8 @@ export default function AdminBeritaPage() {
       variant: 'success',
       onConfirm: async () => {
         const rawStatus = STATUS_UI_TO_DB[form.status] ?? 'draft'
-        // Paksa draft jika: berita baru, ATAU role tidak punya hak terbit
-        const dbStatus = (rawStatus === 'published' && (!isEdit || !canPublish)) ? 'draft' : rawStatus
+        // Paksa draft jika role tidak punya hak terbit (editor, alumni, dll)
+        const dbStatus = (rawStatus === 'published' && !canPublish) ? 'draft' : rawStatus
         const publishedAt = form.tanggal
           ? new Date(form.tanggal).toISOString()
           : (dbStatus === 'published' ? new Date().toISOString() : null)
