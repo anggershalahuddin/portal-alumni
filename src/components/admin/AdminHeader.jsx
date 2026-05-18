@@ -98,7 +98,7 @@ function NotifDropdown({ notif, unread, onMarkRead, onMarkAllRead, onClose }) {
   )
 }
 
-function ProfileDropdown({ user, onClose, onLogout, onGoAlumni }) {
+function ProfileDropdown({ user, fotoUrl, onClose, onLogout, onGoAlumni }) {
   const { hasPermission } = useAuth()
 
   return (
@@ -107,12 +107,10 @@ function ProfileDropdown({ user, onClose, onLogout, onGoAlumni }) {
       className="absolute right-0 top-full mt-2 w-52 bg-white rounded-2xl shadow-2xl border border-gray-100 overflow-hidden z-50"
     >
       <div className="px-4 py-4 border-b border-gray-100 text-center">
-        <div
-          className="w-12 h-12 rounded-full flex items-center justify-center mx-auto mb-2 text-white text-base font-bold"
-          style={{ backgroundColor: '#0A2415' }}
-        >
-          {user?.initials ?? 'A'}
-        </div>
+        {fotoUrl
+          ? <img src={fotoUrl} alt={user?.name} className="w-12 h-12 rounded-full object-cover mx-auto mb-2 bg-gray-100" />
+          : <div className="w-12 h-12 rounded-full flex items-center justify-center mx-auto mb-2 text-white text-base font-bold" style={{ backgroundColor: '#0A2415' }}>{user?.initials ?? 'A'}</div>
+        }
         <p className="text-sm font-bold text-gray-900">{user?.name ?? 'Admin'}</p>
         <p className="text-[10px] text-gray-400 mt-0.5">{user?.role ?? '-'}</p>
       </div>
@@ -159,7 +157,8 @@ function ProfileDropdown({ user, onClose, onLogout, onGoAlumni }) {
 }
 
 export default function AdminHeader({ searchValue = '', onSearchChange, searchPlaceholder = 'Cari...' }) {
-  const { user, signOut } = useAuth()
+  const { user, profile, signOut } = useAuth()
+  const fotoUrl = profile?.foto_url ?? null
   const navigate = useNavigate()
 
   const [notif, setNotif] = useState([])
@@ -274,17 +273,16 @@ export default function AdminHeader({ searchValue = '', onSearchChange, searchPl
               <p className="text-xs font-bold text-gray-900 leading-none mb-0.5">{user?.name ?? 'Admin'}</p>
               <p className="text-[10px] text-gray-400">{user?.role ?? '-'}</p>
             </div>
-            <div
-              className="w-9 h-9 rounded-full flex items-center justify-center flex-shrink-0 text-white text-sm font-bold"
-              style={{ backgroundColor: '#0A2415' }}
-            >
-              {user?.initials ?? 'A'}
-            </div>
+            {fotoUrl
+              ? <img src={fotoUrl} alt={user?.name} className="w-9 h-9 rounded-full object-cover flex-shrink-0 bg-gray-100" />
+              : <div className="w-9 h-9 rounded-full flex items-center justify-center flex-shrink-0 text-white text-sm font-bold" style={{ backgroundColor: '#0A2415' }}>{user?.initials ?? 'A'}</div>
+            }
           </button>
           <AnimatePresence>
             {showProfile && (
               <ProfileDropdown
                 user={user}
+                fotoUrl={fotoUrl}
                 onClose={() => setShowProfile(false)}
                 onLogout={handleLogout}
                 onGoAlumni={handleGoAlumni}
