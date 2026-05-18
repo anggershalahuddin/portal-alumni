@@ -71,6 +71,29 @@ function periodeStr(mulai, selesai, isCurrent) {
   return String(mulai ?? selesai)
 }
 
+function calcCompleteness(alumni, detail) {
+  const checks = [
+    !!alumni.avatar,                         // foto profil
+    !!alumni.noHp,                           // nomor HP
+    !!alumni.domisili,                       // domisili
+    !!alumni.bidang,                         // bidang
+    !!(detail?.bio),                         // bio
+    (detail?.pengalaman?.length > 0),        // pekerjaan
+    (detail?.pendidikan?.length > 0),        // pendidikan
+    (alumni.keahlian?.length > 0),           // keahlian
+  ]
+  const filled = checks.filter(Boolean).length
+  return { pct: Math.round((filled / checks.length) * 100), filled, total: checks.length }
+}
+
+function completenessColor(pct) {
+  if (pct >= 100) return '#22C55E'
+  if (pct >= 75)  return '#84CC16'
+  if (pct >= 50)  return '#EAB308'
+  if (pct >= 25)  return '#F97316'
+  return '#EF4444'
+}
+
 function exportXLSX(rows) {
   const headers = [
     'Nama', 'Tahun Lulus', 'Angkatan Ke', 'Nama Angkatan',
@@ -808,8 +831,8 @@ export default function AdminDataAlumniPage() {
                     <th className="text-left px-4 py-3 text-xs font-semibold text-gray-500 w-10">#</th>
                     <th className="text-left px-4 py-3 text-xs font-semibold text-gray-500">Alumni</th>
                     <th className="text-left px-4 py-3 text-xs font-semibold text-gray-500">Angkatan</th>
-                    <th className="text-left px-4 py-3 text-xs font-semibold text-gray-500">Profesi &amp; Perusahaan</th>
-                    <th className="text-left px-4 py-3 text-xs font-semibold text-gray-500">Bidang</th>
+                    <th className="text-left px-4 py-3 text-xs font-semibold text-gray-500">Kelengkapan Profil</th>
+                    <th className="text-left px-4 py-3 text-xs font-semibold text-gray-500">Bidang / Profesi</th>
                     <th className="text-left px-4 py-3 text-xs font-semibold text-gray-500">Domisili</th>
                     <th className="text-center px-4 py-3 text-xs font-semibold text-gray-500">Verifikasi</th>
                     <th className="text-center px-4 py-3 text-xs font-semibold text-gray-500">Detail</th>
@@ -826,7 +849,9 @@ export default function AdminDataAlumniPage() {
                       </td>
                     </tr>
                   ) : paged.map(({ alumni, detail: det, angkatanInfo }, i) => {
-                    const bidangLabel = bidangList.find(b => b.value === alumni.bidang)?.label ?? alumni.bidang
+                    const bidangLabel   = bidangList.find(b => b.value === alumni.bidang)?.label ?? alumni.bidang
+                    const cmpl          = calcCompleteness(alumni, det)
+                    const cmplColor     = completenessColor(cmpl.pct)
                     return (
                       <tr key={alumni.id} className="border-b border-gray-50 hover:bg-gray-50/50 transition-colors">
                         <td className="px-4 py-3 text-xs text-gray-400">
@@ -854,10 +879,22 @@ export default function AdminDataAlumniPage() {
                             </div>
                           </div>
                         </td>
+                        {/* Kelengkapan Profil */}
                         <td className="px-4 py-3">
-                          <p className="text-sm font-medium text-[#0A2415] leading-snug">{alumni.profesi || '-'}</p>
-                          <p className="text-xs text-gray-400">{alumni.perusahaan}</p>
+                          <div className="flex items-center gap-2 min-w-[110px]">
+                            <div className="flex-1 h-1.5 bg-gray-100 rounded-full overflow-hidden">
+                              <div
+                                className="h-full rounded-full transition-all duration-500"
+                                style={{ width: `${cmpl.pct}%`, backgroundColor: cmplColor }}
+                              />
+                            </div>
+                            <span className="text-xs font-semibold tabular-nums w-8 text-right" style={{ color: cmplColor }}>
+                              {cmpl.pct}%
+                            </span>
+                          </div>
+                          <p className="text-[10px] text-gray-400 mt-0.5">{cmpl.filled}/{cmpl.total} field terisi</p>
                         </td>
+                        {/* Bidang / Profesi */}
                         <td className="px-4 py-3">
                           <span className="text-xs bg-gray-100 text-gray-600 px-2.5 py-1 rounded-full">
                             {bidangLabel || '-'}
