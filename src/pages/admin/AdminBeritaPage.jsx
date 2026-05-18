@@ -491,7 +491,15 @@ function BeritaModal({ berita, kategoris, canPublish, onClose, onSave }) {
 
 // ── Main Page ──────────────────────────────────────────────────────────────────
 export default function AdminBeritaPage() {
-  const { profile } = useAuth()
+  const { profile, supaUser } = useAuth()
+  // Re-fetch role langsung dari DB agar tidak bergantung pada cache AuthContext
+  const [freshRole, setFreshRole] = useState(null)
+  useEffect(() => {
+    if (!supaUser?.id) return
+    supabase.from('profiles').select('role').eq('id', supaUser.id).maybeSingle()
+      .then(({ data }) => { if (data?.role) setFreshRole(data.role) })
+  }, [supaUser?.id])
+  const canPublish = ['super_admin', 'admin'].includes(freshRole ?? profile?.role)
   const [berita, setBerita] = useState([])
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState(null)
@@ -566,8 +574,8 @@ export default function AdminBeritaPage() {
       variant: 'success',
       onConfirm: async () => {
         const rawStatus = STATUS_UI_TO_DB[form.status] ?? 'draft'
-        // Berita baru tidak boleh langsung published, apapun pilihan di UI
-        const dbStatus = (!isEdit && rawStatus === 'published') ? 'draft' : rawStatus
+        // Paksa draft jika: berita baru, ATAU role tidak punya hak terbit
+        const dbStatus = (rawStatus === 'published' && (!isEdit || !canPublish)) ? 'draft' : rawStatus
         const publishedAt = form.tanggal
           ? new Date(form.tanggal).toISOString()
           : (dbStatus === 'published' ? new Date().toISOString() : null)
@@ -796,7 +804,7 @@ export default function AdminBeritaPage() {
         <BeritaModal
           berita={modal === 'tambah' ? null : modal}
           kategoris={kategoris}
-          canPublish={['super_admin', 'admin'].includes(profile?.role)}
+          canPublish={canPublish}
           onClose={() => setModal(null)}
           onSave={handleSave}
         />
