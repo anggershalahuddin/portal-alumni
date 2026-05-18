@@ -283,7 +283,13 @@ function EditProfilModal({ profil, onSave, onClose }) {
             <MF label="Bidang / Profesi"><input className={inp} value={form.bidang} onChange={s('bidang')} /></MF>
             <MF label="Domisili"><input className={inp} value={form.domisili} onChange={s('domisili')} /></MF>
           </div>
-          <MF label="Email"><input className={inp} type="email" value={form.email} onChange={s('email')} /></MF>
+          <MF label="Email">
+            <div className="relative">
+              <input className={`${inp} bg-gray-50 text-gray-400 cursor-not-allowed pr-8`} type="email" value={form.email} readOnly />
+              <svg className="absolute right-2.5 top-1/2 -translate-y-1/2 w-3.5 h-3.5 text-gray-300" fill="none" stroke="currentColor" strokeWidth={2} viewBox="0 0 24 24"><rect x="3" y="11" width="18" height="11" rx="2"/><path d="M7 11V7a5 5 0 0110 0v4"/></svg>
+            </div>
+            <p className="text-[10px] text-gray-400 mt-1">Email tidak dapat diubah. Hubungi admin jika perlu mengganti email.</p>
+          </MF>
           <MF label="No. HP / WhatsApp"><input className={inp} type="tel" value={form.phone} onChange={s('phone')} /></MF>
           <MF label="URL LinkedIn"><input className={inp} value={form.linkedin} onChange={s('linkedin')} placeholder="linkedin.com/in/username" /></MF>
           <MF label="Website / Portofolio"><input className={inp} value={form.website} onChange={s('website')} placeholder="portofolio.com" /></MF>
@@ -856,52 +862,75 @@ function KartuAlumniModal({ user, profil, pekerjaan = [], onClose }) {
 
   async function handleDownload() {
     setDownloading(true)
+    let clone = null
     try {
       const html2canvas = (await import('html2canvas')).default
       await document.fonts.ready
 
       // Clone card ke off-screen agar card asli tidak berubah tampilannya
-      const clone = cardRef.current.cloneNode(true)
+      clone = cardRef.current.cloneNode(true)
       clone.style.position = 'fixed'
       clone.style.top = '-9999px'
       clone.style.left = '-9999px'
       clone.style.zIndex = '-1'
       document.body.appendChild(clone)
 
-      // Pre-fetch semua gambar di clone ke base64 (bypass CORS html2canvas)
+      // Pre-fetch semua gambar ke base64 (bypass CORS html2canvas)
       for (const img of clone.querySelectorAll('img')) {
         try { img.src = await imgToBase64(img.src) } catch { /* pakai src asli */ }
       }
 
-      await new Promise(r => setTimeout(r, 80))
+      await new Promise(r => setTimeout(r, 100))
 
       const canvas = await html2canvas(clone, {
         scale: 4,
         useCORS: true,
-        allowTaint: false,
+        allowTaint: true,
         logging: false,
         backgroundColor: '#0A2415',
-        imageTimeout: 10000,
+        imageTimeout: 12000,
+        onclone: (clonedDoc) => {
+          // Hapus semua stylesheet — Tailwind v4 pakai oklch() yang tidak didukung html2canvas
+          // Kartu menggunakan inline hex styles jadi aman tanpa stylesheet
+          clonedDoc.querySelectorAll('link[rel="stylesheet"], style').forEach(el => el.remove())
+        },
       })
 
-      document.body.removeChild(clone)
+      if (clone.parentNode) document.body.removeChild(clone)
+      clone = null
 
-      // Download sebagai JPG
-      canvas.toBlob((blob) => {
-        const url = URL.createObjectURL(blob)
+      // Konversi canvas ke blob (promise-based agar error tertangkap)
+      const blob = await new Promise((resolve) => {
+        canvas.toBlob(resolve, 'image/jpeg', 0.96)
+      })
+
+      if (!blob) {
+        // Fallback: toDataURL jika toBlob gagal (canvas tainted)
+        const dataUrl = canvas.toDataURL('image/jpeg', 0.96)
         const a = document.createElement('a')
-        a.href = url
+        a.href = dataUrl
         a.download = `kartu-alumni-${user.id}.jpg`
         document.body.appendChild(a)
         a.click()
         document.body.removeChild(a)
-        URL.revokeObjectURL(url)
-      }, 'image/jpeg', 0.96)
+        return
+      }
+
+      const url = URL.createObjectURL(blob)
+      const a = document.createElement('a')
+      a.href = url
+      a.download = `kartu-alumni-${user.id}.jpg`
+      document.body.appendChild(a)
+      a.click()
+      document.body.removeChild(a)
+      URL.revokeObjectURL(url)
     } catch (e) {
       console.error('[KartuDownload]', e)
-      alert('Gagal mengunduh kartu. Coba lagi.')
+      alert('Gagal mengunduh kartu: ' + (e?.message ?? 'Coba lagi.'))
+    } finally {
+      if (clone?.parentNode) document.body.removeChild(clone)
+      setDownloading(false)
     }
-    finally { setDownloading(false) }
   }
 
   // KTP ratio: 85.6 × 54mm → width 360px → height ≈ 227px
@@ -1150,13 +1179,15 @@ export default function AlumniDashboardPage() {
       }
       setAngkatanInfo(angk)
 
-      // 3. Auto-generate id_alumni if missing
-      if (!currentIdAlumni && angk && aid) {
-        const { count } = await supabase.from('alumni_profiles').select('id', { count: 'exact', head: true }).eq('angkatan_id', angk.id)
-        const prefix = (angk.nama_angkatan ?? 'ALUMNI').replace(/[^A-Za-z0-9]/g, '').toUpperCase()
-        const newId = `${prefix}-${String((count ?? 1)).padStart(3, '0')}`
-        await supabase.from('alumni_profiles').update({ id_alumni: newId }).eq('id', aid)
-        setIdAlumni(newId)
+      // 3. Auto-generate id_alumni jika belum ada (fallback untuk alumni lama)
+      // Format: DM-YYYY-NNN — gunakan RPC agar pakai sequence table (anti-duplikat)
+      if (!currentIdAlumni && aid) {
+        const { data: generated } = await supabase
+          .rpc('generate_id_alumni', { p_user_id: user.id })
+        if (generated) {
+          await supabase.from('alumni_profiles').update({ id_alumni: generated }).eq('id', aid)
+          setIdAlumni(generated)
+        }
       }
 
       // 4. Fetch profil langsung dari Supabase (hindari race condition authProfile)

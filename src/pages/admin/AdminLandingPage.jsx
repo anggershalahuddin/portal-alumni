@@ -1,5 +1,5 @@
 ﻿import { useState, useEffect, useCallback } from 'react'
-import { Plus, Pencil, Trash2, X, Check, Eye, EyeOff, Star, Target, GraduationCap, Loader2 } from 'lucide-react'
+import { Plus, Pencil, Trash2, X, Check, Eye, EyeOff, Star, Target, GraduationCap, Loader2, MessageSquareQuote } from 'lucide-react'
 import { motion } from 'framer-motion'
 import AdminSidebar from '../../components/admin/AdminSidebar'
 import AdminHeader from '../../components/admin/AdminHeader'
@@ -146,6 +146,87 @@ function MilestoneModal({ data, onClose, onSave }) {
   )
 }
 
+// ── Testimoni Modal ───────────────────────────────────────────────────────────
+const AVATAR_COLORS = ['#1A5C38', '#2A7A4F', '#0A2415', '#0E7490', '#0369A1', '#7C3AED', '#DB2777', '#D97706', '#065F46', '#4F46E5']
+
+function TestimoniModal({ data, onClose, onSave }) {
+  const isEdit = !!data?.id
+  const [form, setForm] = useState(data ?? {
+    nama: '', angkatan: '', jabatan: '', isi: '',
+    foto_url: null, inisial: '', warna_avatar: '#1A5C38',
+    urutan: 0, is_aktif: true,
+  })
+  function set(k, v) { setForm(f => ({ ...f, [k]: v })) }
+  const valid = form.nama.trim() && form.isi.trim()
+
+  return (
+    <div className="fixed inset-0 z-50 flex items-center justify-center p-4" style={{ backgroundColor: 'rgba(0,0,0,0.5)' }}>
+      <div className="bg-white rounded-2xl shadow-2xl w-full max-w-md">
+        <div className="flex items-center justify-between px-6 py-4 border-b border-gray-100">
+          <h2 className="text-base font-bold text-gray-900">{isEdit ? 'Edit Testimoni' : 'Tambah Testimoni'}</h2>
+          <button onClick={onClose} className="p-1 rounded-lg hover:bg-gray-100"><X className="w-4 h-4 text-gray-500" /></button>
+        </div>
+        <div className="px-6 py-5 space-y-4 max-h-[75vh] overflow-y-auto">
+          <div>
+            <label className="text-xs font-semibold text-gray-600 mb-1 block">Nama <span className="text-red-400">*</span></label>
+            <input value={form.nama} onChange={e => set('nama', e.target.value)} placeholder="cth. Ahmad Fauzi, S.T." className={inputCls} />
+          </div>
+          <div className="grid grid-cols-2 gap-3">
+            <div>
+              <label className="text-xs font-semibold text-gray-600 mb-1 block">Angkatan</label>
+              <input value={form.angkatan} onChange={e => set('angkatan', e.target.value)} placeholder="cth. Angkatan 2010" className={inputCls} />
+            </div>
+            <div>
+              <label className="text-xs font-semibold text-gray-600 mb-1 block">Urutan</label>
+              <input type="number" value={form.urutan} onChange={e => set('urutan', Number(e.target.value))} className={inputCls} />
+            </div>
+          </div>
+          <div>
+            <label className="text-xs font-semibold text-gray-600 mb-1 block">Jabatan / Profesi</label>
+            <input value={form.jabatan} onChange={e => set('jabatan', e.target.value)} placeholder="cth. Software Engineer di Tokopedia" className={inputCls} />
+          </div>
+          <div>
+            <label className="text-xs font-semibold text-gray-600 mb-1 block">Isi Testimoni <span className="text-red-400">*</span></label>
+            <textarea value={form.isi} onChange={e => set('isi', e.target.value)} rows={4} placeholder="Tulis kutipan testimoni alumni..." className={`${inputCls} resize-none`} />
+          </div>
+          <div>
+            <label className="text-xs font-semibold text-gray-600 mb-1 block">URL Foto <span className="text-gray-400 font-normal">(opsional)</span></label>
+            <input value={form.foto_url ?? ''} onChange={e => set('foto_url', e.target.value || null)} placeholder="https://..." className={inputCls} />
+          </div>
+          <div className="grid grid-cols-2 gap-3">
+            <div>
+              <label className="text-xs font-semibold text-gray-600 mb-1 block">Inisial Avatar <span className="text-gray-400 font-normal">(opsional, otomatis jika kosong)</span></label>
+              <input value={form.inisial ?? ''} onChange={e => set('inisial', e.target.value || null)} placeholder="cth. AF" maxLength={3} className={inputCls} />
+            </div>
+            <div>
+              <label className="text-xs font-semibold text-gray-600 mb-1 block">Warna Avatar</label>
+              <div className="flex items-center gap-2 flex-wrap mt-1">
+                {AVATAR_COLORS.map(c => (
+                  <button key={c} onClick={() => set('warna_avatar', c)}
+                    className={`w-6 h-6 rounded-full border-2 transition-transform ${form.warna_avatar === c ? 'border-gray-800 scale-110' : 'border-transparent hover:scale-105'}`}
+                    style={{ backgroundColor: c }} />
+                ))}
+              </div>
+            </div>
+          </div>
+          <label className="flex items-center gap-2 cursor-pointer">
+            <input type="checkbox" checked={form.is_aktif} onChange={e => set('is_aktif', e.target.checked)} className="w-4 h-4 accent-green-700" />
+            <span className="text-sm text-gray-700">Tampilkan di landing page</span>
+          </label>
+        </div>
+        <div className="flex justify-end gap-2 px-6 py-4 border-t border-gray-100">
+          <button onClick={onClose} className="px-4 py-2 rounded-xl text-sm font-medium text-gray-600 border border-gray-200 hover:bg-gray-50">Batal</button>
+          <button onClick={() => valid && onSave(form)} disabled={!valid}
+            className="px-5 py-2 rounded-xl text-sm font-semibold text-white flex items-center gap-1.5 disabled:opacity-40"
+            style={{ backgroundColor: '#1A5C38' }}>
+            <Check className="w-3.5 h-3.5" /> Simpan
+          </button>
+        </div>
+      </div>
+    </div>
+  )
+}
+
 // ── Main Page ─────────────────────────────────────────────────────────────────
 export default function AdminLandingPage() {
   const [activeTab, setActiveTab] = useState('guru')
@@ -160,6 +241,11 @@ export default function AdminLandingPage() {
   const [milestones, setMilestones] = useState([])
   const [loadingMilestone, setLoadingMilestone] = useState(true)
   const [milestoneModal, setMilestoneModal] = useState(null)
+
+  // Testimoni state
+  const [testimoni, setTestimoni] = useState([])
+  const [loadingTestimoni, setLoadingTestimoni] = useState(true)
+  const [testimoniModal, setTestimoniModal] = useState(null)
 
   // Tentang & Visi Misi
   const [tentang, setTentang] = useState({ judul: '', subtitle: '', deskripsi: '', visi: '', misi: [] })
@@ -186,6 +272,16 @@ export default function AdminLandingPage() {
     setLoadingMilestone(false)
   }, [])
 
+  const loadTestimoni = useCallback(async () => {
+    setLoadingTestimoni(true)
+    const { data } = await supabase
+      .from('testimoni')
+      .select('id, nama, angkatan, jabatan, isi, foto_url, inisial, warna_avatar, urutan, is_aktif')
+      .order('urutan', { ascending: true })
+    setTestimoni(data ?? [])
+    setLoadingTestimoni(false)
+  }, [])
+
   const loadTentang = useCallback(async () => {
     const { data } = await supabase.from('pengaturan').select('value').eq('key', 'tentang_kami').single()
     if (data?.value) {
@@ -195,6 +291,7 @@ export default function AdminLandingPage() {
 
   useEffect(() => { loadGuru() }, [loadGuru])
   useEffect(() => { loadMilestones() }, [loadMilestones])
+  useEffect(() => { loadTestimoni() }, [loadTestimoni])
   useEffect(() => { loadTentang() }, [loadTentang])
 
   // Confirm
@@ -289,6 +386,56 @@ export default function AdminLandingPage() {
     }})
   }
 
+  // Handlers — Testimoni
+  function saveTestimoni(form) {
+    const isEdit = !!form.id
+    askConfirm({
+      title: isEdit ? 'Simpan Perubahan Testimoni' : 'Tambah Testimoni Baru',
+      message: isEdit ? 'Apakah Anda yakin ingin menyimpan perubahan testimoni ini?' : 'Apakah Anda yakin ingin menambahkan testimoni baru ini?',
+      confirmLabel: 'Ya, Simpan',
+      variant: 'success',
+      onConfirm: async () => {
+        const payload = {
+          nama: form.nama,
+          angkatan: form.angkatan || null,
+          jabatan: form.jabatan || null,
+          isi: form.isi,
+          foto_url: form.foto_url || null,
+          inisial: form.inisial || null,
+          warna_avatar: form.warna_avatar || '#1A5C38',
+          urutan: form.urutan ?? 0,
+          is_aktif: form.is_aktif ?? true,
+        }
+        if (isEdit) {
+          const { error } = await supabase.from('testimoni').update(payload).eq('id', form.id)
+          if (error) { alert('Gagal menyimpan: ' + error.message); closeConfirm(); return }
+          setTestimoni(prev => prev.map(t => t.id === form.id ? { ...form, ...payload } : t))
+        } else {
+          const { data, error } = await supabase.from('testimoni').insert(payload).select().single()
+          if (error) { alert('Gagal menyimpan: ' + error.message); closeConfirm(); return }
+          if (data) setTestimoni(prev => [...prev, data])
+        }
+        setTestimoniModal(null)
+        closeConfirm()
+      },
+    })
+  }
+
+  function deleteTestimoni(id) {
+    askConfirm({ title: 'Hapus Testimoni', message: 'Apakah Anda yakin ingin menghapus testimoni ini?', confirmLabel: 'Ya, Hapus', variant: 'danger', onConfirm: async () => {
+      await supabase.from('testimoni').delete().eq('id', id)
+      setTestimoni(prev => prev.filter(t => t.id !== id))
+      closeConfirm()
+    }})
+  }
+
+  async function toggleTestimoni(id) {
+    const t = testimoni.find(x => x.id === id)
+    if (!t) return
+    await supabase.from('testimoni').update({ is_aktif: !t.is_aktif }).eq('id', id)
+    setTestimoni(prev => prev.map(x => x.id === id ? { ...x, is_aktif: !x.is_aktif } : x))
+  }
+
   function saveTentang() {
     askConfirm({
       title: 'Simpan Tentang & Visi Misi',
@@ -312,6 +459,7 @@ export default function AdminLandingPage() {
   const tabs = [
     { key: 'guru',      label: 'Guru Pesantren',      icon: GraduationCap },
     { key: 'milestone', label: 'Milestone Pesantren', icon: Star },
+    { key: 'testimoni', label: 'Testimoni Alumni',    icon: MessageSquareQuote },
     { key: 'tentang',   label: 'Tentang & Visi Misi', icon: Target },
   ]
 
@@ -452,6 +600,64 @@ export default function AdminLandingPage() {
             </div>
           )}
 
+          {/* ── Tab: Testimoni Alumni ── */}
+          {activeTab === 'testimoni' && (
+            <div className="space-y-4">
+              <div className="flex items-center justify-between">
+                <SectionHeader
+                  title="Testimoni Alumni"
+                  subtitle="Ditampilkan di section 'Apa Kata Mereka?' pada landing page. Urutkan dengan angka urutan."
+                />
+                <button onClick={() => setTestimoniModal({})} className="flex items-center gap-1.5 px-4 py-2 rounded-xl text-sm font-bold text-white hover:opacity-90" style={{ backgroundColor: '#1A5C38' }}>
+                  <Plus className="w-4 h-4" /> Tambah Testimoni
+                </button>
+              </div>
+              {loadingTestimoni && (
+                <div className="flex items-center justify-center py-12"><Loader2 className="w-5 h-5 animate-spin text-gray-400" /></div>
+              )}
+              <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-4">
+                {!loadingTestimoni && testimoni.map(t => {
+                  const initials = t.inisial || (t.nama ?? '').split(' ').slice(0, 2).map(w => w[0]?.toUpperCase() ?? '').join('')
+                  const color = t.warna_avatar || '#1A5C38'
+                  return (
+                    <div key={t.id} className={`bg-white rounded-2xl p-5 border border-gray-100 flex flex-col gap-3 ${!t.is_aktif ? 'opacity-60' : ''}`}>
+                      <p className="text-xs text-gray-500 italic leading-relaxed line-clamp-3">"{t.isi}"</p>
+                      <div className="flex items-center gap-3 pt-3 border-t border-gray-100">
+                        <div className="w-9 h-9 rounded-full flex-shrink-0 overflow-hidden">
+                          {t.foto_url
+                            ? <img src={t.foto_url} alt={t.nama} className="w-full h-full object-cover" />
+                            : <div className="w-full h-full flex items-center justify-center text-white text-xs font-bold" style={{ background: color }}>{initials}</div>
+                          }
+                        </div>
+                        <div className="flex-1 min-w-0">
+                          <p className="text-sm font-bold text-gray-900 truncate">{t.nama}</p>
+                          {t.angkatan && <p className="text-xs text-gray-400 truncate">{t.angkatan}</p>}
+                          {t.jabatan && <p className="text-xs text-gray-400 truncate">{t.jabatan}</p>}
+                        </div>
+                        <span className="text-[10px] font-semibold px-1.5 py-0.5 rounded bg-gray-100 text-gray-500 flex-shrink-0">#{t.urutan}</span>
+                      </div>
+                      <div className="flex items-center gap-2 pt-1">
+                        <span className={`text-[10px] font-semibold px-2 py-0.5 rounded-full ${t.is_aktif ? 'bg-green-100 text-green-700' : 'bg-gray-100 text-gray-500'}`}>
+                          {t.is_aktif ? 'Tampil' : 'Disembunyikan'}
+                        </span>
+                        <button onClick={() => toggleTestimoni(t.id)} className="flex items-center gap-1 text-xs font-semibold text-gray-500 hover:text-gray-700 ml-auto">
+                          {t.is_aktif ? <EyeOff className="w-3.5 h-3.5" /> : <Eye className="w-3.5 h-3.5" />}
+                          {t.is_aktif ? 'Sembunyikan' : 'Tampilkan'}
+                        </button>
+                        <button onClick={() => setTestimoniModal(t)} className="flex items-center gap-1 text-xs font-semibold text-blue-600 hover:text-blue-700">
+                          <Pencil className="w-3.5 h-3.5" /> Edit
+                        </button>
+                        <button onClick={() => deleteTestimoni(t.id)} className="flex items-center gap-1 text-xs font-semibold text-red-500 hover:text-red-600">
+                          <Trash2 className="w-3.5 h-3.5" /> Hapus
+                        </button>
+                      </div>
+                    </div>
+                  )
+                })}
+              </div>
+            </div>
+          )}
+
           {/* ── Tab: Tentang & Visi Misi ── */}
           {activeTab === 'tentang' && (
             <div className="space-y-4">
@@ -528,6 +734,13 @@ export default function AdminLandingPage() {
           data={milestoneModal?.id ? milestoneModal : null}
           onClose={() => setMilestoneModal(null)}
           onSave={saveMilestone}
+        />
+      )}
+      {testimoniModal !== null && (
+        <TestimoniModal
+          data={testimoniModal?.id ? testimoniModal : null}
+          onClose={() => setTestimoniModal(null)}
+          onSave={saveTestimoni}
         />
       )}
 
