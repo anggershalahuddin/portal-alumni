@@ -168,15 +168,13 @@ function KategoriManagerModal({ kategoris, onClose, onAdd, onDelete }) {
 }
 
 // ── Berita Modal ───────────────────────────────────────────────────────────────
-function BeritaModal({ berita, kategoris, onClose, onSave }) {
+function BeritaModal({ berita, kategoris, canPublish, onClose, onSave }) {
   const isEdit = !!berita
-  const { profile: currentProfile } = useAuth()
-  const canPublish = ['super_admin', 'admin'].includes(currentProfile?.role)
   const [form, setForm] = useState(isEdit
     ? {
         judul: berita.judul,
         kategori: berita.kategori || '',
-        status: berita.status,
+        status: (!canPublish && berita.status === 'Terbit') ? 'Menunggu Verifikasi Admin' : berita.status,
         tanggal: berita.published_at_raw ? berita.published_at_raw.slice(0, 10) : '',
         penulis: berita.penulis || '',
         banner: berita.banner || '',
@@ -793,6 +791,7 @@ export default function AdminBeritaPage() {
         <BeritaModal
           berita={modal === 'tambah' ? null : modal}
           kategoris={kategoris}
+          canPublish={['super_admin', 'admin'].includes(profile?.role)}
           onClose={() => setModal(null)}
           onSave={handleSave}
         />
