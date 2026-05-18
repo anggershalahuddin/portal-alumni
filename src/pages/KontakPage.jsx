@@ -4,6 +4,7 @@ import Navbar from '../components/landing/Navbar'
 import Footer from '../components/landing/Footer'
 import { supabase } from '@/lib/supabase'
 import { useSiteConfig } from '@/context/SiteConfigContext'
+import { createNotifikasi } from '@/lib/createNotifikasi'
 
 const SUBJEK_LIST = ['Pertanyaan Umum', 'Verifikasi Akun', 'Masalah Teknis', 'Saran & Masukan', 'Lainnya']
 
@@ -63,6 +64,14 @@ export default function KontakPage() {
       setLoading(false)
       return
     }
+
+    await createNotifikasi({
+      judul: `Pesan Baru: ${form.subjek}`,
+      pesan: `${form.nama} (${form.email}) mengirim pesan melalui form kontak.`,
+      tipe: 'sistem',
+      target_role: 'admin',
+      data: { nama: form.nama, email: form.email, subjek: form.subjek },
+    })
 
     setLoading(false)
     setSent(true)
@@ -194,6 +203,19 @@ export default function KontakPage() {
                 ))}
               </div>
             </div>
+
+            {config.mapsUrl && (
+              <div className="rounded-2xl overflow-hidden border border-gray-100 shadow-sm" style={{ height: '200px' }}>
+                <iframe
+                  src={config.mapsUrl}
+                  title="Lokasi Pondok Pesantren Daarul Mughni"
+                  className="w-full h-full border-0"
+                  allowFullScreen
+                  loading="lazy"
+                  referrerPolicy="no-referrer-when-downgrade"
+                />
+              </div>
+            )}
 
             <div className="rounded-2xl p-5" style={{ backgroundColor: '#0A2415' }}>
               <p className="text-xs font-bold text-[#F0A500] uppercase tracking-wider mb-1">Respons Cepat</p>

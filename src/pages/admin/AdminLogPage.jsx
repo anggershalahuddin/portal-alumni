@@ -1,64 +1,123 @@
-import { useState } from 'react'
-import { Activity, Download, Shield, Newspaper, CalendarDays, Users, Settings, Image, Building2, Briefcase, GraduationCap, LogIn, LogOut, Trash2 } from 'lucide-react'
+import { useState, useEffect, useCallback } from 'react'
+import * as XLSX from 'xlsx'
+import { Activity, Download, Shield, Newspaper, CalendarDays, Users, Settings, Image, Building2, Briefcase, GraduationCap, LogIn, LogOut, Trash2, Loader2, AlertCircle } from 'lucide-react'
 import { motion } from 'framer-motion'
 import AdminSidebar from '../../components/admin/AdminSidebar'
 import AdminHeader from '../../components/admin/AdminHeader'
+import { supabase } from '@/lib/supabase'
 
 const AKSI_CONFIG = {
-  login: { icon: LogIn, color: '#059669', bg: '#F0FDF4', label: 'Login' },
-  logout: { icon: LogOut, color: '#6B7280', bg: '#F9FAFB', label: 'Logout' },
-  verifikasi: { icon: Shield, color: '#1A5C38', bg: '#F0FDF4', label: 'Verifikasi' },
-  berita: { icon: Newspaper, color: '#7C3AED', bg: '#FAF5FF', label: 'Berita' },
-  agenda: { icon: CalendarDays, color: '#0E7490', bg: '#ECFEFF', label: 'Agenda' },
-  user: { icon: Users, color: '#D97706', bg: '#FFFBEB', label: 'User' },
-  galeri: { icon: Image, color: '#C2410C', bg: '#FFF7ED', label: 'Galeri' },
-  organisasi: { icon: Building2, color: '#1D4ED8', bg: '#EFF6FF', label: 'Organisasi' },
-  karir: { icon: Briefcase, color: '#7E22CE', bg: '#FDF4FF', label: 'Karir' },
-  angkatan: { icon: GraduationCap, color: '#0F766E', bg: '#F0FDFA', label: 'Angkatan' },
-  pengaturan: { icon: Settings, color: '#6B7280', bg: '#F9FAFB', label: 'Pengaturan' },
-  hapus: { icon: Trash2, color: '#BE123C', bg: '#FFF1F2', label: 'Hapus' },
+  login:       { icon: LogIn,       color: '#059669', bg: '#F0FDF4', label: 'Login' },
+  logout:      { icon: LogOut,      color: '#6B7280', bg: '#F9FAFB', label: 'Logout' },
+  verifikasi:  { icon: Shield,      color: '#1A5C38', bg: '#F0FDF4', label: 'Verifikasi' },
+  berita:      { icon: Newspaper,   color: '#7C3AED', bg: '#FAF5FF', label: 'Berita' },
+  agenda:      { icon: CalendarDays,color: '#0E7490', bg: '#ECFEFF', label: 'Agenda' },
+  user:        { icon: Users,       color: '#D97706', bg: '#FFFBEB', label: 'User' },
+  galeri:      { icon: Image,       color: '#C2410C', bg: '#FFF7ED', label: 'Galeri' },
+  organisasi:  { icon: Building2,   color: '#1D4ED8', bg: '#EFF6FF', label: 'Organisasi' },
+  karir:       { icon: Briefcase,   color: '#7E22CE', bg: '#FDF4FF', label: 'Karir' },
+  angkatan:    { icon: GraduationCap,color:'#0F766E', bg: '#F0FDFA', label: 'Angkatan' },
+  pengaturan:  { icon: Settings,    color: '#6B7280', bg: '#F9FAFB', label: 'Pengaturan' },
+  hapus:       { icon: Trash2,      color: '#BE123C', bg: '#FFF1F2', label: 'Hapus' },
 }
 
-const logData = [
-  { id: 1, aksi: 'login', aktor: 'Admin Utama', peran: 'Super Admin', keterangan: 'Login berhasil ke sistem admin', ip: '192.168.1.1', waktu: '2025-05-12 09:15:22' },
-  { id: 2, aksi: 'verifikasi', aktor: 'Admin Utama', peran: 'Super Admin', keterangan: 'Menyetujui verifikasi alumni Siti Maryam (2018)', ip: '192.168.1.1', waktu: '2025-05-12 09:20:11' },
-  { id: 3, aksi: 'berita', aktor: 'Editor Redaksi', peran: 'Editor', keterangan: 'Membuat berita baru: "Reuni Akbar 25 Tahun Daarul Mughni"', ip: '192.168.1.5', waktu: '2025-05-12 10:02:45' },
-  { id: 4, aksi: 'verifikasi', aktor: 'Admin Konten', peran: 'Admin', keterangan: 'Menolak permintaan verifikasi alumni Fatimah Az-Zahra (2019)', ip: '192.168.1.3', waktu: '2025-05-12 10:15:00' },
-  { id: 5, aksi: 'agenda', aktor: 'Editor Redaksi', peran: 'Editor', keterangan: 'Menambah agenda: "Workshop Digital Marketing Alumni"', ip: '192.168.1.5', waktu: '2025-05-12 11:30:18' },
-  { id: 6, aksi: 'galeri', aktor: 'Admin Konten', peran: 'Admin', keterangan: 'Mengunggah 5 foto baru ke galeri kegiatan alumni', ip: '192.168.1.3', waktu: '2025-05-12 13:05:33' },
-  { id: 7, aksi: 'karir', aktor: 'Admin Utama', peran: 'Super Admin', keterangan: 'Mempublikasikan lowongan: "Guru Matematika MTs Daarul Mughni"', ip: '192.168.1.1', waktu: '2025-05-12 13:45:00' },
-  { id: 8, aksi: 'user', aktor: 'Admin Utama', peran: 'Super Admin', keterangan: 'Mengubah peran Budi Santoso dari Alumni → Editor', ip: '192.168.1.1', waktu: '2025-05-12 14:10:22' },
-  { id: 9, aksi: 'angkatan', aktor: 'Admin Utama', peran: 'Super Admin', keterangan: 'Menambah data angkatan: Angkatan 2025 – Al-Biruni', ip: '192.168.1.1', waktu: '2025-05-12 14:30:55' },
-  { id: 10, aksi: 'organisasi', aktor: 'Admin Utama', peran: 'Super Admin', keterangan: 'Mengubah data organisasi HIKMAD – memperbarui info ketua', ip: '192.168.1.1', waktu: '2025-05-11 16:00:10' },
-  { id: 11, aksi: 'berita', aktor: 'Admin Konten', peran: 'Admin', keterangan: 'Menyetujui dan mempublikasikan berita: "Santri Raih Juara Musabaqah"', ip: '192.168.1.3', waktu: '2025-05-11 09:25:00' },
-  { id: 12, aksi: 'hapus', aktor: 'Admin Utama', peran: 'Super Admin', keterangan: 'Menghapus berita lama yang sudah kadaluarsa', ip: '192.168.1.1', waktu: '2025-05-10 11:00:00' },
-  { id: 13, aksi: 'pengaturan', aktor: 'Admin Utama', peran: 'Super Admin', keterangan: 'Mengubah nama peran "User" → "Alumni" di pengaturan sistem', ip: '192.168.1.1', waktu: '2025-05-10 09:00:00' },
-  { id: 14, aksi: 'logout', aktor: 'Editor Redaksi', peran: 'Editor', keterangan: 'Logout dari sesi admin', ip: '192.168.1.5', waktu: '2025-05-09 17:30:00' },
-  { id: 15, aksi: 'login', aktor: 'Editor Redaksi', peran: 'Editor', keterangan: 'Login berhasil ke sistem admin', ip: '192.168.1.5', waktu: '2025-05-09 08:05:00' },
-]
+const ROLE_LABELS = {
+  super_admin: 'Super Admin',
+  admin:       'Admin',
+  editor:      'Editor',
+  alumni:      'Alumni',
+  user:        'Pengguna',
+}
 
-function exportCSV(rows) {
-  const headers = ['ID', 'Aksi', 'Aktor', 'Peran', 'Keterangan', 'IP Address', 'Waktu']
-  const lines = [
-    headers.join(','),
-    ...rows.map(r => [r.id, r.aksi, `"${r.aktor}"`, `"${r.peran}"`, `"${r.keterangan}"`, r.ip, r.waktu].join(',')),
-  ]
-  const blob = new Blob([lines.join('\n')], { type: 'text/csv;charset=utf-8;' })
-  const url = URL.createObjectURL(blob)
-  const a = document.createElement('a')
-  a.href = url
-  a.download = `log-aktivitas-${new Date().toISOString().slice(0, 10)}.csv`
-  a.click()
-  URL.revokeObjectURL(url)
+function formatWaktu(iso) {
+  if (!iso) return '—'
+  return new Date(iso).toLocaleString('id-ID', {
+    day: '2-digit', month: 'short', year: 'numeric',
+    hour: '2-digit', minute: '2-digit',
+  })
+}
+
+function buildKeterangan(row) {
+  const d = row.detail ?? {}
+  if (d.keterangan) return d.keterangan
+  if (row.aksi === 'verifikasi') {
+    if (d.aksi === 'setujui') return `Menyetujui verifikasi alumni ${d.nama ?? ''}`
+    if (d.aksi === 'tolak')   return `Menolak verifikasi alumni ${d.nama ?? ''}`
+    return 'Verifikasi alumni'
+  }
+  if (row.aksi === 'berita') {
+    if (d.aksi === 'tambah') return `Menambah berita: "${d.judul ?? ''}"`
+    if (d.aksi === 'ubah')   return `Mengubah berita: "${d.judul ?? ''}"`
+    return `Aksi berita: "${d.judul ?? ''}"`
+  }
+  if (row.aksi === 'agenda') {
+    if (d.aksi === 'tambah') return `Menambah agenda: "${d.nama ?? ''}"`
+    if (d.aksi === 'ubah')   return `Mengubah agenda: "${d.nama ?? ''}"`
+    return `Aksi agenda: "${d.nama ?? ''}"`
+  }
+  if (row.aksi === 'user') {
+    if (d.aksi === 'ubah') return `Mengubah data user: ${d.nama ?? ''}`
+    return `Aksi user: ${d.nama ?? ''}`
+  }
+  if (row.aksi === 'hapus') {
+    return `Menghapus ${row.entitas ?? ''}: ${d.nama ?? d.judul ?? ''}`
+  }
+  return row.aksi
+}
+
+function exportXLSX(rows) {
+  const data = rows.map(r => ({
+    'Aksi': r.aksi,
+    'Aktor': r.aktor,
+    'Peran': r.peran,
+    'Keterangan': r.keterangan,
+    'IP Address': r.ip ?? '-',
+    'Waktu': r.waktu,
+  }))
+  const ws = XLSX.utils.json_to_sheet(data)
+  const wb = XLSX.utils.book_new()
+  XLSX.utils.book_append_sheet(wb, ws, 'Log Aktivitas')
+  XLSX.writeFile(wb, `log-aktivitas-${new Date().toISOString().slice(0, 10)}.xlsx`)
 }
 
 export default function AdminLogPage() {
-  const [search, setSearch] = useState('')
+  const [logData, setLogData] = useState([])
+  const [loading, setLoading] = useState(true)
+  const [error, setError]     = useState(null)
+  const [search, setSearch]   = useState('')
   const [filterAksi, setFilterAksi] = useState('semua')
 
+  const loadData = useCallback(async () => {
+    setLoading(true)
+    setError(null)
+    try {
+      const { data, error: err } = await supabase
+        .from('log_aktivitas')
+        .select('id, aksi, entitas, entitas_id, detail, ip_address, created_at, profiles!user_id(nama_lengkap, role)')
+        .order('created_at', { ascending: false })
+        .limit(300)
+      if (err) throw err
+      setLogData((data ?? []).map(row => ({
+        id:          row.id,
+        aksi:        row.aksi,
+        aktor:       row.profiles?.nama_lengkap ?? '—',
+        peran:       ROLE_LABELS[row.profiles?.role] ?? '—',
+        keterangan:  buildKeterangan(row),
+        ip:          row.ip_address ?? '—',
+        waktu:       formatWaktu(row.created_at),
+      })))
+    } catch (e) {
+      setError(e.message ?? 'Gagal memuat log aktivitas')
+    } finally {
+      setLoading(false)
+    }
+  }, [])
+
+  useEffect(() => { loadData() }, [loadData])
+
   const filtered = logData.filter(l => {
-    const matchSearch = l.aktor.toLowerCase().includes(search.toLowerCase()) || l.keterangan.toLowerCase().includes(search.toLowerCase())
-    const matchAksi = filterAksi === 'semua' || l.aksi === filterAksi
+    const matchSearch = !search || l.aktor.toLowerCase().includes(search.toLowerCase()) || l.keterangan.toLowerCase().includes(search.toLowerCase())
+    const matchAksi   = filterAksi === 'semua' || l.aksi === filterAksi
     return matchSearch && matchAksi
   })
 
@@ -85,8 +144,8 @@ export default function AdminLogPage() {
               <h1 className="text-2xl font-extrabold text-gray-900">Log Aktivitas</h1>
               <p className="text-sm text-gray-500 mt-0.5">Rekam jejak seluruh aksi admin dan editor.</p>
             </div>
-            <button onClick={() => exportCSV(filtered)} className="flex items-center gap-1.5 px-4 py-2 rounded-xl text-sm font-semibold border border-gray-200 bg-white text-gray-700 hover:bg-gray-50 transition-colors">
-              <Download className="w-4 h-4" /> Export CSV
+            <button onClick={() => exportXLSX(filtered)} className="flex items-center gap-1.5 px-4 py-2 rounded-xl text-sm font-semibold border border-gray-200 bg-white text-gray-700 hover:bg-gray-50 transition-colors">
+              <Download className="w-4 h-4" /> Ekspor Excel
             </button>
           </div>
 
@@ -98,10 +157,28 @@ export default function AdminLogPage() {
                 <option key={key} value={key}>{cfg.label}</option>
               ))}
             </select>
+            <button onClick={loadData} className="px-3 py-2 rounded-xl border border-gray-200 bg-white text-sm text-gray-600 hover:bg-gray-50 transition-colors">
+              Refresh
+            </button>
+            <span className="text-xs text-gray-400 ml-auto">{filtered.length} entri</span>
           </div>
+
+          {/* Error */}
+          {error && (
+            <div className="flex items-center gap-2 px-4 py-3 rounded-xl bg-red-50 border border-red-200 text-sm text-red-700">
+              <AlertCircle className="w-4 h-4 flex-shrink-0" />
+              {error}
+              <button onClick={loadData} className="ml-auto underline text-xs">Coba lagi</button>
+            </div>
+          )}
 
           {/* Table */}
           <div className="bg-white rounded-2xl border border-gray-100 overflow-hidden">
+            {loading ? (
+              <div className="flex justify-center items-center py-16">
+                <Loader2 className="w-7 h-7 animate-spin text-[#1A5C38]" />
+              </div>
+            ) : (
             <table className="w-full">
               <thead>
                 <tr className="bg-gray-50">
@@ -143,6 +220,7 @@ export default function AdminLogPage() {
                 })}
               </tbody>
             </table>
+            )}
           </div>
         </motion.div>
       </div>

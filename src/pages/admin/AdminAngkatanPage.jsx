@@ -1,5 +1,5 @@
 ﻿import { useState, useRef, useEffect, useCallback } from 'react'
-import { Plus, Pencil, Trash2, GraduationCap, Upload, X, ChevronUp, ChevronDown, Loader2 } from 'lucide-react'
+import { Plus, Pencil, Trash2, GraduationCap, Upload, X, ChevronUp, ChevronDown, Loader2, RefreshCw } from 'lucide-react'
 import { motion } from 'framer-motion'
 import AdminSidebar from '@/components/admin/AdminSidebar'
 import AdminHeader from '@/components/admin/AdminHeader'
@@ -198,17 +198,24 @@ export default function AdminAngkatanPage() {
   const [sortDir, setSortDir] = useState('asc') // sort by tahun lulusan
   const [confirm, setConfirm] = useState({ open: false })
   const [loading, setLoading] = useState(true)
+  const [refreshing, setRefreshing] = useState(false)
   function askConfirm(opts) { setConfirm({ open: true, ...opts }) }
   function closeConfirm() { setConfirm({ open: false }) }
 
-  const loadData = useCallback(async () => {
-    setLoading(true)
+  const loadData = useCallback(async ({ silent = false } = {}) => {
+    if (!silent) setLoading(true)
     const { data } = await supabase.from('angkatan').select('*').order('tahun_lulus', { ascending: true })
     setAngkatan((data ?? []).map(mapAngkatan))
-    setLoading(false)
+    if (!silent) setLoading(false)
   }, [])
 
   useEffect(() => { loadData() }, [loadData])
+
+  async function refreshData() {
+    setRefreshing(true)
+    await loadData({ silent: true })
+    setRefreshing(false)
+  }
 
   const filtered = angkatan
     .filter(a => {
@@ -327,14 +334,20 @@ export default function AdminAngkatanPage() {
               <h1 className="text-2xl font-extrabold text-gray-900">Kelola Angkatan</h1>
               <p className="text-sm text-gray-500 mt-0.5">Manajemen data angkatan lulusan pondok pesantren.</p>
             </div>
-            <button
-              onClick={() => setModal({ type: 'tambah' })}
-              className="flex items-center gap-2 px-4 py-2.5 rounded-xl text-sm font-bold text-white transition-colors hover:opacity-90"
-              style={{ backgroundColor: '#1A5C38' }}
-            >
-              <Plus className="w-4 h-4" />
-              Tambah Angkatan
-            </button>
+            <div className="flex items-center gap-2">
+              <button onClick={refreshData} disabled={refreshing} className="flex items-center gap-1.5 px-4 py-2.5 rounded-xl border border-gray-200 bg-white text-sm font-medium text-gray-700 hover:bg-gray-50 transition-colors disabled:opacity-60">
+                {refreshing ? <Loader2 className="w-4 h-4 animate-spin" /> : <RefreshCw className="w-4 h-4" />}
+                Refresh
+              </button>
+              <button
+                onClick={() => setModal({ type: 'tambah' })}
+                className="flex items-center gap-2 px-4 py-2.5 rounded-xl text-sm font-bold text-white transition-colors hover:opacity-90"
+                style={{ backgroundColor: '#1A5C38' }}
+              >
+                <Plus className="w-4 h-4" />
+                Tambah Angkatan
+              </button>
+            </div>
           </div>
 
           {/* Stats */}
@@ -385,7 +398,7 @@ export default function AdminAngkatanPage() {
                   </tr>
                 </thead>
                 <tbody>
-                  {loading ? (
+                  {(loading || refreshing) ? (
                     <tr><td colSpan={6} className="text-center py-16"><Loader2 className="w-6 h-6 animate-spin text-gray-400 mx-auto" /></td></tr>
                   ) : paged.length === 0 ? (
                     <tr>

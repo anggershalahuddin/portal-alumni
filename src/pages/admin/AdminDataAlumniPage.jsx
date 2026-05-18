@@ -1,10 +1,10 @@
 import { useState, useMemo, useEffect, useCallback } from 'react'
 import * as XLSX from 'xlsx'
 import {
-  Search, Download, ChevronDown, X, BadgeCheck,
+  Search, ChevronDown, X, BadgeCheck,
   GraduationCap, Briefcase, BookOpen, Mail, Globe,
   Link2, Filter, Eye, FileSpreadsheet, Building2, Handshake,
-  AlertCircle, Phone, MapPin, Calendar, Award,
+  AlertCircle, Phone, MapPin, Calendar, Award, Loader2, RefreshCw,
 } from 'lucide-react'
 
 function IconInstagram({ size = 16 }) {
@@ -64,66 +64,11 @@ function mapAngkatan(row) {
 
 // ── Helpers ──────────────────────────────────────────────────────────────────
 
-function escapeCSV(val) {
-  if (val == null) return ''
-  const s = String(val).replace(/"/g, '""')
-  return s.includes(',') || s.includes('"') || s.includes('\n') ? `"${s}"` : s
-}
-
 function periodeStr(mulai, selesai, isCurrent) {
   if (!mulai && !selesai) return ''
   if (isCurrent) return `${mulai ?? '?'} – Sekarang`
   if (mulai && selesai) return `${mulai} – ${selesai}`
   return String(mulai ?? selesai)
-}
-
-function exportCSV(rows) {
-  const headers = [
-    'Nama', 'Tahun Lulus', 'Angkatan Ke', 'Nama Angkatan',
-    'Bidang', 'Profesi', 'Perusahaan', 'Domisili',
-    'Keahlian', 'Bahasa',
-    'No. HP', 'Email', 'LinkedIn', 'Instagram', 'Website',
-    'Posisi Terbaru', 'Perusahaan Terbaru', 'Periode Pengalaman',
-    'Jenjang Pendidikan Terakhir', 'Jurusan', 'Institusi Pendidikan', 'Tahun Pendidikan',
-    'Sertifikasi Terbaru', 'Penerbit Sertifikasi',
-    'Publikasi Terbaru', 'Jenis Publikasi',
-    'Nama Lembaga', 'Jenis Lembaga', 'Sebagai di Lembaga', 'Buka Kerjasama',
-    'Status Verifikasi',
-  ]
-
-  const csvRows = rows.map(({ alumni, detail, angkatanInfo }) => {
-    const exp0  = detail?.pengalaman?.[0]
-    const pend0 = detail?.pendidikan?.[0]
-    const sert0 = detail?.sertifikasi?.[0]
-    const pub0  = detail?.publikasi?.[0]
-    const lemb0 = detail?.lembaga?.[0]
-    return [
-      alumni.name, alumni.angkatan,
-      angkatanInfo?.angkatanKe ?? '', angkatanInfo?.nama ?? '',
-      alumni.bidang, alumni.profesi, alumni.perusahaan, alumni.domisili,
-      (alumni.keahlian ?? []).join('; '),
-      (detail?.bahasa ?? []).map(b => b.nama ?? b).join('; '),
-      detail?.kontak?.noHp ?? '', detail?.kontak?.email ?? '',
-      detail?.kontak?.linkedin ?? '', detail?.kontak?.instagram ?? '', detail?.kontak?.website ?? '',
-      exp0?.posisi ?? '', exp0?.perusahaan ?? '',
-      exp0 ? periodeStr(exp0.tahunMulai, exp0.tahunSelesai, exp0.isCurrent) : '',
-      pend0?.jenjang ?? '', pend0?.jurusan ?? '', pend0?.institusi ?? '',
-      pend0 ? periodeStr(pend0.tahunMulai, pend0.tahunSelesai, pend0.isCurrent) : '',
-      sert0?.nama ?? '', sert0?.penerbit ?? '',
-      pub0?.judul ?? '', pub0?.jenis ?? '',
-      lemb0?.nama ?? '', lemb0?.jenis ?? '', lemb0?.sebagai ?? '',
-      lemb0 ? (lemb0.openKerjasama ? 'Ya' : 'Tidak') : '',
-      alumni.isVerified ? 'Terverifikasi' : 'Belum Terverifikasi',
-    ].map(escapeCSV).join(',')
-  })
-
-  const blob = new Blob([[headers.join(','), ...csvRows].join('\n')], { type: 'text/csv;charset=utf-8;' })
-  const url  = URL.createObjectURL(blob)
-  const a    = document.createElement('a')
-  a.href     = url
-  a.download = `data-alumni-daarul-mughni-${new Date().toISOString().slice(0, 10)}.csv`
-  a.click()
-  URL.revokeObjectURL(url)
 }
 
 function exportXLSX(rows) {
@@ -500,6 +445,7 @@ export default function AdminDataAlumniPage() {
   const [enriched, setEnriched]       = useState([])
   const [angkatanList, setAngkatanList] = useState([])
   const [pageLoading, setPageLoading] = useState(true)
+  const [refreshing, setRefreshing]  = useState(false)
   const [loadError, setLoadError]     = useState(null)
 
   const [search, setSearch]               = useState('')
@@ -511,8 +457,8 @@ export default function AdminDataAlumniPage() {
   const [detail, setDetail] = useState(null)
 
   /* ── Load all alumni data from Supabase ── */
-  const loadData = useCallback(async () => {
-    setPageLoading(true)
+  const loadData = useCallback(async ({ silent = false } = {}) => {
+    if (!silent) setPageLoading(true)
     setLoadError(null)
     try {
       // Semua profiles yang punya alumni_profiles + status disetujui (inkl. super_admin/admin)
@@ -523,7 +469,7 @@ export default function AdminDataAlumniPage() {
         .order('created_at', { ascending: false })
 
       if (profErr) throw profErr
-      if (!profiles?.length) { setEnriched([]); return }
+      if (!profiles?.length) { setEnriched([]); if (!silent) setPageLoading(false); return }
 
       const ids = profiles.map((p) => p.id)
 
@@ -672,11 +618,17 @@ export default function AdminDataAlumniPage() {
       console.error('Error loading alumni data:', err)
       setLoadError(err.message)
     } finally {
-      setPageLoading(false)
+      if (!silent) setPageLoading(false)
     }
   }, [])
 
   useEffect(() => { loadData() }, [loadData])
+
+  async function refreshData() {
+    setRefreshing(true)
+    await loadData({ silent: true })
+    setRefreshing(false)
+  }
 
   /* ── Filters ── */
   const filtered = useMemo(() => enriched.filter(({ alumni }) => {
@@ -738,18 +690,16 @@ export default function AdminDataAlumniPage() {
               <p className="text-xs text-gray-400 mt-0.5">Seluruh data biodata, pendidikan, dan pekerjaan alumni terdaftar</p>
             </div>
             <div className="flex items-center gap-2">
-              <button
-                onClick={() => exportCSV(filtered)}
-                className="flex items-center gap-1.5 px-3 py-2 rounded-xl text-sm font-semibold border border-gray-200 bg-white text-gray-700 hover:bg-gray-50"
-              >
-                <Download className="w-4 h-4" /> CSV
+              <button onClick={refreshData} disabled={refreshing} className="flex items-center gap-1.5 px-3 py-2 rounded-xl border border-gray-200 bg-white text-sm font-medium text-gray-700 hover:bg-gray-50 transition-colors disabled:opacity-60">
+                {refreshing ? <Loader2 className="w-4 h-4 animate-spin" /> : <RefreshCw className="w-4 h-4" />}
+                Refresh
               </button>
               <button
                 onClick={() => exportXLSX(filtered)}
                 className="flex items-center gap-1.5 px-3 py-2 rounded-xl text-sm font-bold text-white"
                 style={{ backgroundColor: '#1A5C38' }}
               >
-                <FileSpreadsheet className="w-4 h-4" /> Excel ({filtered.length})
+                <FileSpreadsheet className="w-4 h-4" /> Ekspor Excel ({filtered.length})
               </button>
             </div>
           </div>
@@ -846,6 +796,11 @@ export default function AdminDataAlumniPage() {
 
           {/* Table */}
           <div className="bg-white rounded-xl border border-gray-100 overflow-hidden">
+            {refreshing ? (
+              <div className="flex justify-center items-center py-16">
+                <Loader2 className="w-7 h-7 animate-spin text-[#1A5C38]" />
+              </div>
+            ) : (
             <div className="overflow-x-auto">
               <table className="w-full text-sm">
                 <thead>
@@ -938,6 +893,7 @@ export default function AdminDataAlumniPage() {
                 </tbody>
               </table>
             </div>
+            )}
 
             {filtered.length > 0 && (
               <div className="px-4 py-3 border-t border-gray-100 flex justify-center">

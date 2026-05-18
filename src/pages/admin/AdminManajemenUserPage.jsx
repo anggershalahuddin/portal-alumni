@@ -1,9 +1,10 @@
 import { useState, useRef, useEffect, useCallback } from 'react'
+import * as XLSX from 'xlsx'
 import {
   CheckCircle, Users, Shield, Search,
   Download, ChevronDown,
   MoreHorizontal, UserPlus, X, Pencil, Trash2,
-  Lock, Key, Eye, EyeOff, AlertCircle, XCircle,
+  Lock, Key, Eye, EyeOff, AlertCircle, XCircle, Loader2, RefreshCw,
 } from 'lucide-react'
 import { motion } from 'framer-motion'
 import AdminSidebar from '../../components/admin/AdminSidebar'
@@ -13,6 +14,8 @@ import { PaginationBar, PerPageSelector } from '../../components/PaginationBar'
 import { getAngkatanKe } from '../../data/angkatan'
 import { ALL_PERMISSIONS, DEFAULT_PERMISSIONS } from '../../data/adminMenus'
 import { supabase } from '@/lib/supabase'
+import { useAuth } from '@/context/AuthContext'
+import { logAksi } from '@/lib/logAksi'
 
 // ── Constants ────────────────────────────────────────────────────────────────
 
@@ -456,11 +459,31 @@ function TambahUserModal({ onClose, onSave }) {
   )
 }
 
+function exportXLSX(rows) {
+  const data = rows.map(u => ({
+    'Nama': u.name,
+    'Email': u.email,
+    'No. HP': u.phone || '-',
+    'Angkatan': u.angkatan ?? '-',
+    'Peran': u.peran,
+    'Status': u.aktif ? 'Aktif' : 'Nonaktif',
+    'Profesi': u.profesi || '-',
+    'Domisili': u.kota || '-',
+    'Login Terakhir': u.lastLogin,
+  }))
+  const ws = XLSX.utils.json_to_sheet(data)
+  const wb = XLSX.utils.book_new()
+  XLSX.utils.book_append_sheet(wb, ws, 'Manajemen User')
+  XLSX.writeFile(wb, `manajemen-user-${new Date().toISOString().slice(0, 10)}.xlsx`)
+}
+
 // ── Main Page ────────────────────────────────────────────────────────────────
 
 export default function AdminManajemenUserPage() {
+  const { supaUser } = useAuth()
   const [users, setUsers]           = useState([])
   const [pageLoading, setPageLoading] = useState(true)
+  const [refreshing, setRefreshing]  = useState(false)
   const [loadError, setLoadError]   = useState(null)
   const [modal, setModal]           = useState(null)
   const [selected, setSelected]     = useState([])
@@ -494,8 +517,8 @@ export default function AdminManajemenUserPage() {
   }
 
   /* ── Load all profiles from Supabase ── */
-  const loadData = useCallback(async () => {
-    setPageLoading(true)
+  const loadData = useCallback(async ({ silent = false } = {}) => {
+    if (!silent) setPageLoading(true)
     setLoadError(null)
     try {
       const { data: profiles, error: profErr } = await supabase
@@ -542,11 +565,17 @@ export default function AdminManajemenUserPage() {
       console.error('Error loading users:', err)
       setLoadError(err.message)
     } finally {
-      setPageLoading(false)
+      if (!silent) setPageLoading(false)
     }
   }, [])
 
   useEffect(() => { loadData() }, [loadData])
+
+  async function refreshData() {
+    setRefreshing(true)
+    await loadData({ silent: true })
+    setRefreshing(false)
+  }
 
   /* Filter */
   const filtered = users.filter(u => {
@@ -622,6 +651,13 @@ export default function AdminManajemenUserPage() {
         ])
         const { error } = await supabase.rpc('delete_auth_user', { user_id: id })
         if (error) { console.error(error); closeConfirm(); showDeleteError(error.message); return }
+        await logAksi({
+          user_id: supaUser?.id,
+          aksi: 'hapus',
+          entitas: 'user',
+          entitas_id: id,
+          detail: { nama: u?.name, peran: u?.peran, keterangan: `Menghapus user: ${u?.name ?? ''} (${u?.peran ?? ''})` },
+        })
         setUsers((prev) => prev.filter((x) => x.id !== id))
         setSelected((prev) => prev.filter((i) => i !== id))
         setOpenMenuId(null)
@@ -652,6 +688,19 @@ export default function AdminManajemenUserPage() {
         const newPerms = form.peran !== currentUser?.peran
           ? (DEFAULT_PERMISSIONS[form.peran] ?? [])
           : currentUser?.permissions ?? []
+        await logAksi({
+          user_id: supaUser?.id,
+          aksi: 'user',
+          entitas: 'profiles',
+          entitas_id: id,
+          detail: {
+            aksi: 'ubah', nama: form.name,
+            peran_lama: currentUser?.peran, peran_baru: form.peran,
+            keterangan: currentUser?.peran !== form.peran
+              ? `Mengubah peran ${form.name}: ${currentUser?.peran} → ${form.peran}`
+              : `Mengubah data user: ${form.name}`,
+          },
+        })
         setUsers((prev) => prev.map((u) => u.id === id
           ? { ...u, ...form, permissions: newPerms } : u))
         setModal(null)
@@ -800,8 +849,12 @@ export default function AdminManajemenUserPage() {
               <p className="text-sm text-gray-500 mt-0.5">Kelola peran, hak akses, dan data seluruh pengguna portal.</p>
             </div>
             <div className="flex items-center gap-2">
-              <button className="flex items-center gap-1.5 px-4 py-2 rounded-xl border border-gray-200 bg-white text-sm font-medium text-gray-700 hover:bg-gray-50 transition-colors">
-                <Download className="w-4 h-4" /> Ekspor CSV
+              <button onClick={refreshData} disabled={refreshing} className="flex items-center gap-1.5 px-4 py-2 rounded-xl border border-gray-200 bg-white text-sm font-medium text-gray-700 hover:bg-gray-50 transition-colors disabled:opacity-60">
+                {refreshing ? <Loader2 className="w-4 h-4 animate-spin" /> : <RefreshCw className="w-4 h-4" />}
+                Refresh
+              </button>
+              <button onClick={() => exportXLSX(filtered)} className="flex items-center gap-1.5 px-4 py-2 rounded-xl border border-gray-200 bg-white text-sm font-medium text-gray-700 hover:bg-gray-50 transition-colors">
+                <Download className="w-4 h-4" /> Ekspor Excel
               </button>
               <button
                 onClick={() => setModal({ type: 'tambah' })}
@@ -908,6 +961,11 @@ export default function AdminManajemenUserPage() {
               </div>
             )}
 
+            {refreshing ? (
+              <div className="flex justify-center items-center py-16">
+                <Loader2 className="w-7 h-7 animate-spin text-[#1A5C38]" />
+              </div>
+            ) : (
             <div className="overflow-x-auto">
               <table className="w-full">
                 <thead>
@@ -1025,6 +1083,7 @@ export default function AdminManajemenUserPage() {
                 </tbody>
               </table>
             </div>
+            )}
 
             {/* Pagination */}
             <div className="flex items-center justify-between px-5 py-4 border-t border-gray-50">

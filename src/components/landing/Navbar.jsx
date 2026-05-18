@@ -9,6 +9,7 @@ import { useAuth } from '@/context/AuthContext'
 const navLinks = [
   { label: 'Beranda', href: '/' },
   { label: 'Pesantren', href: '/pesantren' },
+  { label: 'Galeri', href: '/galeri' },
   { label: 'Alumni', href: '/direktori' },
   { label: 'Berita', href: '/berita' },
   { label: 'Agenda', href: '/agenda' },
@@ -26,6 +27,8 @@ function NavLink({ label, href, onClick, mobile }) {
       ? location.pathname.startsWith('/agenda')
       : href === '/pesantren'
       ? location.pathname.startsWith('/pesantren')
+      : href === '/galeri'
+      ? location.pathname.startsWith('/galeri')
       : href === '/karir'
       ? location.pathname.startsWith('/karir')
       : href === '/'

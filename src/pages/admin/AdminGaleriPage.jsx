@@ -1,5 +1,5 @@
 ﻿import { useState, useEffect, useCallback } from 'react'
-import { Plus, Trash2, Edit2, Image, X, Check, Eye, Tag, Layers, Loader2, AlertCircle } from 'lucide-react'
+import { Plus, Trash2, Edit2, Image, X, Check, Eye, Tag, Layers, Loader2, AlertCircle, RefreshCw } from 'lucide-react'
 import { motion } from 'framer-motion'
 import AdminSidebar from '../../components/admin/AdminSidebar'
 import AdminHeader from '../../components/admin/AdminHeader'
@@ -151,16 +151,17 @@ export default function AdminGaleriPage() {
   const [preview, setPreview] = useState(null)
   const [confirm, setConfirm] = useState({ open: false })
   const [loading, setLoading] = useState(true)
+  const [refreshing, setRefreshing] = useState(false)
   const [error, setError] = useState(null)
 
-  const loadData = useCallback(async () => {
-    setLoading(true)
+  const loadData = useCallback(async ({ silent = false } = {}) => {
+    if (!silent) setLoading(true)
     setError(null)
     const { data, error: err } = await supabase
       .from('galeri')
       .select('id, judul, deskripsi, foto_url, kategori, is_aktif, created_at')
       .order('created_at', { ascending: false })
-    if (err) { setError(err.message); setLoading(false); return }
+    if (err) { setError(err.message); if (!silent) setLoading(false); return }
     setGaleri((data ?? []).map(row => ({
       id: row.id,
       judul: row.judul,
@@ -171,10 +172,16 @@ export default function AdminGaleriPage() {
       tags: [],
       aktif: row.is_aktif,
     })))
-    setLoading(false)
+    if (!silent) setLoading(false)
   }, [])
 
   useEffect(() => { loadData() }, [loadData])
+
+  async function refreshData() {
+    setRefreshing(true)
+    await loadData({ silent: true })
+    setRefreshing(false)
+  }
 
   function askConfirm(opts) { setConfirm({ open: true, ...opts }) }
   function closeConfirm() { setConfirm({ open: false }) }
@@ -190,6 +197,10 @@ export default function AdminGaleriPage() {
 
   function handleSave(form) {
     const isEdit = !!form.id
+    if (!isEdit && galeri.length >= MAX_GALERI) {
+      alert(`Batas maksimal ${MAX_GALERI} foto telah tercapai. Hapus foto yang ada terlebih dahulu.`)
+      return
+    }
     askConfirm({
       title: isEdit ? 'Simpan Perubahan Foto' : 'Tambah Foto Baru',
       message: isEdit
@@ -246,6 +257,8 @@ export default function AdminGaleriPage() {
   }
 
   const aktifCount = galeri.filter(g => g.aktif).length
+  const MAX_GALERI = 10
+  const isAtLimit  = galeri.length >= MAX_GALERI
 
   return (
     <div className="flex min-h-screen" style={{ backgroundColor: '#F1F5F9' }}>
@@ -274,7 +287,13 @@ export default function AdminGaleriPage() {
               <button onClick={() => setKategoriModal(true)} className="flex items-center gap-1.5 px-4 py-2 rounded-xl text-sm font-semibold border border-gray-200 bg-white text-gray-700 hover:bg-gray-50 transition-colors">
                 <Layers className="w-4 h-4" /> Kelola Kategori
               </button>
-              <button onClick={() => setModal({})} className="flex items-center gap-1.5 px-4 py-2 rounded-xl text-sm font-bold text-white hover:opacity-90 transition-opacity" style={{ backgroundColor: '#1A5C38' }}>
+              <button
+                onClick={() => !isAtLimit && setModal({})}
+                disabled={isAtLimit}
+                title={isAtLimit ? `Maksimal ${MAX_GALERI} foto. Hapus foto dulu.` : undefined}
+                className="flex items-center gap-1.5 px-4 py-2 rounded-xl text-sm font-bold text-white transition-opacity disabled:opacity-40 disabled:cursor-not-allowed hover:opacity-90"
+                style={{ backgroundColor: '#1A5C38' }}
+              >
                 <Plus className="w-4 h-4" /> Tambah Foto
               </button>
             </div>
@@ -283,7 +302,7 @@ export default function AdminGaleriPage() {
           {/* Stats */}
           <div className="grid grid-cols-3 gap-4">
             {[
-              { label: 'Total Foto', value: galeri.length, color: '#1A5C38' },
+              { label: `Total Foto (maks. ${MAX_GALERI})`, value: `${galeri.length} / ${MAX_GALERI}`, color: isAtLimit ? '#BE123C' : '#1A5C38' },
               { label: 'Ditampilkan', value: aktifCount, color: '#059669' },
               { label: 'Disembunyikan', value: galeri.length - aktifCount, color: '#D97706' },
             ].map(s => (
@@ -294,8 +313,20 @@ export default function AdminGaleriPage() {
             ))}
           </div>
 
+          {/* Limit warning */}
+          {isAtLimit && (
+            <div className="flex items-start gap-3 px-4 py-3 rounded-xl bg-red-50 border border-red-200 text-sm text-red-700">
+              <AlertCircle className="w-4 h-4 flex-shrink-0 mt-0.5" />
+              <span>Batas maksimal <strong>{MAX_GALERI} foto</strong> telah tercapai. Hapus foto yang ada sebelum menambahkan foto baru.</span>
+            </div>
+          )}
+
           {/* Filters */}
           <div className="flex flex-wrap items-center gap-2">
+            <button onClick={refreshData} disabled={refreshing} className="flex items-center gap-1.5 px-3 py-1.5 rounded-xl border border-gray-200 bg-white text-sm font-medium text-gray-700 hover:bg-gray-50 transition-colors disabled:opacity-60">
+              {refreshing ? <Loader2 className="w-4 h-4 animate-spin" /> : <RefreshCw className="w-4 h-4" />}
+              Refresh
+            </button>
             <div className="flex flex-wrap gap-1.5">
               {kategoris.map(k => (
                 <button key={k.value} onClick={() => { setFilterKat(k.value); setPage(1) }}
@@ -318,7 +349,7 @@ export default function AdminGaleriPage() {
           )}
 
           {/* Grid */}
-          {loading ? (
+          {(loading || refreshing) ? (
             <div className="flex items-center justify-center py-16"><Loader2 className="w-6 h-6 animate-spin text-gray-400" /></div>
           ) : shown.length === 0 ? (
             <div className="bg-white rounded-2xl border border-gray-100 p-12 text-center">

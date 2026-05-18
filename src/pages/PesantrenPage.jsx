@@ -14,6 +14,7 @@ import { fadeUp, fadeLeft, fadeRight, stagger, viewport } from '@/lib/animations
 import { kategoriGaleri } from '@/data/galeri'
 import { getGurPhotoSrc } from '@/data/guru'
 import { supabase } from '@/lib/supabase'
+import { useSiteConfig } from '@/context/SiteConfigContext'
 
 function Skeleton({ className }) {
   return <div className={`bg-gray-200 rounded animate-pulse ${className}`} />
@@ -65,14 +66,9 @@ const stats = [
   { value: '1.500+', label: 'Santri Aktif' },
 ]
 
-const kontakInfo = [
-  { icon: MapPin, title: 'Alamat', lines: ['Jl. Klapanunggal Kp. Cibeber II Ds. Cikahuripan', 'Kec. Klapanunggal, Kab. Bogor, Jawa Barat 16710'] },
-  { icon: Phone,  title: 'Telepon', lines: ['(021) 2921 9666'] },
-  { icon: Mail,   title: 'Email',   lines: ['ppdaaarulmughni@gmail.com'] },
-]
-
 /* ─── Component ─── */
 export default function PesantrenPage() {
+  const { config } = useSiteConfig()
   const [activeGaleri, setActiveGaleri] = useState('Semua')
   const [form, setForm] = useState({ nama: '', email: '', judul: '', pesan: '' })
   const [angkatanList, setAngkatanList] = useState([])
@@ -357,24 +353,12 @@ export default function PesantrenPage() {
       {/* ── Guru ── */}
       <section className="py-24 bg-white">
         <div className="max-w-7xl mx-auto px-6 lg:px-8">
-          <motion.div variants={fadeUp} initial="hidden" whileInView="show" viewport={viewport} className="flex items-end justify-between mb-12">
-            <div className="text-center flex-1">
-              <p className="text-xs font-bold tracking-widest uppercase mb-3" style={{ color: '#F0A500' }}>Tenaga Pengajar</p>
-              <h2 className="text-3xl font-extrabold text-gray-900 mb-3">Mengenal Para Guru di Pesantren</h2>
-              <p className="text-gray-500 text-sm max-w-md mx-auto">
-                Dibimbing oleh para guru dan ulama yang penuh dedikasi untuk mencetak generasi terbaik umat.
-              </p>
-            </div>
-            <div className="flex gap-2 flex-shrink-0 ml-4 pb-1">
-              <button onClick={() => scrollPengasuh(-1)}
-                className="w-9 h-9 rounded-full border border-gray-200 flex items-center justify-center text-gray-500 hover:border-[#1A5C38] hover:text-[#1A5C38] transition-colors">
-                <ChevronLeft className="w-4 h-4" />
-              </button>
-              <button onClick={() => scrollPengasuh(1)}
-                className="w-9 h-9 rounded-full border border-gray-200 flex items-center justify-center text-gray-500 hover:border-[#1A5C38] hover:text-[#1A5C38] transition-colors">
-                <ChevronRight className="w-4 h-4" />
-              </button>
-            </div>
+          <motion.div variants={fadeUp} initial="hidden" whileInView="show" viewport={viewport} className="text-center mb-12">
+            <p className="text-xs font-bold tracking-widest uppercase mb-3" style={{ color: '#F0A500' }}>Tenaga Pengajar</p>
+            <h2 className="text-3xl font-extrabold text-gray-900 mb-3">Mengenal Para Guru di Pesantren</h2>
+            <p className="text-gray-500 text-sm max-w-md mx-auto">
+              Dibimbing oleh para guru dan ulama yang penuh dedikasi untuk mencetak generasi terbaik umat.
+            </p>
           </motion.div>
 
           <div
@@ -404,6 +388,16 @@ export default function PesantrenPage() {
                 </div>
               )
             })}
+          </div>
+          <div className="flex justify-center gap-2 mt-6">
+            <button onClick={() => scrollPengasuh(-1)}
+              className="w-9 h-9 rounded-full border border-gray-200 flex items-center justify-center text-gray-500 hover:border-[#1A5C38] hover:text-[#1A5C38] transition-colors">
+              <ChevronLeft className="w-4 h-4" />
+            </button>
+            <button onClick={() => scrollPengasuh(1)}
+              className="w-9 h-9 rounded-full border border-gray-200 flex items-center justify-center text-gray-500 hover:border-[#1A5C38] hover:text-[#1A5C38] transition-colors">
+              <ChevronRight className="w-4 h-4" />
+            </button>
           </div>
         </div>
       </section>
@@ -476,7 +470,7 @@ export default function PesantrenPage() {
             <p className="text-xs font-bold tracking-widest uppercase mb-3" style={{ color: '#F0A500' }}>Lulusan Terbaik</p>
             <h2 className="text-3xl font-extrabold text-gray-900 mb-3">Keluarga Besar Angkatan Alumni</h2>
             <p className="text-gray-500 text-sm max-w-lg mx-auto">
-              20 angkatan lulusan sejak 2006 — masing-masing membawa semangat dan identitas unik dalam melanjutkan estafet dakwah.
+              {angkatanList.length} angkatan lulusan sejak {angkatanList.length ? Math.min(...angkatanList.map(a => a.tahunLulusan)) : 2006} — masing-masing membawa semangat dan identitas unik dalam melanjutkan estafet dakwah.
             </p>
           </motion.div>
         </div>
@@ -547,24 +541,12 @@ export default function PesantrenPage() {
       {/* ── Organisasi Alumni ── */}
       <section className="py-20" style={{ backgroundColor: '#F8FAF9' }}>
         <div className="max-w-7xl mx-auto px-6 lg:px-8">
-          <motion.div variants={fadeUp} initial="hidden" whileInView="show" viewport={viewport} className="flex items-end justify-between mb-12">
-            <div className="text-center flex-1">
-              <p className="text-xs font-bold tracking-widest uppercase mb-3" style={{ color: '#F0A500' }}>Keluarga Besar</p>
-              <h2 className="text-3xl font-extrabold text-gray-900 mb-3">Organisasi &amp; Lembaga Alumni</h2>
-              <p className="text-gray-500 text-sm max-w-lg mx-auto">
-                Organisasi resmi yang menghimpun dan memberdayakan seluruh alumni Pondok Pesantren Modern Perpaduan Daarul Mughni Al Maaliki.
-              </p>
-            </div>
-            <div className="flex gap-2 flex-shrink-0 ml-4 pb-1">
-              <button onClick={() => scrollOrg(-1)}
-                className="w-9 h-9 rounded-full border border-gray-200 flex items-center justify-center text-gray-500 hover:border-[#1A5C38] hover:text-[#1A5C38] transition-colors">
-                <ChevronLeft className="w-4 h-4" />
-              </button>
-              <button onClick={() => scrollOrg(1)}
-                className="w-9 h-9 rounded-full border border-gray-200 flex items-center justify-center text-gray-500 hover:border-[#1A5C38] hover:text-[#1A5C38] transition-colors">
-                <ChevronRight className="w-4 h-4" />
-              </button>
-            </div>
+          <motion.div variants={fadeUp} initial="hidden" whileInView="show" viewport={viewport} className="text-center mb-12">
+            <p className="text-xs font-bold tracking-widest uppercase mb-3" style={{ color: '#F0A500' }}>Keluarga Besar</p>
+            <h2 className="text-3xl font-extrabold text-gray-900 mb-3">Organisasi &amp; Lembaga Alumni</h2>
+            <p className="text-gray-500 text-sm max-w-lg mx-auto">
+              Organisasi resmi yang menghimpun dan memberdayakan seluruh alumni Pondok Pesantren Modern Perpaduan Daarul Mughni Al Maaliki.
+            </p>
           </motion.div>
 
           <div
@@ -630,6 +612,16 @@ export default function PesantrenPage() {
               </div>
             ))}
           </div>
+          <div className="flex justify-center gap-2 mt-6">
+            <button onClick={() => scrollOrg(-1)}
+              className="w-9 h-9 rounded-full border border-gray-200 flex items-center justify-center text-gray-500 hover:border-[#1A5C38] hover:text-[#1A5C38] transition-colors">
+              <ChevronLeft className="w-4 h-4" />
+            </button>
+            <button onClick={() => scrollOrg(1)}
+              className="w-9 h-9 rounded-full border border-gray-200 flex items-center justify-center text-gray-500 hover:border-[#1A5C38] hover:text-[#1A5C38] transition-colors">
+              <ChevronRight className="w-4 h-4" />
+            </button>
+          </div>
         </div>
       </section>
 
@@ -662,20 +654,33 @@ export default function PesantrenPage() {
             ))}
           </div>
 
-          {/* Grid */}
-          <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
-            {filteredGaleri.map((g, i) => (
+          {/* Grid — 3 kolom, max 6 item */}
+          <div className="grid grid-cols-3 gap-3">
+            {filteredGaleri.slice(0, 6).map((g, i) => (
               <div
                 key={`${activeGaleri}-${i}`}
-                className={`rounded-2xl overflow-hidden${g.wide ? ' col-span-2' : ''}`}
+                className="rounded-2xl overflow-hidden group cursor-pointer"
               >
                 <img
                   src={g.src}
                   alt={g.alt}
-                  className="w-full h-48 object-cover hover:scale-105 transition-transform duration-500"
+                  className="w-full h-52 object-cover group-hover:scale-105 transition-transform duration-500"
                 />
               </div>
             ))}
+          </div>
+
+          {/* Lihat semua */}
+          <div className="flex justify-center mt-8">
+            <a
+              href="/galeri"
+              className="inline-flex items-center gap-2 px-6 py-3 rounded-full text-sm font-bold border-2 transition-all"
+              style={{ borderColor: '#1A5C38', color: '#1A5C38' }}
+              onMouseEnter={e => { e.currentTarget.style.backgroundColor = '#1A5C38'; e.currentTarget.style.color = '#fff' }}
+              onMouseLeave={e => { e.currentTarget.style.backgroundColor = 'transparent'; e.currentTarget.style.color = '#1A5C38' }}
+            >
+              Lihat Semua Galeri →
+            </a>
           </div>
         </div>
       </section>
@@ -748,7 +753,11 @@ export default function PesantrenPage() {
               <p className="text-xs font-bold tracking-widest uppercase mb-3" style={{ color: '#F0A500' }}>Informasi Kontak</p>
               <h2 className="text-2xl font-extrabold text-gray-900 mb-6">Hubungi Kami</h2>
             </div>
-            {kontakInfo.map((item, i) => {
+            {[
+              { icon: MapPin, title: 'Alamat', lines: (config.alamat || 'Jl. Klapanunggal Kp. Cibeber II Ds. Cikahuripan, Kec. Klapanunggal, Kab. Bogor, Jawa Barat 16710').split(',').map(s => s.trim()).filter(Boolean) },
+              { icon: Phone,  title: 'Telepon', lines: [config.telepon || '(021) 2921 9666'] },
+              { icon: Mail,   title: 'Email',   lines: [config.emailKontak || 'ppdaaarulmughni@gmail.com'] },
+            ].map((item, i) => {
               const Icon = item.icon
               return (
                 <div key={i} className="flex gap-4">
@@ -766,16 +775,18 @@ export default function PesantrenPage() {
               )
             })}
             {/* Google Maps embed */}
-            <div className="rounded-2xl overflow-hidden mt-4 shadow-sm border border-gray-200" style={{ height: '220px' }}>
-              <iframe
-                src="https://maps.google.com/maps?q=-6.454637629604064,106.97567018494564&z=16&output=embed"
-                title="Lokasi Pondok Pesantren Daarul Mughni"
-                className="w-full h-full border-0"
-                allowFullScreen
-                loading="lazy"
-                referrerPolicy="no-referrer-when-downgrade"
-              />
-            </div>
+            {config.mapsUrl && (
+              <div className="rounded-2xl overflow-hidden mt-4 shadow-sm border border-gray-200" style={{ height: '220px' }}>
+                <iframe
+                  src={config.mapsUrl}
+                  title="Lokasi Pondok Pesantren Daarul Mughni"
+                  className="w-full h-full border-0"
+                  allowFullScreen
+                  loading="lazy"
+                  referrerPolicy="no-referrer-when-downgrade"
+                />
+              </div>
+            )}
           </motion.div>
         </div>
       </section>

@@ -1,5 +1,5 @@
 ﻿import { useState, useEffect, useCallback } from 'react'
-import { Plus, Trash2, Edit2, Building2, X, Check, Users, Mail, Calendar, Loader2 } from 'lucide-react'
+import { Plus, Trash2, Edit2, Building2, X, Check, Users, Mail, Calendar, Loader2, RefreshCw } from 'lucide-react'
 import { motion } from 'framer-motion'
 import AdminSidebar from '../../components/admin/AdminSidebar'
 import AdminHeader from '../../components/admin/AdminHeader'
@@ -97,21 +97,28 @@ export default function AdminOrganisasiPage() {
   const [filterAktif, setFilterAktif] = useState('semua')
   const [confirm, setConfirm] = useState({ open: false })
   const [loading, setLoading] = useState(true)
+  const [refreshing, setRefreshing] = useState(false)
 
   function askConfirm(opts) { setConfirm({ open: true, ...opts }) }
   function closeConfirm() { setConfirm({ open: false }) }
 
-  const loadData = useCallback(async () => {
-    setLoading(true)
+  const loadData = useCallback(async ({ silent = false } = {}) => {
+    if (!silent) setLoading(true)
     const { data } = await supabase
       .from('organisasi')
       .select('id, nama, singkatan, deskripsi, logo_url, tahun_berdiri, ketua, kontak, is_aktif')
       .order('id', { ascending: true })
     setOrganisasi((data ?? []).map(mapOrganisasi))
-    setLoading(false)
+    if (!silent) setLoading(false)
   }, [])
 
   useEffect(() => { loadData() }, [loadData])
+
+  async function refreshData() {
+    setRefreshing(true)
+    await loadData({ silent: true })
+    setRefreshing(false)
+  }
 
   const filtered = organisasi.filter(o => {
     const q = search.toLowerCase()
@@ -203,9 +210,15 @@ export default function AdminOrganisasiPage() {
               <h1 className="text-2xl font-extrabold text-gray-900">Kelola Organisasi Alumni</h1>
               <p className="text-sm text-gray-500 mt-0.5">Manajemen organisasi dan lembaga alumni.</p>
             </div>
-            <button onClick={() => setModal({})} className="flex items-center gap-1.5 px-4 py-2 rounded-xl text-sm font-bold text-white hover:opacity-90 transition-opacity" style={{ backgroundColor: '#1A5C38' }}>
-              <Plus className="w-4 h-4" /> Tambah Organisasi
-            </button>
+            <div className="flex items-center gap-2">
+              <button onClick={refreshData} disabled={refreshing} className="flex items-center gap-1.5 px-4 py-2 rounded-xl border border-gray-200 bg-white text-sm font-medium text-gray-700 hover:bg-gray-50 transition-colors disabled:opacity-60">
+                {refreshing ? <Loader2 className="w-4 h-4 animate-spin" /> : <RefreshCw className="w-4 h-4" />}
+                Refresh
+              </button>
+              <button onClick={() => setModal({})} className="flex items-center gap-1.5 px-4 py-2 rounded-xl text-sm font-bold text-white hover:opacity-90 transition-opacity" style={{ backgroundColor: '#1A5C38' }}>
+                <Plus className="w-4 h-4" /> Tambah Organisasi
+              </button>
+            </div>
           </div>
 
           {/* Stats */}
@@ -236,7 +249,7 @@ export default function AdminOrganisasiPage() {
           </div>
 
           {/* Cards */}
-          {loading ? (
+          {(loading || refreshing) ? (
             <div className="flex items-center justify-center py-16"><Loader2 className="w-6 h-6 animate-spin text-gray-400" /></div>
           ) : filtered.length === 0 ? (
             <div className="bg-white rounded-2xl border border-gray-100 p-12 text-center">

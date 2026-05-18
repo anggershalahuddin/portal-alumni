@@ -1,13 +1,15 @@
 import { useState, useEffect } from 'react'
-import { Link, Navigate, useSearchParams, useNavigate } from 'react-router-dom'
+import { Link, Navigate, useNavigate } from 'react-router-dom'
 import { motion, AnimatePresence } from 'framer-motion'
 import logoUrl from '@/assets/Logo DM Fix.jpg'
 import {
   Clock, XCircle, CheckCircle, LogOut,
-  Upload, FileText, RefreshCw, MessageSquare, Phone,
-  Mail, ChevronRight, AlertTriangle, Send, X, Loader2,
+  Upload, FileText, RefreshCw, MessageSquare,
+  Mail, Send, X, Loader2,
 } from 'lucide-react'
 import { useAuth } from '@/context/AuthContext'
+import { useSiteConfig } from '@/context/SiteConfigContext'
+import { supabase } from '@/lib/supabase'
 
 // ── Komponen upload slot dokumen ───────────────────────────────────────────────
 function DocSlot({ label, icon: Icon, file, onPick, onRemove }) {
@@ -45,29 +47,40 @@ function DocSlot({ label, icon: Icon, file, onPick, onRemove }) {
 
 // ── Halaman Utama ──────────────────────────────────────────────────────────────
 export default function VerifikasiStatusPage() {
-  const [params] = useSearchParams()
   const navigate = useNavigate()
-  const { user, profile, loading, profileReady, signOut } = useAuth()
-
-  // Auth guards
-  useEffect(() => {
-    if (loading || !profileReady) return
-    // Tidak login → ke halaman masuk (Bug 2: akun dihapus admin)
-    if (!user) { navigate('/masuk', { replace: true }); return }
-    // Registrasi belum selesai → harus isi form daftar dulu
-    if (profile && !profile.no_hp) { navigate('/daftar', { replace: true }); return }
-    // Sudah diverifikasi admin → masuk dashboard (Bug 1)
-    if (profile?.status === 'disetujui') { navigate('/dashboard', { replace: true }); return }
-  }, [loading, profileReady, user, profile, navigate])
+  const { user, profile, loading, profileReady, signOut, refreshProfile } = useAuth()
+  const { config } = useSiteConfig()
 
   // Semua hooks harus di atas conditional return
-  const [files, setFiles] = useState({ ktp: null, ijazah: null, foto: null, surat: null })
+  const [file, setFileState] = useState(null)
   const [catatan, setCatatan] = useState('')
   const [submitting, setSubmitting] = useState(false)
   const [submitted, setSubmitted] = useState(false)
+  const [submitError, setSubmitError] = useState('')
 
-  const statusParam = params.get('status') === 'ditolak' ? 'ditolak' : 'menunggu'
-  const [demoStatus, setDemoStatus] = useState(statusParam)
+  // Polling tiap 8 detik untuk sinkronisasi status dari admin
+  // Berhenti otomatis jika sudah disetujui (redirect handled di bawah)
+  useEffect(() => {
+    if (!profileReady || !user) return
+    refreshProfile()
+    const interval = setInterval(async () => {
+      await refreshProfile()
+    }, 8000)
+    return () => clearInterval(interval)
+  }, [profileReady]) // eslint-disable-line react-hooks/exhaustive-deps
+
+  // Reset "submitted" saat status kembali ke 'ditolak' (penolakan ke-2, dst.)
+  useEffect(() => {
+    if (profile?.status === 'ditolak') setSubmitted(false)
+  }, [profile?.status])
+
+  // Auth guards — termasuk redirect ke dashboard saat disetujui
+  useEffect(() => {
+    if (loading || !profileReady) return
+    if (!user) { navigate('/masuk', { replace: true }); return }
+    if (profile && !profile.no_hp) { navigate('/daftar', { replace: true }); return }
+    if (profile?.status === 'disetujui') { navigate('/dashboard', { replace: true }); return }
+  }, [loading, profileReady, user, profile, navigate])
 
   async function handleLogout() {
     await signOut()
@@ -88,30 +101,53 @@ export default function VerifikasiStatusPage() {
   if (profile && !profile.no_hp) return <Navigate to="/daftar" replace />
   if (profile?.status === 'disetujui') return <Navigate to="/dashboard" replace />
 
-  // Status bisa 'menunggu' atau 'ditolak' — diset dari URL param saat redirect setelah login
-  const status = statusParam
-  const pesanAdmin = params.get('pesan') || 'Dokumen yang Anda lampirkan tidak dapat dibaca dengan jelas. Mohon unggah ulang dengan kualitas yang lebih baik dan pastikan semua dokumen yang diminta telah dilampirkan.'
-
-  const isRejected = demoStatus === 'ditolak'
-
-  function setFile(key, file) { setFiles(p => ({ ...p, [key]: file })) }
-  function removeFile(key) { setFiles(p => ({ ...p, [key]: null })) }
+  const isRejected = profile?.status === 'ditolak'
+  const pesanAdmin = profile?.pesan_admin || ''
 
   async function handleSubmit() {
+    if (!catatan.trim() || !file) return
     setSubmitting(true)
-    await new Promise(r => setTimeout(r, 1800))
-    setSubmitting(false)
-    setSubmitted(true)
+    setSubmitError('')
+    try {
+      // 1. Hapus semua file lama milik user di folder storage (abaikan error)
+      const { data: oldFiles } = await supabase.storage
+        .from('documents')
+        .list(user.id)
+      if (oldFiles?.length) {
+        const toRemove = oldFiles.map(f => `${user.id}/${f.name}`)
+        await supabase.storage.from('documents').remove(toRemove)
+      }
+
+      // 2. Upload file baru (selalu INSERT bersih, tidak ada konflik)
+      const ext      = file.name.split('.').pop().toLowerCase()
+      const filePath = `${user.id}/foto_bukti.${ext}`
+      const { error: uploadErr } = await supabase.storage
+        .from('documents')
+        .upload(filePath, file, { contentType: file.type })
+      if (uploadErr) throw uploadErr
+
+      // 3. Ganti record dokumen_verifikasi (hapus lama, insert baru)
+      await supabase.from('dokumen_verifikasi').delete().eq('user_id', user.id)
+      const { error: docErr } = await supabase.from('dokumen_verifikasi')
+        .insert({ user_id: user.id, jenis: 'foto_bukti', file_url: filePath, auto_hapus: true })
+      if (docErr) throw docErr
+
+      // 3. Update status profil
+      const { error: profileErr } = await supabase
+        .from('profiles')
+        .update({ status: 'menunggu', pesan_admin: null })
+        .eq('id', user.id)
+      if (profileErr) throw profileErr
+
+      await refreshProfile()
+      setSubmitted(true)
+    } catch (e) {
+      setSubmitError(`Gagal mengirim pengajuan: ${e?.message ?? 'Silakan coba lagi.'}`)
+      console.error('[handleSubmit]', e)
+    } finally {
+      setSubmitting(false)
+    }
   }
-
-  const docSlots = [
-    { key: 'ktp', label: 'Kartu Identitas (KTP/Kartu Pelajar)', icon: FileText },
-    { key: 'ijazah', label: 'Ijazah / Surat Keterangan Lulus', icon: FileText },
-    { key: 'foto', label: 'Foto Diri Terbaru (Formal)', icon: FileText },
-    { key: 'surat', label: 'Surat Keterangan Lainnya (opsional)', icon: FileText },
-  ]
-
-  const allRequiredUploaded = files.ktp && files.ijazah && files.foto
 
   return (
     <div className="min-h-screen flex flex-col" style={{ backgroundColor: '#F1F5F9' }}>
@@ -131,24 +167,6 @@ export default function VerifikasiStatusPage() {
           </button>
         </div>
       </header>
-
-      {/* Demo switcher */}
-      <div className="max-w-3xl mx-auto w-full px-4 pt-4">
-        <div className="flex items-center gap-2 bg-amber-50 border border-amber-200 rounded-xl px-4 py-2.5">
-          <AlertTriangle className="w-3.5 h-3.5 text-amber-500 flex-shrink-0" />
-          <p className="text-xs text-amber-700 font-medium flex-1">Mode pratinjau — lihat tampilan berdasarkan status akun:</p>
-          <div className="flex gap-1.5">
-            <button onClick={() => setDemoStatus('menunggu')}
-              className={`px-3 py-1 rounded-lg text-xs font-bold transition-colors ${demoStatus === 'menunggu' ? 'bg-amber-500 text-white' : 'bg-white text-amber-600 border border-amber-200'}`}>
-              Menunggu
-            </button>
-            <button onClick={() => setDemoStatus('ditolak')}
-              className={`px-3 py-1 rounded-lg text-xs font-bold transition-colors ${demoStatus === 'ditolak' ? 'bg-red-500 text-white' : 'bg-white text-red-500 border border-red-200'}`}>
-              Ditolak
-            </button>
-          </div>
-        </div>
-      </div>
 
       {/* Main content */}
       <main className="flex-1 max-w-3xl mx-auto w-full px-4 py-8">
@@ -224,28 +242,16 @@ export default function VerifikasiStatusPage() {
               {/* Contact */}
               <div className="bg-white rounded-2xl border border-gray-100 p-5">
                 <h3 className="text-sm font-bold text-gray-900 mb-3">Butuh bantuan? Hubungi Admin</h3>
-                <div className="flex flex-col sm:flex-row gap-3">
-                  <a href="mailto:alumni@daarulmughni.ac.id"
-                    className="flex items-center gap-3 flex-1 p-3.5 rounded-xl border border-gray-100 hover:border-[#1A5C38]/30 hover:bg-[#1A5C38]/5 transition-colors group">
-                    <div className="w-8 h-8 rounded-lg bg-[#F0FDF4] flex items-center justify-center flex-shrink-0">
-                      <Mail className="w-4 h-4 text-[#1A5C38]" />
-                    </div>
-                    <div>
-                      <p className="text-[10px] text-gray-400">Email Admin</p>
-                      <p className="text-xs font-semibold text-gray-700 group-hover:text-[#1A5C38] transition-colors">alumni@daarulmughni.ac.id</p>
-                    </div>
-                  </a>
-                  <a href="https://wa.me/6281234567890" target="_blank" rel="noreferrer"
-                    className="flex items-center gap-3 flex-1 p-3.5 rounded-xl border border-gray-100 hover:border-[#1A5C38]/30 hover:bg-[#1A5C38]/5 transition-colors group">
-                    <div className="w-8 h-8 rounded-lg bg-[#F0FDF4] flex items-center justify-center flex-shrink-0">
-                      <Phone className="w-4 h-4 text-[#1A5C38]" />
-                    </div>
-                    <div>
-                      <p className="text-[10px] text-gray-400">WhatsApp Admin</p>
-                      <p className="text-xs font-semibold text-gray-700 group-hover:text-[#1A5C38] transition-colors">+62 812-3456-7890</p>
-                    </div>
-                  </a>
-                </div>
+                <a href={`mailto:${config.emailKontak || 'ppdaaarulmughni@gmail.com'}`}
+                  className="flex items-center gap-3 p-3.5 rounded-xl border border-gray-100 hover:border-[#1A5C38]/30 hover:bg-[#1A5C38]/5 transition-colors group">
+                  <div className="w-8 h-8 rounded-lg bg-[#F0FDF4] flex items-center justify-center flex-shrink-0">
+                    <Mail className="w-4 h-4 text-[#1A5C38]" />
+                  </div>
+                  <div>
+                    <p className="text-[10px] text-gray-400">Email Admin</p>
+                    <p className="text-xs font-semibold text-gray-700 group-hover:text-[#1A5C38] transition-colors">{config.emailKontak || 'ppdaaarulmughni@gmail.com'}</p>
+                  </div>
+                </a>
               </div>
 
               <button onClick={handleLogout} className="w-full flex items-center justify-center gap-2 py-3 rounded-xl border border-gray-200 bg-white text-sm font-semibold text-gray-600 hover:bg-gray-50 transition-colors">
@@ -321,31 +327,24 @@ export default function VerifikasiStatusPage() {
                     <p className="text-[10px] text-gray-400 mt-1">{catatan.length}/500 karakter</p>
                   </div>
 
-                  {/* Document uploads */}
+                  {/* Document upload */}
                   <div>
                     <label className="block text-xs font-bold text-gray-700 mb-2">
-                      Unggah Ulang Dokumen <span className="text-red-400">* (min. 3 dokumen pertama)</span>
+                      Unggah Dokumen Pendukung <span className="text-red-400">*</span>
                     </label>
-                    <div className="grid grid-cols-1 sm:grid-cols-2 gap-2.5">
-                      {docSlots.map(({ key, label, icon }) => (
-                        <DocSlot key={key} label={label} icon={icon}
-                          file={files[key]}
-                          onPick={f => setFile(key, f)}
-                          onRemove={() => removeFile(key)} />
-                      ))}
-                    </div>
-                    {!allRequiredUploaded && (
-                      <p className="text-[10px] text-amber-600 mt-2 flex items-center gap-1">
-                        <AlertTriangle className="w-3 h-3" />
-                        KTP/Kartu Pelajar, Ijazah, dan Foto Diri wajib diunggah.
-                      </p>
-                    )}
+                    <DocSlot
+                      label="Dokumen Pendukung (KTP / Ijazah / Foto / Lainnya)"
+                      icon={FileText}
+                      file={file}
+                      onPick={setFileState}
+                      onRemove={() => setFileState(null)}
+                    />
                   </div>
 
                   {/* Submit */}
                   <button
                     onClick={handleSubmit}
-                    disabled={!catatan.trim() || !allRequiredUploaded || submitting}
+                    disabled={!catatan.trim() || !file || submitting}
                     className="w-full flex items-center justify-center gap-2 py-3 rounded-xl text-sm font-bold text-white transition-opacity hover:opacity-90 disabled:opacity-40"
                     style={{ backgroundColor: '#1A5C38' }}
                   >
@@ -354,6 +353,9 @@ export default function VerifikasiStatusPage() {
                       : <><Send className="w-4 h-4" /> Kirim Pengajuan Ulang</>
                     }
                   </button>
+                  {submitError && (
+                    <p className="text-xs text-red-600 bg-red-50 border border-red-200 rounded-xl px-3 py-2 text-center">{submitError}</p>
+                  )}
                   <p className="text-[10px] text-gray-400 text-center">
                     Pengajuan ulang akan ditinjau kembali oleh admin dalam 1–3 hari kerja.
                   </p>
@@ -363,24 +365,14 @@ export default function VerifikasiStatusPage() {
               {/* Contact */}
               <div className="bg-white rounded-2xl border border-gray-100 p-5">
                 <h3 className="text-sm font-bold text-gray-900 mb-3">Masih bingung? Hubungi Admin</h3>
-                <div className="flex flex-col sm:flex-row gap-3">
-                  <a href="mailto:alumni@daarulmughni.ac.id"
-                    className="flex items-center gap-3 flex-1 p-3 rounded-xl border border-gray-100 hover:border-[#1A5C38]/30 hover:bg-[#1A5C38]/5 transition-colors group">
-                    <Mail className="w-4 h-4 text-[#1A5C38] flex-shrink-0" />
-                    <div>
-                      <p className="text-[10px] text-gray-400">Email</p>
-                      <p className="text-xs font-semibold text-gray-700 group-hover:text-[#1A5C38] transition-colors">alumni@daarulmughni.ac.id</p>
-                    </div>
-                  </a>
-                  <a href="https://wa.me/6281234567890" target="_blank" rel="noreferrer"
-                    className="flex items-center gap-3 flex-1 p-3 rounded-xl border border-gray-100 hover:border-[#1A5C38]/30 hover:bg-[#1A5C38]/5 transition-colors group">
-                    <Phone className="w-4 h-4 text-[#1A5C38] flex-shrink-0" />
-                    <div>
-                      <p className="text-[10px] text-gray-400">WhatsApp</p>
-                      <p className="text-xs font-semibold text-gray-700 group-hover:text-[#1A5C38] transition-colors">+62 812-3456-7890</p>
-                    </div>
-                  </a>
-                </div>
+                <a href={`mailto:${config.emailKontak || 'ppdaaarulmughni@gmail.com'}`}
+                  className="flex items-center gap-3 p-3 rounded-xl border border-gray-100 hover:border-[#1A5C38]/30 hover:bg-[#1A5C38]/5 transition-colors group">
+                  <Mail className="w-4 h-4 text-[#1A5C38] flex-shrink-0" />
+                  <div>
+                    <p className="text-[10px] text-gray-400">Email</p>
+                    <p className="text-xs font-semibold text-gray-700 group-hover:text-[#1A5C38] transition-colors">{config.emailKontak || 'ppdaaarulmughni@gmail.com'}</p>
+                  </div>
+                </a>
               </div>
 
               <button onClick={handleLogout} className="w-full flex items-center justify-center gap-2 py-3 rounded-xl border border-gray-200 bg-white text-sm font-semibold text-gray-600 hover:bg-gray-50 transition-colors">
@@ -411,7 +403,7 @@ export default function VerifikasiStatusPage() {
                     <CheckCircle className="w-3.5 h-3.5" /> Status: Menunggu Tinjauan Ulang
                   </div>
                   <div className="flex gap-3 flex-wrap justify-center">
-                    <button onClick={() => { setSubmitted(false); setDemoStatus('menunggu') }}
+                    <button onClick={() => setSubmitted(false)}
                       className="flex items-center gap-1.5 px-5 py-2.5 rounded-xl text-sm font-bold text-white hover:opacity-90 transition-opacity" style={{ backgroundColor: '#1A5C38' }}>
                       <Clock className="w-4 h-4" /> Pantau Status
                     </button>

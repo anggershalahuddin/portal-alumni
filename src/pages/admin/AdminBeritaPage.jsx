@@ -1,5 +1,6 @@
 ﻿import { useState, useEffect, useCallback } from 'react'
-import { Plus, Pencil, Trash2, X, Download, Tag, Loader2, AlertCircle } from 'lucide-react'
+import * as XLSX from 'xlsx'
+import { Plus, Pencil, Trash2, X, Download, Tag, Loader2, AlertCircle, RefreshCw } from 'lucide-react'
 import { motion } from 'framer-motion'
 import AdminSidebar from '../../components/admin/AdminSidebar'
 import AdminHeader from '../../components/admin/AdminHeader'
@@ -9,6 +10,8 @@ import { PaginationBar, PerPageSelector } from '../../components/PaginationBar'
 import { categories as initialKategoriData } from '../../data/news'
 import { supabase } from '@/lib/supabase'
 import { useAuth } from '@/context/AuthContext'
+import { logAksi } from '@/lib/logAksi'
+import { createNotifikasi } from '@/lib/createNotifikasi'
 
 const STATUS_DB_TO_UI = { published: 'Terbit', draft: 'Menunggu Verifikasi Admin', archived: 'Diarsipkan' }
 const STATUS_UI_TO_DB = { 'Terbit': 'published', 'Menunggu Verifikasi Admin': 'draft', 'Diarsipkan': 'archived' }
@@ -486,6 +489,20 @@ function BeritaModal({ berita, kategoris, canPublish, onClose, onSave }) {
   )
 }
 
+function exportXLSX(rows) {
+  const data = rows.map(b => ({
+    'Judul': b.judul,
+    'Kategori': b.kategori || '-',
+    'Status': b.status,
+    'Penulis': b.penulis || '-',
+    'Tanggal': b.tanggal,
+  }))
+  const ws = XLSX.utils.json_to_sheet(data)
+  const wb = XLSX.utils.book_new()
+  XLSX.utils.book_append_sheet(wb, ws, 'Berita')
+  XLSX.writeFile(wb, `berita-${new Date().toISOString().slice(0, 10)}.xlsx`)
+}
+
 // ── Main Page ──────────────────────────────────────────────────────────────────
 export default function AdminBeritaPage() {
   const { profile, supaUser } = useAuth()
@@ -499,6 +516,7 @@ export default function AdminBeritaPage() {
   const canPublish = ['super_admin', 'admin'].includes(freshRole ?? profile?.role)
   const [berita, setBerita] = useState([])
   const [loading, setLoading] = useState(true)
+  const [refreshing, setRefreshing] = useState(false)
   const [error, setError] = useState(null)
   const [kategoris, setKategoris] = useState(seedKategoris)
   const [search, setSearch] = useState('')
@@ -512,8 +530,8 @@ export default function AdminBeritaPage() {
   const [page, setPage] = useState(1)
   const [perPage, setPerPage] = useState(10)
 
-  const loadData = useCallback(async () => {
-    setLoading(true)
+  const loadData = useCallback(async ({ silent = false } = {}) => {
+    if (!silent) setLoading(true)
     setError(null)
     try {
       const { data, error: err } = await supabase
@@ -542,11 +560,17 @@ export default function AdminBeritaPage() {
     } catch (e) {
       setError(e.message ?? 'Gagal memuat data berita')
     } finally {
-      setLoading(false)
+      if (!silent) setLoading(false)
     }
   }, [])
 
   useEffect(() => { loadData() }, [loadData])
+
+  async function refreshData() {
+    setRefreshing(true)
+    await loadData({ silent: true })
+    setRefreshing(false)
+  }
 
   const filtered = berita.filter((b) => {
     const q = search.toLowerCase()
@@ -591,9 +615,30 @@ export default function AdminBeritaPage() {
           payload.slug = generateSlug(form.judul)
           const { error: err } = await supabase.from('berita').insert(payload)
           if (err) { alert('Gagal menyimpan: ' + err.message); closeConfirm(); return }
+          await logAksi({
+            user_id: supaUser?.id,
+            aksi: 'berita',
+            entitas: 'berita',
+            detail: { aksi: 'tambah', judul: form.judul, keterangan: `Menambah berita: "${form.judul}"` },
+          })
+          if (!canPublish) {
+            await createNotifikasi({
+              judul: 'Berita Baru Menunggu Persetujuan',
+              pesan: `"${form.judul}" perlu ditinjau sebelum diterbitkan.`,
+              tipe: 'berita',
+              target_role: 'admin',
+            })
+          }
         } else {
           const { error: err } = await supabase.from('berita').update(payload).eq('id', modal.id)
           if (err) { alert('Gagal menyimpan: ' + err.message); closeConfirm(); return }
+          await logAksi({
+            user_id: supaUser?.id,
+            aksi: 'berita',
+            entitas: 'berita',
+            entitas_id: modal.id,
+            detail: { aksi: 'ubah', judul: form.judul, keterangan: `Mengubah berita: "${form.judul}"` },
+          })
         }
         setModal(null)
         closeConfirm()
@@ -603,6 +648,7 @@ export default function AdminBeritaPage() {
   }
 
   async function handleDelete(id) {
+    const b = berita.find((x) => x.id === id)
     askConfirm({
       title: 'Hapus Berita',
       message: 'Apakah Anda yakin ingin menghapus berita ini? Tindakan ini tidak dapat dibatalkan.',
@@ -610,7 +656,14 @@ export default function AdminBeritaPage() {
       variant: 'danger',
       onConfirm: async () => {
         const { error: err } = await supabase.from('berita').delete().eq('id', id)
-        if (err) { alert('Gagal menghapus: ' + err.message) }
+        if (err) { alert('Gagal menghapus: ' + err.message); closeConfirm(); return }
+        await logAksi({
+          user_id: supaUser?.id,
+          aksi: 'hapus',
+          entitas: 'berita',
+          entitas_id: id,
+          detail: { judul: b?.judul, keterangan: `Menghapus berita: "${b?.judul ?? ''}"` },
+        })
         closeConfirm()
         loadData()
       },
@@ -647,8 +700,12 @@ export default function AdminBeritaPage() {
               >
                 <Tag className="w-4 h-4" /> Kelola Kategori
               </button>
-              <button className="flex items-center gap-1.5 px-4 py-2 rounded-xl border border-gray-200 bg-white text-sm font-medium text-gray-700 hover:bg-gray-50 transition-colors">
-                <Download className="w-4 h-4" /> Ekspor
+              <button onClick={refreshData} disabled={refreshing} className="flex items-center gap-1.5 px-4 py-2 rounded-xl border border-gray-200 bg-white text-sm font-medium text-gray-700 hover:bg-gray-50 transition-colors disabled:opacity-60">
+                {refreshing ? <Loader2 className="w-4 h-4 animate-spin" /> : <RefreshCw className="w-4 h-4" />}
+                Refresh
+              </button>
+              <button onClick={() => exportXLSX(filtered)} className="flex items-center gap-1.5 px-4 py-2 rounded-xl border border-gray-200 bg-white text-sm font-medium text-gray-700 hover:bg-gray-50 transition-colors">
+                <Download className="w-4 h-4" /> Ekspor Excel
               </button>
               <button
                 onClick={() => setModal('tambah')}
@@ -689,7 +746,7 @@ export default function AdminBeritaPage() {
 
           {/* Table */}
           <div className="bg-white rounded-2xl border border-gray-100 overflow-hidden">
-            {loading ? (
+            {(loading || refreshing) ? (
               <div className="flex justify-center items-center py-16">
                 <Loader2 className="w-7 h-7 animate-spin text-[#1A5C38]" />
               </div>

@@ -204,16 +204,35 @@ export default function AdminPengaturanPage() {
                 <div className="grid grid-cols-2 gap-3">
                   <div>
                     <label className="text-xs font-semibold text-gray-700 mb-1 block">Email Kontak</label>
-                    <input type="email" value={siteConfig.emailKontak} onChange={e => setSiteConfig(s => ({ ...s, emailKontak: e.target.value }))} className="w-full px-3 py-2 rounded-xl border border-gray-200 text-sm outline-none focus:border-green-400" />
+                    <input type="email" value={siteConfig.emailKontak ?? ''} onChange={e => setSiteConfig(s => ({ ...s, emailKontak: e.target.value }))} className="w-full px-3 py-2 rounded-xl border border-gray-200 text-sm outline-none focus:border-green-400" />
                   </div>
                   <div>
                     <label className="text-xs font-semibold text-gray-700 mb-1 block">No. Telepon</label>
-                    <input value={siteConfig.telepon} onChange={e => setSiteConfig(s => ({ ...s, telepon: e.target.value }))} className="w-full px-3 py-2 rounded-xl border border-gray-200 text-sm outline-none focus:border-green-400" />
+                    <input value={siteConfig.telepon ?? ''} onChange={e => setSiteConfig(s => ({ ...s, telepon: e.target.value }))} className="w-full px-3 py-2 rounded-xl border border-gray-200 text-sm outline-none focus:border-green-400" />
                   </div>
                 </div>
                 <div>
+                  <label className="text-xs font-semibold text-gray-700 mb-1 block">No. WhatsApp</label>
+                  <input value={siteConfig.whatsapp ?? ''} onChange={e => setSiteConfig(s => ({ ...s, whatsapp: e.target.value }))} placeholder="+62 812-3456-7890" className="w-full px-3 py-2 rounded-xl border border-gray-200 text-sm outline-none focus:border-green-400" />
+                </div>
+                <div>
                   <label className="text-xs font-semibold text-gray-700 mb-1 block">Alamat</label>
-                  <input value={siteConfig.alamat} onChange={e => setSiteConfig(s => ({ ...s, alamat: e.target.value }))} className="w-full px-3 py-2 rounded-xl border border-gray-200 text-sm outline-none focus:border-green-400" />
+                  <input value={siteConfig.alamat ?? ''} onChange={e => setSiteConfig(s => ({ ...s, alamat: e.target.value }))} className="w-full px-3 py-2 rounded-xl border border-gray-200 text-sm outline-none focus:border-green-400" />
+                </div>
+                <div>
+                  <label className="text-xs font-semibold text-gray-700 mb-1 block">URL Google Maps Embed</label>
+                  <input
+                    value={siteConfig.mapsUrl ?? ''}
+                    onChange={e => setSiteConfig(s => ({ ...s, mapsUrl: e.target.value }))}
+                    placeholder="https://maps.google.com/maps?q=...&output=embed"
+                    className="w-full px-3 py-2 rounded-xl border border-gray-200 text-sm outline-none focus:border-green-400"
+                  />
+                  <p className="text-[11px] text-gray-400 mt-1">Buka Google Maps → Bagikan → Sematkan peta → salin hanya bagian URL dari src="..."</p>
+                  {siteConfig.mapsUrl && (
+                    <div className="mt-2 rounded-xl overflow-hidden border border-gray-200" style={{ height: '160px' }}>
+                      <iframe src={siteConfig.mapsUrl} title="Preview Maps" className="w-full h-full border-0" loading="lazy" />
+                    </div>
+                  )}
                 </div>
               </div>
 

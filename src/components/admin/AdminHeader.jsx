@@ -186,6 +186,21 @@ export default function AdminHeader({ searchValue = '', onSearchChange, searchPl
   }, [])
 
   useEffect(() => {
+    const channel = supabase
+      .channel('notifikasi-bell')
+      .on('postgres_changes', { event: 'INSERT', schema: 'public', table: 'notifikasi' }, (payload) => {
+        const row = payload.new
+        setNotif((prev) => [{
+          id: row.id, judul: row.judul, pesan: row.pesan ?? '',
+          tipe: row.tipe ?? 'sistem', dibaca: false,
+          waktu: formatWaktu(row.created_at),
+        }, ...prev].slice(0, 20))
+      })
+      .subscribe()
+    return () => { supabase.removeChannel(channel) }
+  }, [])
+
+  useEffect(() => {
     function handler(e) {
       if (bellRef.current && !bellRef.current.contains(e.target)) setShowBell(false)
       if (profileRef.current && !profileRef.current.contains(e.target)) setShowProfile(false)

@@ -1,5 +1,5 @@
 ﻿import { useState, useEffect, useCallback } from 'react'
-import { Plus, Trash2, Edit2, Briefcase, X, Check, MapPin, Clock, ChevronDown, ChevronUp, Layers, Loader2, AlertCircle } from 'lucide-react'
+import { Plus, Trash2, Edit2, Briefcase, X, Check, MapPin, Clock, ChevronDown, ChevronUp, Layers, Loader2, AlertCircle, RefreshCw } from 'lucide-react'
 import { motion } from 'framer-motion'
 import AdminSidebar from '../../components/admin/AdminSidebar'
 import AdminHeader from '../../components/admin/AdminHeader'
@@ -250,24 +250,31 @@ export default function AdminKarirPage() {
   const [bidangModal, setBidangModal] = useState(false)
   const [confirm, setConfirm] = useState({ open: false })
   const [loading, setLoading] = useState(true)
+  const [refreshing, setRefreshing] = useState(false)
   const [error, setError] = useState(null)
 
   function askConfirm(opts) { setConfirm({ open: true, ...opts }) }
   function closeConfirm() { setConfirm({ open: false }) }
 
-  const loadData = useCallback(async () => {
-    setLoading(true)
+  const loadData = useCallback(async ({ silent = false } = {}) => {
+    if (!silent) setLoading(true)
     setError(null)
     const { data, error: err } = await supabase
       .from('lowongan')
       .select('id, judul, perusahaan, lokasi, tipe, deskripsi, persyaratan, gaji_min, gaji_max, deadline, is_aktif, created_at')
       .order('created_at', { ascending: false })
-    if (err) { setError(err.message); setLoading(false); return }
+    if (err) { setError(err.message); if (!silent) setLoading(false); return }
     setLowongan((data ?? []).map(mapLowongan))
-    setLoading(false)
+    if (!silent) setLoading(false)
   }, [])
 
   useEffect(() => { loadData() }, [loadData])
+
+  async function refreshData() {
+    setRefreshing(true)
+    await loadData({ silent: true })
+    setRefreshing(false)
+  }
 
   const filtered = lowongan.filter(l => {
     const matchSearch = l.judul.toLowerCase().includes(search.toLowerCase()) || l.instansi.toLowerCase().includes(search.toLowerCase())
@@ -371,6 +378,10 @@ export default function AdminKarirPage() {
               <button onClick={() => setBidangModal(true)} className="flex items-center gap-1.5 px-4 py-2 rounded-xl text-sm font-semibold border border-gray-200 bg-white text-gray-700 hover:bg-gray-50 transition-colors">
                 <Layers className="w-4 h-4" /> Kelola Bidang
               </button>
+              <button onClick={refreshData} disabled={refreshing} className="flex items-center gap-1.5 px-4 py-2 rounded-xl border border-gray-200 bg-white text-sm font-medium text-gray-700 hover:bg-gray-50 transition-colors disabled:opacity-60">
+                {refreshing ? <Loader2 className="w-4 h-4 animate-spin" /> : <RefreshCw className="w-4 h-4" />}
+                Refresh
+              </button>
               <button onClick={() => setModal({})} className="flex items-center gap-1.5 px-4 py-2 rounded-xl text-sm font-bold text-white hover:opacity-90 transition-opacity" style={{ backgroundColor: '#1A5C38' }}>
                 <Plus className="w-4 h-4" /> Buat Lowongan
               </button>
@@ -416,7 +427,7 @@ export default function AdminKarirPage() {
           )}
 
           {/* List */}
-          {loading ? (
+          {(loading || refreshing) ? (
             <div className="flex items-center justify-center py-16"><Loader2 className="w-6 h-6 animate-spin text-gray-400" /></div>
           ) : filtered.length === 0 ? (
             <div className="bg-white rounded-2xl border border-gray-100 p-12 text-center">

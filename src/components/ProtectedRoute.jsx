@@ -19,15 +19,17 @@ const Spinner = () => (
 )
 
 export default function ProtectedRoute({ children }) {
-  const { user, profile, loading } = useAuth()
+  const { user, profile, loading, accountDeleted } = useAuth()
+
+  // Akun dihapus admin — redirect ke halaman khusus (cek duluan, sebelum spinner)
+  if (accountDeleted) return <Navigate to="/akun-dihapus" replace />
 
   // Tunggu auth selesai dimuat
   if (loading) return <Spinner />
 
   if (!user) return <Navigate to="/masuk" replace />
 
-  // Profile belum tersedia (trigger Supabase belum selesai / fetch belum selesai)
-  // Jangan redirect dulu — tunggu sampai profile ada
+  // Profile belum tersedia — tunggu sebentar
   if (!profile) return <Spinner />
 
   if (profile.is_active === false) {

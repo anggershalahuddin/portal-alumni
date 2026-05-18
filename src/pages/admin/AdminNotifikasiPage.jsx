@@ -1,5 +1,5 @@
 import { useState, useEffect, useCallback } from 'react'
-import { Bell, Check, CheckCheck, Trash2, Shield, Newspaper, CalendarDays, Users, AlertCircle, Loader2 } from 'lucide-react'
+import { Bell, Check, CheckCheck, Trash2, Shield, Newspaper, CalendarDays, Users, AlertCircle, Loader2, RefreshCw } from 'lucide-react'
 import { motion } from 'framer-motion'
 import AdminSidebar from '../../components/admin/AdminSidebar'
 import AdminHeader from '../../components/admin/AdminHeader'
@@ -41,19 +41,26 @@ export default function AdminNotifikasiPage() {
   const [filterTipe, setFilterTipe] = useState('semua')
   const [confirm, setConfirm] = useState({ open: false })
   const [loading, setLoading] = useState(true)
+  const [refreshing, setRefreshing] = useState(false)
 
-  const loadData = useCallback(async () => {
-    setLoading(true)
+  const loadData = useCallback(async ({ silent = false } = {}) => {
+    if (!silent) setLoading(true)
     const { data } = await supabase
       .from('notifikasi')
       .select('id, judul, pesan, tipe, is_dibaca, created_at')
       .order('created_at', { ascending: false })
       .limit(100)
     setNotif((data ?? []).map(mapNotif))
-    setLoading(false)
+    if (!silent) setLoading(false)
   }, [])
 
   useEffect(() => { loadData() }, [loadData])
+
+  async function refreshData() {
+    setRefreshing(true)
+    await loadData({ silent: true })
+    setRefreshing(false)
+  }
 
   function askConfirm(opts) { setConfirm({ open: true, ...opts }) }
   function closeConfirm() { setConfirm({ open: false }) }
@@ -107,11 +114,17 @@ export default function AdminNotifikasiPage() {
                 <span className="px-2.5 py-1 rounded-full text-xs font-bold text-white" style={{ backgroundColor: '#1A5C38' }}>{unread}</span>
               )}
             </div>
-            {unread > 0 && (
-              <button onClick={markAllRead} className="flex items-center gap-1.5 px-4 py-2 rounded-xl text-sm font-semibold border border-gray-200 text-gray-700 hover:bg-gray-50 transition-colors">
-                <CheckCheck className="w-4 h-4" /> Tandai Semua Dibaca
+            <div className="flex items-center gap-2">
+              <button onClick={refreshData} disabled={refreshing} className="flex items-center gap-1.5 px-4 py-2 rounded-xl border border-gray-200 bg-white text-sm font-medium text-gray-700 hover:bg-gray-50 transition-colors disabled:opacity-60">
+                {refreshing ? <Loader2 className="w-4 h-4 animate-spin" /> : <RefreshCw className="w-4 h-4" />}
+                Refresh
               </button>
-            )}
+              {unread > 0 && (
+                <button onClick={markAllRead} className="flex items-center gap-1.5 px-4 py-2 rounded-xl text-sm font-semibold border border-gray-200 text-gray-700 hover:bg-gray-50 transition-colors">
+                  <CheckCheck className="w-4 h-4" /> Tandai Semua Dibaca
+                </button>
+              )}
+            </div>
           </div>
 
           {/* Filter tabs — status */}
@@ -156,7 +169,7 @@ export default function AdminNotifikasiPage() {
 
           {/* List */}
           <div className="space-y-2">
-            {loading ? (
+            {(loading || refreshing) ? (
               <div className="flex items-center justify-center py-16"><Loader2 className="w-6 h-6 animate-spin text-gray-400" /></div>
             ) : filtered.length === 0 ? (
               <div className="bg-white rounded-2xl border border-gray-100 p-12 text-center">

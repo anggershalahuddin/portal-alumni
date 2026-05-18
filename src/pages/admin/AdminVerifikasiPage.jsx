@@ -1,16 +1,20 @@
 import { useState, useEffect, useCallback } from 'react'
+import * as XLSX from 'xlsx'
 import { Link } from 'react-router-dom'
 import {
   CheckCircle, XCircle,
   Users, Download, ChevronDown,
   ChevronLeft, ChevronRight, FileText, X, Clock,
-  AlertCircle, Filter, Trash2, ZoomIn,
+  AlertCircle, Filter, Trash2, ZoomIn, RefreshCw, Loader2,
 } from 'lucide-react'
 import { motion } from 'framer-motion'
 import AdminSidebar from '../../components/admin/AdminSidebar'
 import AdminHeader from '../../components/admin/AdminHeader'
 import ConfirmDialog from '../../components/admin/ConfirmDialog'
 import { supabase } from '@/lib/supabase'
+import { useAuth } from '@/context/AuthContext'
+import { logAksi } from '@/lib/logAksi'
+import { createNotifikasi } from '@/lib/createNotifikasi'
 
 /* ─── Helpers ─── */
 const getAngkatanKe = (year) => year - 2005
@@ -356,10 +360,28 @@ function RejectedConfirmModal({ onClose }) {
   )
 }
 
+function exportXLSX(rows) {
+  const data = rows.map(a => ({
+    'Nama': a.name,
+    'Email': a.email,
+    'No. HP': a.phone,
+    'Angkatan': a.angkatan ?? '-',
+    'Status': a.status,
+    'Tanggal Daftar': a.tanggal,
+    'Pesan Penolakan': a.rejectionMsg ?? '',
+  }))
+  const ws = XLSX.utils.json_to_sheet(data)
+  const wb = XLSX.utils.book_new()
+  XLSX.utils.book_append_sheet(wb, ws, 'Verifikasi Alumni')
+  XLSX.writeFile(wb, `verifikasi-alumni-${new Date().toISOString().slice(0, 10)}.xlsx`)
+}
+
 /* ─── Main Page ─── */
 export default function AdminVerifikasiPage() {
+  const { supaUser } = useAuth()
   const [alumni, setAlumni]             = useState([])
   const [pageLoading, setPageLoading]   = useState(true)
+  const [refreshing, setRefreshing]     = useState(false)
   const [loadError, setLoadError]       = useState(null)
   const [search, setSearch]             = useState('')
   const [filterTahun, setFilterTahun]   = useState('')
@@ -379,8 +401,8 @@ export default function AdminVerifikasiPage() {
   function closeConfirm()   { setConfirm({ open: false }) }
 
   /* ── Load data from Supabase ── */
-  const loadData = useCallback(async () => {
-    setPageLoading(true)
+  const loadData = useCallback(async ({ silent = false } = {}) => {
+    if (!silent) setPageLoading(true)
     setLoadError(null)
     try {
       // Stats: semua status untuk hitung verifikasi hari ini + tingkat penolakan
@@ -403,7 +425,7 @@ export default function AdminVerifikasiPage() {
         .order('created_at', { ascending: false })
 
       if (profErr) throw profErr
-      if (!profiles?.length) { setAlumni([]); return }
+      if (!profiles?.length) { setAlumni([]); if (!silent) setPageLoading(false); return }
 
       const ids = profiles.map((p) => p.id)
       const { data: docs, error: docErr } = await supabase
@@ -452,11 +474,17 @@ export default function AdminVerifikasiPage() {
       console.error('Error loading verifikasi data:', err)
       setLoadError(err.message)
     } finally {
-      setPageLoading(false)
+      if (!silent) setPageLoading(false)
     }
   }, [])
 
   useEffect(() => { loadData() }, [loadData])
+
+  async function refreshData() {
+    setRefreshing(true)
+    await loadData({ silent: true })
+    setRefreshing(false)
+  }
 
   /* Filter */
   const filtered = alumni.filter((a) => {
@@ -486,6 +514,22 @@ export default function AdminVerifikasiPage() {
           .update({ status: 'disetujui', role: 'alumni' })
           .eq('id', id)
         if (error) { console.error(error); closeConfirm(); return }
+        const angkatan = a?.angkatan ?? ''
+        await Promise.all([
+          logAksi({
+            user_id: supaUser?.id,
+            aksi: 'verifikasi',
+            entitas: 'profiles',
+            entitas_id: id,
+            detail: { aksi: 'setujui', nama: a?.name, angkatan, keterangan: `Menyetujui verifikasi alumni ${a?.name} (${angkatan})` },
+          }),
+          createNotifikasi({
+            judul: 'Akun Anda Telah Diverifikasi',
+            pesan: `Selamat! Akun alumni Anda telah diverifikasi. Anda kini dapat mengakses semua fitur portal.`,
+            tipe: 'verifikasi',
+            target_user_id: id,
+          }),
+        ])
         setAlumni((prev) => prev.filter((x) => x.id !== id))
         setSelected((prev) => prev.filter((i) => i !== id))
         closeConfirm()
@@ -495,11 +539,27 @@ export default function AdminVerifikasiPage() {
   }
 
   async function handleRejectSubmit(id, alasan) {
+    const a = alumni.find((x) => x.id === id)
     const { error } = await supabase
       .from('profiles')
       .update({ status: 'ditolak', pesan_admin: alasan })
       .eq('id', id)
     if (error) { console.error(error); return }
+    await Promise.all([
+      logAksi({
+        user_id: supaUser?.id,
+        aksi: 'verifikasi',
+        entitas: 'profiles',
+        entitas_id: id,
+        detail: { aksi: 'tolak', nama: a?.name, keterangan: `Menolak verifikasi alumni ${a?.name ?? ''}` },
+      }),
+      createNotifikasi({
+        judul: 'Verifikasi Akun Ditolak',
+        pesan: `Maaf, permohonan verifikasi Anda ditolak. Alasan: ${alasan}`,
+        tipe: 'verifikasi',
+        target_user_id: id,
+      }),
+    ])
     setAlumni((prev) =>
       prev.map((a) => a.id === id ? { ...a, status: 'ditolak', rejectionMsg: alasan } : a)
     )
@@ -520,6 +580,19 @@ export default function AdminVerifikasiPage() {
           .update({ status: 'disetujui', role: 'alumni' })
           .in('id', selected)
         if (error) { console.error(error); closeConfirm(); return }
+        await Promise.all([
+          logAksi({
+            user_id: supaUser?.id,
+            aksi: 'verifikasi',
+            detail: { aksi: 'setujui', jumlah: selected.length, keterangan: `Verifikasi massal ${selected.length} alumni` },
+          }),
+          ...selected.map(uid => createNotifikasi({
+            judul: 'Akun Anda Telah Diverifikasi',
+            pesan: 'Selamat! Akun alumni Anda telah diverifikasi. Anda kini dapat mengakses semua fitur portal.',
+            tipe: 'verifikasi',
+            target_user_id: uid,
+          })),
+        ])
         setAlumni((prev) => prev.filter((a) => !selected.includes(a.id)))
         setSelected([])
         closeConfirm()
@@ -615,9 +688,16 @@ export default function AdminVerifikasiPage() {
                   </span>
                 </div>
                 <div className="flex items-center gap-2">
-                  <button className="flex items-center gap-1.5 px-4 py-2 rounded-xl border border-gray-200 bg-white text-sm font-medium text-gray-700 hover:bg-gray-50 transition-colors">
+                  <button onClick={refreshData} disabled={refreshing} className="flex items-center gap-1.5 px-4 py-2 rounded-xl border border-gray-200 bg-white text-sm font-medium text-gray-700 hover:bg-gray-50 transition-colors disabled:opacity-60">
+                    {refreshing
+                      ? <Loader2 className="w-4 h-4 animate-spin" />
+                      : <RefreshCw className="w-4 h-4" />
+                    }
+                    Refresh
+                  </button>
+                  <button onClick={() => exportXLSX(filtered)} className="flex items-center gap-1.5 px-4 py-2 rounded-xl border border-gray-200 bg-white text-sm font-medium text-gray-700 hover:bg-gray-50 transition-colors">
                     <Download className="w-4 h-4" />
-                    Ekspor CSV
+                    Ekspor Excel
                   </button>
                   <button
                     onClick={selected.length > 0 ? handleBulkVerify : undefined}
@@ -684,6 +764,11 @@ export default function AdminVerifikasiPage() {
                 </p>
               </div>
 
+              {refreshing ? (
+                <div className="flex justify-center items-center py-16">
+                  <Loader2 className="w-7 h-7 animate-spin text-[#1A5C38]" />
+                </div>
+              ) : (
               <div className="overflow-x-auto">
                 <table className="w-full">
                   <thead>
@@ -835,6 +920,7 @@ export default function AdminVerifikasiPage() {
                   </tbody>
                 </table>
               </div>
+              )}
 
               {/* Pagination */}
               <div className="flex items-center justify-between px-5 py-4 border-t border-gray-50">

@@ -14,6 +14,7 @@ import AgendaPage from './pages/AgendaPage'
 import AlumniProfilePage from './pages/AlumniProfilePage'
 import LoginPage from './pages/LoginPage'
 import PesantrenPage from './pages/PesantrenPage'
+import GaleriPage from './pages/GaleriPage'
 import AlumniDashboardPage from './pages/AlumniDashboardPage'
 import DaftarPage from './pages/DaftarPage'
 import KarirPage from './pages/KarirPage'
@@ -23,6 +24,7 @@ import PrivasiPage from './pages/PrivasiPage'
 import SyaratPage from './pages/SyaratPage'
 import VerifikasiStatusPage from './pages/VerifikasiStatusPage'
 import AkunDinonaktifkanPage from './pages/AkunDinonaktifkanPage'
+import AkunDihapusPage from './pages/AkunDihapusPage'
 import AuthCallbackPage from './pages/AuthCallbackPage'
 import PilihDashboardPage from './pages/PilihDashboardPage'
 
@@ -59,6 +61,7 @@ function App() {
           <Route path="/agenda" element={<AgendaPage />} />
           <Route path="/masuk" element={<GuestRoute><LoginPage /></GuestRoute>} />
           <Route path="/pesantren" element={<PesantrenPage />} />
+          <Route path="/galeri" element={<GaleriPage />} />
           <Route path="/dashboard" element={<ProtectedRoute><AlumniDashboardPage /></ProtectedRoute>} />
           <Route path="/daftar" element={<DaftarPage />} />
           <Route path="/karir" element={<KarirPage />} />
@@ -68,6 +71,7 @@ function App() {
           <Route path="/syarat" element={<SyaratPage />} />
           <Route path="/verifikasi-status" element={<VerifikasiStatusPage />} />
           <Route path="/akun-dinonaktifkan" element={<AkunDinonaktifkanPage />} />
+          <Route path="/akun-dihapus" element={<AkunDihapusPage />} />
           <Route path="/auth/callback" element={<AuthCallbackPage />} />
           <Route path="/pilih-dashboard" element={<ProtectedRoute><PilihDashboardPage /></ProtectedRoute>} />
 

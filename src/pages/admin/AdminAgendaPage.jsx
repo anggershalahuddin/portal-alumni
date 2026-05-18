@@ -1,5 +1,6 @@
 ﻿import { useState, useEffect, useCallback } from 'react'
-import { Plus, Pencil, Trash2, X, Download, MapPin, Calendar, Users, Tag, Loader2, AlertCircle } from 'lucide-react'
+import * as XLSX from 'xlsx'
+import { Plus, Pencil, Trash2, X, Download, MapPin, Calendar, Users, Tag, Loader2, AlertCircle, RefreshCw } from 'lucide-react'
 import { motion } from 'framer-motion'
 import AdminSidebar from '../../components/admin/AdminSidebar'
 import AdminHeader from '../../components/admin/AdminHeader'
@@ -7,7 +8,10 @@ import ConfirmDialog from '../../components/admin/ConfirmDialog'
 import ImageUploadBox from '../../components/admin/ImageUploadBox'
 import { PaginationBar, PerPageSelector } from '../../components/PaginationBar'
 import { supabase } from '@/lib/supabase'
+import { useAuth } from '@/context/AuthContext'
 import { agendaKategori, agendaLokasi } from '@/data/agenda'
+import { logAksi } from '@/lib/logAksi'
+import { createNotifikasi } from '@/lib/createNotifikasi'
 
 const STATUS_AGENDA = ['Akan Datang', 'Berlangsung', 'Selesai', 'Dibatalkan']
 
@@ -668,10 +672,26 @@ function AgendaModal({ agenda, tags, onClose, onSave }) {
   )
 }
 
+function exportXLSX(rows) {
+  const data = rows.map(a => ({
+    'Nama Agenda': a.nama,
+    'Lokasi': a.lokasi || '-',
+    'Kategori': a.kategori || '-',
+    'Status': a.status,
+    'Tanggal': a.tanggal,
+  }))
+  const ws = XLSX.utils.json_to_sheet(data)
+  const wb = XLSX.utils.book_new()
+  XLSX.utils.book_append_sheet(wb, ws, 'Agenda')
+  XLSX.writeFile(wb, `agenda-${new Date().toISOString().slice(0, 10)}.xlsx`)
+}
+
 // ── Main Page ──────────────────────────────────────────────────────────────────
 export default function AdminAgendaPage() {
+  const { supaUser } = useAuth()
   const [agenda, setAgenda] = useState([])
   const [loading, setLoading] = useState(true)
+  const [refreshing, setRefreshing] = useState(false)
   const [error, setError] = useState(null)
   const [tags, setTags] = useState(initialTags)
   const [search, setSearch] = useState('')
@@ -684,8 +704,8 @@ export default function AdminAgendaPage() {
   function askConfirm(opts) { setConfirm({ open: true, ...opts }) }
   function closeConfirm() { setConfirm({ open: false }) }
 
-  const loadData = useCallback(async () => {
-    setLoading(true)
+  const loadData = useCallback(async ({ silent = false } = {}) => {
+    if (!silent) setLoading(true)
     setError(null)
     try {
       const { data, error: err } = await supabase
@@ -697,11 +717,17 @@ export default function AdminAgendaPage() {
     } catch (e) {
       setError(e.message ?? 'Gagal memuat data agenda')
     } finally {
-      setLoading(false)
+      if (!silent) setLoading(false)
     }
   }, [])
 
   useEffect(() => { loadData() }, [loadData])
+
+  async function refreshData() {
+    setRefreshing(true)
+    await loadData({ silent: true })
+    setRefreshing(false)
+  }
 
   const filtered = agenda.filter((a) => {
     const q = search.toLowerCase()
@@ -754,9 +780,30 @@ export default function AdminAgendaPage() {
         if (!isEdit) {
           const { error: err } = await supabase.from('agenda').insert(payload)
           if (err) { alert('Gagal menyimpan: ' + err.message); closeConfirm(); return }
+          await Promise.all([
+            logAksi({
+              user_id: supaUser?.id,
+              aksi: 'agenda',
+              entitas: 'agenda',
+              detail: { aksi: 'tambah', nama: form.nama, keterangan: `Menambah agenda: "${form.nama}"` },
+            }),
+            createNotifikasi({
+              judul: 'Agenda Baru Tersedia',
+              pesan: `"${form.nama}" — ${payload.tanggal_mulai ? new Date(payload.tanggal_mulai).toLocaleDateString('id-ID', { day: 'numeric', month: 'short', year: 'numeric' }) : ''}`,
+              tipe: 'agenda',
+              target_role: 'alumni',
+            }),
+          ])
         } else {
           const { error: err } = await supabase.from('agenda').update(payload).eq('id', modal.id)
           if (err) { alert('Gagal menyimpan: ' + err.message); closeConfirm(); return }
+          await logAksi({
+            user_id: supaUser?.id,
+            aksi: 'agenda',
+            entitas: 'agenda',
+            entitas_id: modal.id,
+            detail: { aksi: 'ubah', nama: form.nama, keterangan: `Mengubah agenda: "${form.nama}"` },
+          })
         }
         setModal(null)
         closeConfirm()
@@ -766,6 +813,7 @@ export default function AdminAgendaPage() {
   }
 
   function handleDelete(id) {
+    const a = agenda.find((x) => x.id === id)
     askConfirm({
       title: 'Hapus Agenda',
       message: 'Apakah Anda yakin ingin menghapus agenda ini? Tindakan ini tidak dapat dibatalkan.',
@@ -773,7 +821,14 @@ export default function AdminAgendaPage() {
       variant: 'danger',
       onConfirm: async () => {
         const { error: err } = await supabase.from('agenda').delete().eq('id', id)
-        if (err) { alert('Gagal menghapus: ' + err.message) }
+        if (err) { alert('Gagal menghapus: ' + err.message); closeConfirm(); return }
+        await logAksi({
+          user_id: supaUser?.id,
+          aksi: 'hapus',
+          entitas: 'agenda',
+          entitas_id: id,
+          detail: { nama: a?.nama, keterangan: `Menghapus agenda: "${a?.nama ?? ''}"` },
+        })
         closeConfirm()
         loadData()
       },
@@ -818,8 +873,12 @@ export default function AdminAgendaPage() {
               >
                 <Tag className="w-4 h-4" /> Kelola Tag
               </button>
-              <button className="flex items-center gap-1.5 px-4 py-2 rounded-xl border border-gray-200 bg-white text-sm font-medium text-gray-700 hover:bg-gray-50 transition-colors">
-                <Download className="w-4 h-4" /> Ekspor
+              <button onClick={() => exportXLSX(filtered)} className="flex items-center gap-1.5 px-4 py-2 rounded-xl border border-gray-200 bg-white text-sm font-medium text-gray-700 hover:bg-gray-50 transition-colors">
+                <Download className="w-4 h-4" /> Ekspor Excel
+              </button>
+              <button onClick={refreshData} disabled={refreshing} className="flex items-center gap-1.5 px-4 py-2 rounded-xl border border-gray-200 bg-white text-sm font-medium text-gray-700 hover:bg-gray-50 transition-colors disabled:opacity-60">
+                {refreshing ? <Loader2 className="w-4 h-4 animate-spin" /> : <RefreshCw className="w-4 h-4" />}
+                Refresh
               </button>
               <button
                 onClick={() => setModal('tambah')}
@@ -858,7 +917,7 @@ export default function AdminAgendaPage() {
             </div>
           )}
 
-          {loading ? (
+          {(loading || refreshing) ? (
             <div className="flex justify-center items-center py-16">
               <Loader2 className="w-7 h-7 animate-spin text-[#1A5C38]" />
             </div>

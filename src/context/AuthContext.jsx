@@ -30,6 +30,7 @@ export function AuthProvider({ children }) {
   const [loading, setLoading]           = useState(true)
   const [profileReady, setProfileReady] = useState(false)
   const [idleWarning, setIdleWarning]   = useState(false)
+  const [accountDeleted, setAccountDeleted] = useState(false)
 
   const IDLE_MS   = 10 * 60 * 1000  // 10 menit
   const WARN_MS   =  9 * 60 * 1000  //  9 menit → tampilkan warning
@@ -75,18 +76,44 @@ export function AuthProvider({ children }) {
     }
   }, [supaUser, resetIdleTimers])
 
+  // Polling tiap 30 detik — deteksi penghapusan / penonaktifan akun oleh admin
+  useEffect(() => {
+    if (!supaUser) return
+    const uid = supaUser.id
+    const poll = async () => {
+      const { data, notFound } = await fetchProfile(uid)
+      if (notFound) {
+        fetchedUserIdRef.current = null
+        setAccountDeleted(true)
+        setSupaUser(null)
+        setProfile(null)
+        supabase.auth.signOut()
+        return
+      }
+      if (data) setProfile(data)
+    }
+    const interval = setInterval(poll, 30000)
+    return () => clearInterval(interval)
+  }, [supaUser?.id]) // eslint-disable-line react-hooks/exhaustive-deps
+
   // Ambil profile — retry 2x, timeout 6 detik per percobaan
+  // Returns: { data, notFound }
+  //   notFound=true  → baris profil benar-benar tidak ada di DB (HTTP 200, data=null, error=null)
+  //   notFound=false → jaringan error / timeout, belum tentu profil terhapus
   async function fetchProfile(userId) {
     for (let i = 0; i < 2; i++) {
-      const { data, error } = await Promise.race([
+      const result = await Promise.race([
         supabase.from('profiles').select('*').eq('id', userId).maybeSingle(),
         new Promise(resolve => setTimeout(() => resolve({ data: null, error: { message: 'timeout' } }), 6000)),
       ])
-      if (data) return data
-      console.warn(`[fetchProfile] attempt ${i + 1} failed — userId: ${userId}`, error?.message ?? 'no data')
+      const { data, error } = result
+      if (data) return { data, notFound: false }
+      // maybeSingle: data=null + error=null → row benar-benar tidak ada
+      if (!error) return { data: null, notFound: true }
+      console.warn(`[fetchProfile] attempt ${i + 1} failed — userId: ${userId}`, error?.message)
       if (i < 1) await new Promise(r => setTimeout(r, 300))
     }
-    return null
+    return { data: null, notFound: false }
   }
 
   useEffect(() => {
@@ -116,13 +143,23 @@ export function AuthProvider({ children }) {
             if (fetchedUserIdRef.current !== uid) {
               fetchedUserIdRef.current = uid
               if (event === 'SIGNED_IN') await new Promise(r => setTimeout(r, 800))
-              const p = await fetchProfile(uid)
-              if (active) setProfile(p)
+              const { data: p, notFound } = await fetchProfile(uid)
+              if (!active) return
+              if (notFound) {
+                fetchedUserIdRef.current = null
+                setAccountDeleted(true)
+                setSupaUser(null)
+                setProfile(null)
+                supabase.auth.signOut()
+                return
+              }
+              setProfile(p)
             }
           } else {
             fetchedUserIdRef.current = null
             setSupaUser(null)
             setProfile(null)
+            setAccountDeleted(false)
           }
         } catch (e) {
           console.warn('[AuthContext] auth change error', e)
@@ -233,7 +270,17 @@ export function AuthProvider({ children }) {
       signInWithGoogle,
       idleWarning,
       extendSession: resetIdleTimers,
-      refreshProfile: () => supaUser && fetchProfile(supaUser.id).then(setProfile),
+      accountDeleted,
+      refreshProfile: () => supaUser && fetchProfile(supaUser.id).then(({ data, notFound }) => {
+        if (notFound) {
+          setAccountDeleted(true)
+          setSupaUser(null)
+          setProfile(null)
+          supabase.auth.signOut()
+        } else {
+          setProfile(data)
+        }
+      }),
     }}>
       {children}
     </AuthContext.Provider>

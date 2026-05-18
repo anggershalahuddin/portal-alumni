@@ -46,6 +46,7 @@ export default function NewsListingPage() {
   const [page, setPage] = useState(1)
   const [perPage, setPerPage] = useState(6)
   const [email, setEmail] = useState('')
+  const [filterTag, setFilterTag] = useState('')
   const [sidebarAgenda, setSidebarAgenda] = useState([])
 
   const loadNews = useCallback(async () => {
@@ -72,16 +73,17 @@ export default function NewsListingPage() {
   }, [loadNews])
 
   useEffect(() => {
-    const today = new Date().toISOString().split('T')[0]
+    const today = new Date().toISOString()
     supabase
       .from('agenda')
-      .select('id, judul, tanggal, lokasi')
-      .gte('tanggal', today)
-      .order('tanggal', { ascending: true })
+      .select('id, judul, tanggal_mulai, lokasi')
+      .gte('tanggal_mulai', today)
+      .eq('is_aktif', true)
+      .order('tanggal_mulai', { ascending: true })
       .limit(3)
       .then(({ data }) => {
         setSidebarAgenda((data ?? []).map(a => {
-          const d = new Date(a.tanggal)
+          const d = new Date(a.tanggal_mulai)
           return {
             day: String(d.getDate()).padStart(2, '0'),
             month: BULAN[d.getMonth()],
@@ -99,12 +101,10 @@ export default function NewsListingPage() {
   })()
 
   const filtered = newsList.filter((n) => {
-    const matchCat = activeCategory === 'semua' || n.category === activeCategory
-    const matchSearch =
-      search === '' ||
-      n.title.toLowerCase().includes(search.toLowerCase()) ||
-      n.excerpt.toLowerCase().includes(search.toLowerCase())
-    return matchCat && matchSearch
+    const matchCat    = activeCategory === 'semua' || n.category === activeCategory
+    const matchSearch = search === '' || n.title.toLowerCase().includes(search.toLowerCase()) || n.excerpt.toLowerCase().includes(search.toLowerCase())
+    const matchTag    = !filterTag || (n.tags ?? []).includes(filterTag)
+    return matchCat && matchSearch && matchTag
   })
 
   const totalPages = Math.ceil(filtered.length / perPage)
@@ -114,6 +114,12 @@ export default function NewsListingPage() {
 
   function handleCategoryChange(val) {
     setActiveCategory(val)
+    setFilterTag('')
+    setPage(1)
+  }
+
+  function handleTagClick(tag) {
+    setFilterTag(prev => prev === tag ? '' : tag)
     setPage(1)
   }
 
@@ -199,6 +205,16 @@ export default function NewsListingPage() {
                 <AlertCircle className="w-4 h-4 flex-shrink-0" />
                 <span>{error}</span>
                 <button onClick={loadNews} className="ml-auto font-bold hover:underline">Coba lagi</button>
+              </div>
+            )}
+
+            {filterTag && (
+              <div className="flex items-center gap-2 mb-4">
+                <span className="text-xs text-gray-500">Filter tag:</span>
+                <span className="inline-flex items-center gap-1 px-3 py-1 text-xs font-semibold bg-[#1A5C38] text-white rounded-full">
+                  {filterTag}
+                  <button onClick={() => { setFilterTag(''); setPage(1) }} className="ml-1 opacity-70 hover:opacity-100">×</button>
+                </span>
               </div>
             )}
 
@@ -385,7 +401,12 @@ export default function NewsListingPage() {
                   {popularTags.map((tag) => (
                     <button
                       key={tag}
-                      className="px-3 py-1 text-xs bg-[#F8FAF9] hover:bg-[#E8F5EE] text-gray-600 hover:text-[#1A5C38] rounded-full border border-gray-100 hover:border-[#1A5C38]/20 transition-colors"
+                      onClick={() => handleTagClick(tag)}
+                      className={`px-3 py-1 text-xs rounded-full border transition-colors ${
+                        filterTag === tag
+                          ? 'bg-[#1A5C38] text-white border-[#1A5C38]'
+                          : 'bg-[#F8FAF9] hover:bg-[#E8F5EE] text-gray-600 hover:text-[#1A5C38] border-gray-100 hover:border-[#1A5C38]/20'
+                      }`}
                     >
                       {tag}
                     </button>
