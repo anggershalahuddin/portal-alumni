@@ -1,5 +1,6 @@
 ﻿import { useState, useEffect, useCallback } from 'react'
 import { Plus, Pencil, Trash2, X, Check, Eye, EyeOff, Star, Target, GraduationCap, Loader2, MessageSquareQuote } from 'lucide-react'
+import { toast } from '@/lib/toast'
 import { motion } from 'framer-motion'
 import AdminSidebar from '../../components/admin/AdminSidebar'
 import AdminHeader from '../../components/admin/AdminHeader'
@@ -318,11 +319,11 @@ export default function AdminLandingPage() {
         }
         if (isEdit) {
           const { error } = await supabase.from('guru').update(payload).eq('id', form.id)
-          if (error) { alert('Gagal menyimpan: ' + error.message); closeConfirm(); return }
+          if (error) { toast('Gagal menyimpan: ' + error.message); closeConfirm(); return }
           setGuru(prev => prev.map(g => g.id === form.id ? { ...form } : g))
         } else {
           const { data, error } = await supabase.from('guru').insert(payload).select().single()
-          if (error) { alert('Gagal menyimpan: ' + error.message); closeConfirm(); return }
+          if (error) { toast('Gagal menyimpan: ' + error.message); closeConfirm(); return }
           if (data) setGuru(prev => [...prev, mapGuru(data)])
         }
         setGuruModal(null)
@@ -365,11 +366,11 @@ export default function AdminLandingPage() {
         }
         if (isEdit) {
           const { error } = await supabase.from('milestone').update(payload).eq('id', form.id)
-          if (error) { alert('Gagal menyimpan: ' + error.message); closeConfirm(); return }
+          if (error) { toast('Gagal menyimpan: ' + error.message); closeConfirm(); return }
           setMilestones(prev => prev.map(m => m.id === form.id ? { ...form } : m))
         } else {
           const { data, error } = await supabase.from('milestone').insert(payload).select().single()
-          if (error) { alert('Gagal menyimpan: ' + error.message); closeConfirm(); return }
+          if (error) { toast('Gagal menyimpan: ' + error.message); closeConfirm(); return }
           if (data) setMilestones(prev => [...prev, mapMilestone(data)])
         }
         setMilestoneModal(null)
@@ -408,11 +409,11 @@ export default function AdminLandingPage() {
         }
         if (isEdit) {
           const { error } = await supabase.from('testimoni').update(payload).eq('id', form.id)
-          if (error) { alert('Gagal menyimpan: ' + error.message); closeConfirm(); return }
+          if (error) { toast('Gagal menyimpan: ' + error.message); closeConfirm(); return }
           setTestimoni(prev => prev.map(t => t.id === form.id ? { ...form, ...payload } : t))
         } else {
           const { data, error } = await supabase.from('testimoni').insert(payload).select().single()
-          if (error) { alert('Gagal menyimpan: ' + error.message); closeConfirm(); return }
+          if (error) { toast('Gagal menyimpan: ' + error.message); closeConfirm(); return }
           if (data) setTestimoni(prev => [...prev, data])
         }
         setTestimoniModal(null)

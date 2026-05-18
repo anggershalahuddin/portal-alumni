@@ -43,6 +43,7 @@ import AdminNotifikasiPage from './pages/admin/AdminNotifikasiPage'
 import AdminLogPage from './pages/admin/AdminLogPage'
 import AdminLandingPage from './pages/admin/AdminLandingPage'
 import IdleWarningModal from './components/IdleWarningModal'
+import Toast from './components/Toast'
 
 function App() {
   return (
@@ -51,6 +52,7 @@ function App() {
       <BrowserRouter>
         <ScrollToTop />
         <IdleWarningModal />
+        <Toast />
         <Routes>
           {/* ── Public routes ── */}
           <Route path="/" element={<LandingPage />} />

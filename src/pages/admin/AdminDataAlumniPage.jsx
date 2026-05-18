@@ -461,10 +461,10 @@ export default function AdminDataAlumniPage() {
     if (!silent) setPageLoading(true)
     setLoadError(null)
     try {
-      // Semua profiles yang punya alumni_profiles + status disetujui (inkl. super_admin/admin)
+      // Semua profiles dengan status disetujui — termasuk yang belum punya alumni_profiles
       const { data: profiles, error: profErr } = await supabase
         .from('profiles')
-        .select('id, nama_lengkap, email, no_hp, angkatan, bidang, domisili, status, role, foto_url, alumni_profiles!inner(user_id)')
+        .select('id, nama_lengkap, email, no_hp, angkatan, bidang, domisili, status, role, foto_url')
         .eq('status', 'disetujui')
         .order('created_at', { ascending: false })
 

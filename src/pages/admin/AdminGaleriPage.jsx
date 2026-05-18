@@ -1,5 +1,6 @@
 ﻿import { useState, useEffect, useCallback } from 'react'
 import { Plus, Trash2, Edit2, Image, X, Check, Eye, Tag, Layers, Loader2, AlertCircle, RefreshCw } from 'lucide-react'
+import { toast } from '@/lib/toast'
 import { motion } from 'framer-motion'
 import AdminSidebar from '../../components/admin/AdminSidebar'
 import AdminHeader from '../../components/admin/AdminHeader'
@@ -198,7 +199,7 @@ export default function AdminGaleriPage() {
   function handleSave(form) {
     const isEdit = !!form.id
     if (!isEdit && galeri.length >= MAX_GALERI) {
-      alert(`Batas maksimal ${MAX_GALERI} foto telah tercapai. Hapus foto yang ada terlebih dahulu.`)
+      toast(`Batas maksimal ${MAX_GALERI} foto telah tercapai. Hapus foto yang ada terlebih dahulu.`, 'warning')
       return
     }
     askConfirm({

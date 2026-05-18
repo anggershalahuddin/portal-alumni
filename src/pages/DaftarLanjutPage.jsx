@@ -7,6 +7,7 @@ import heroImg from '../assets/hero.jpg'
 import logoUrl from '@/assets/Logo DM Fix.jpg'
 import { useAuth } from '@/context/AuthContext'
 import { supabase } from '@/lib/supabase'
+import { toast } from '@/lib/toast'
 
 const DOMISILI_GROUPS = [
   { label: 'DKI Jakarta', cities: ['Jakarta Pusat', 'Jakarta Barat', 'Jakarta Selatan', 'Jakarta Timur', 'Jakarta Utara'] },
@@ -111,7 +112,7 @@ function DocSlot({ file, onSelect, onRemove }) {
         onChange={(e) => {
           const f = e.target.files?.[0]
           if (!f) return
-          if (f.size > 2 * 1024 * 1024) { alert('Ukuran file melebihi batas 2 MB.') }
+          if (f.size > 2 * 1024 * 1024) { toast('Ukuran file melebihi batas 2 MB.', 'warning'); return }
           else onSelect(f)
           e.target.value = ''
         }}

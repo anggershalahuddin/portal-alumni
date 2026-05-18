@@ -1,6 +1,7 @@
 ﻿import { useState, useEffect, useCallback } from 'react'
 import * as XLSX from 'xlsx'
 import { Plus, Pencil, Trash2, X, Download, MapPin, Calendar, Users, Tag, Loader2, AlertCircle, RefreshCw } from 'lucide-react'
+import { toast } from '@/lib/toast'
 import { motion } from 'framer-motion'
 import AdminSidebar from '../../components/admin/AdminSidebar'
 import AdminHeader from '../../components/admin/AdminHeader'
@@ -779,7 +780,7 @@ export default function AdminAgendaPage() {
         }
         if (!isEdit) {
           const { error: err } = await supabase.from('agenda').insert(payload)
-          if (err) { alert('Gagal menyimpan: ' + err.message); closeConfirm(); return }
+          if (err) { toast('Gagal menyimpan: ' + err.message); closeConfirm(); return }
           await Promise.all([
             logAksi({
               user_id: supaUser?.id,
@@ -796,7 +797,7 @@ export default function AdminAgendaPage() {
           ])
         } else {
           const { error: err } = await supabase.from('agenda').update(payload).eq('id', modal.id)
-          if (err) { alert('Gagal menyimpan: ' + err.message); closeConfirm(); return }
+          if (err) { toast('Gagal menyimpan: ' + err.message); closeConfirm(); return }
           await logAksi({
             user_id: supaUser?.id,
             aksi: 'agenda',
@@ -821,7 +822,7 @@ export default function AdminAgendaPage() {
       variant: 'danger',
       onConfirm: async () => {
         const { error: err } = await supabase.from('agenda').delete().eq('id', id)
-        if (err) { alert('Gagal menghapus: ' + err.message); closeConfirm(); return }
+        if (err) { toast('Gagal menghapus: ' + err.message); closeConfirm(); return }
         await logAksi({
           user_id: supaUser?.id,
           aksi: 'hapus',

@@ -1,6 +1,7 @@
 ﻿import { useState, useEffect, useCallback } from 'react'
 import * as XLSX from 'xlsx'
 import { Plus, Pencil, Trash2, X, Download, Tag, Loader2, AlertCircle, RefreshCw } from 'lucide-react'
+import { toast } from '@/lib/toast'
 import { motion } from 'framer-motion'
 import AdminSidebar from '../../components/admin/AdminSidebar'
 import AdminHeader from '../../components/admin/AdminHeader'
@@ -614,7 +615,7 @@ export default function AdminBeritaPage() {
         if (!isEdit) {
           payload.slug = generateSlug(form.judul)
           const { error: err } = await supabase.from('berita').insert(payload)
-          if (err) { alert('Gagal menyimpan: ' + err.message); closeConfirm(); return }
+          if (err) { toast('Gagal menyimpan: ' + err.message); closeConfirm(); return }
           await logAksi({
             user_id: supaUser?.id,
             aksi: 'berita',
@@ -631,7 +632,7 @@ export default function AdminBeritaPage() {
           }
         } else {
           const { error: err } = await supabase.from('berita').update(payload).eq('id', modal.id)
-          if (err) { alert('Gagal menyimpan: ' + err.message); closeConfirm(); return }
+          if (err) { toast('Gagal menyimpan: ' + err.message); closeConfirm(); return }
           await logAksi({
             user_id: supaUser?.id,
             aksi: 'berita',
@@ -656,7 +657,7 @@ export default function AdminBeritaPage() {
       variant: 'danger',
       onConfirm: async () => {
         const { error: err } = await supabase.from('berita').delete().eq('id', id)
-        if (err) { alert('Gagal menghapus: ' + err.message); closeConfirm(); return }
+        if (err) { toast('Gagal menghapus: ' + err.message); closeConfirm(); return }
         await logAksi({
           user_id: supaUser?.id,
           aksi: 'hapus',

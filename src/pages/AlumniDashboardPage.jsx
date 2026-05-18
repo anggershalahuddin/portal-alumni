@@ -3,6 +3,7 @@ import { Link, useNavigate } from 'react-router-dom'
 import { motion, AnimatePresence } from 'framer-motion'
 import Cropper from 'react-easy-crop'
 import logoUrl from '@/assets/Logo DM Fix.jpg'
+import heroImg from '@/assets/hero.jpg'
 import {
   Bell, GraduationCap, Briefcase, Plus, Pencil, Trash2,
   BookOpen, Award, MapPin, Calendar, UserPlus, X, Download,
@@ -14,6 +15,7 @@ import {
 import { kategoriStyle } from '../data/agenda'
 import { useAuth } from '@/context/AuthContext'
 import { supabase } from '@/lib/supabase'
+import { toast } from '@/lib/toast'
 import ConfirmDialog from '../components/admin/ConfirmDialog'
 
 function createImage(url) {
@@ -198,7 +200,7 @@ function EditProfilModal({ profil, onSave, onClose }) {
   function handleFotoChange(e) {
     const f = e.target.files?.[0]
     if (!f) return
-    if (f.size > 5 * 1024 * 1024) { alert('Ukuran foto maks. 5MB'); return }
+    if (f.size > 5 * 1024 * 1024) { toast('Ukuran foto maks. 5MB', 'warning'); return }
     setCropSrc(URL.createObjectURL(f))
     setCrop({ x: 0, y: 0 })
     setZoom(1)
@@ -835,6 +837,20 @@ function KartuAlumniModal({ user, profil, pekerjaan = [], onClose }) {
   useScrollLock()
   const cardRef = useRef(null)
   const [downloading, setDownloading] = useState(false)
+  const [heroBase64, setHeroBase64] = useState(null)
+
+  useEffect(() => {
+    fetch(heroImg, { mode: 'cors', cache: 'force-cache' })
+      .then(r => r.blob())
+      .then(blob => new Promise((res, rej) => {
+        const fr = new FileReader()
+        fr.onload = () => res(fr.result)
+        fr.onerror = rej
+        fr.readAsDataURL(blob)
+      }))
+      .then(setHeroBase64)
+      .catch(() => {})
+  }, [])
 
   const angkatanLabel = user.angkatan
     ? `Angkatan ${user.angkatanKe ?? user.angkatan} · Lulusan ${user.tahunLulus ?? user.angkatan}`
@@ -884,15 +900,31 @@ function KartuAlumniModal({ user, profil, pekerjaan = [], onClose }) {
 
       const canvas = await html2canvas(clone, {
         scale: 4,
+        width: 360,
+        height: 227,
         useCORS: true,
         allowTaint: true,
         logging: false,
         backgroundColor: '#0A2415',
         imageTimeout: 12000,
-        onclone: (clonedDoc) => {
-          // Hapus semua stylesheet — Tailwind v4 pakai oklch() yang tidak didukung html2canvas
-          // Kartu menggunakan inline hex styles jadi aman tanpa stylesheet
-          clonedDoc.querySelectorAll('link[rel="stylesheet"], style').forEach(el => el.remove())
+        onclone: async (clonedDoc) => {
+          // Tailwind v4 pakai oklch() yang tidak bisa di-parse html2canvas
+          // Solusi: fetch CSS bundle, ganti oklch → hex, biarkan layout tetap utuh
+          for (const link of Array.from(clonedDoc.querySelectorAll('link[rel="stylesheet"]'))) {
+            try {
+              const res = await fetch(link.href)
+              const css = await res.text()
+              const style = clonedDoc.createElement('style')
+              style.textContent = css.replace(/oklch\([^)]+\)/g, '#888888')
+              link.parentNode?.replaceChild(style, link)
+            } catch {
+              // Jika gagal fetch (dev proxy, dll), hapus saja — card pakai inline styles
+              link.remove()
+            }
+          }
+          clonedDoc.querySelectorAll('style').forEach(el => {
+            el.textContent = el.textContent.replace(/oklch\([^)]+\)/g, '#888888')
+          })
         },
       })
 
@@ -926,7 +958,7 @@ function KartuAlumniModal({ user, profil, pekerjaan = [], onClose }) {
       URL.revokeObjectURL(url)
     } catch (e) {
       console.error('[KartuDownload]', e)
-      alert('Gagal mengunduh kartu: ' + (e?.message ?? 'Coba lagi.'))
+      toast('Gagal mengunduh kartu: ' + (e?.message ?? 'Coba lagi.'))
     } finally {
       if (clone?.parentNode) document.body.removeChild(clone)
       setDownloading(false)
@@ -945,11 +977,21 @@ function KartuAlumniModal({ user, profil, pekerjaan = [], onClose }) {
           ref={cardRef}
           style={{
             width: 360, height: 227,
-            background: 'linear-gradient(135deg, #0A2415 0%, #1A5C38 55%, #226B44 100%)',
+            background: '#0A2415',
             borderRadius: 12, overflow: 'hidden', position: 'relative',
             fontFamily: 'Inter, sans-serif', boxShadow: '0 20px 60px rgba(0,0,0,0.4)',
           }}
         >
+          {/* Background image layer */}
+          {heroBase64 && (
+            <div style={{ position: 'absolute', inset: 0, backgroundImage: `url(${heroBase64})`, backgroundSize: 'cover', backgroundPosition: 'center top', opacity: 0.55 }} />
+          )}
+          {/* Dark gradient overlay — keeps text readable while letting image show through */}
+          <div style={{ position: 'absolute', inset: 0, background: 'linear-gradient(135deg, rgba(8,28,16,0.78) 0%, rgba(18,72,40,0.72) 55%, rgba(26,92,56,0.68) 100%)' }} />
+
+          {/* All card content sits above the background layers */}
+          <div style={{ position: 'relative', zIndex: 1, height: '100%', display: 'flex', flexDirection: 'column' }}>
+
           {/* Decorative circles */}
           <div style={{ position: 'absolute', top: -40, right: -40, width: 130, height: 130, borderRadius: '50%', border: '1.5px solid rgba(240,165,0,0.18)', pointerEvents: 'none' }} />
           <div style={{ position: 'absolute', top: -18, right: -18, width: 78, height: 78, borderRadius: '50%', border: '1.5px solid rgba(240,165,0,0.12)', pointerEvents: 'none' }} />
@@ -996,9 +1038,9 @@ function KartuAlumniModal({ user, profil, pekerjaan = [], onClose }) {
 
             {/* Info */}
             <div style={{ flex: 1, minWidth: 0 }}>
-              <div style={{ fontSize: 14.5, fontWeight: 900, color: '#fff', marginBottom: 2, letterSpacing: -0.3, whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>{user.name}</div>
+              <div style={{ fontSize: 13.5, fontWeight: 900, color: '#fff', marginBottom: 2, letterSpacing: -0.3, lineHeight: 1.3, display: '-webkit-box', WebkitLineClamp: 2, WebkitBoxOrient: 'vertical', overflow: 'hidden' }}>{user.name}</div>
               {jobLine && (
-                <div style={{ fontSize: 8, color: 'rgba(255,255,255,0.6)', marginBottom: 1, whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>{jobLine}</div>
+                <div style={{ fontSize: 7.5, color: 'rgba(255,255,255,0.6)', marginBottom: 1, lineHeight: 1.35, display: '-webkit-box', WebkitLineClamp: 2, WebkitBoxOrient: 'vertical', overflow: 'hidden' }}>{jobLine}</div>
               )}
               <div style={{ fontSize: 8, color: 'rgba(255,255,255,0.5)', marginBottom: 1 }}>{angkatanLabel}</div>
               {profil.domisili && (
@@ -1026,6 +1068,8 @@ function KartuAlumniModal({ user, profil, pekerjaan = [], onClose }) {
               {profil.domisili || 'Bogor'}, Jawa Barat<br />© 2026 Daarul Mughni
             </div>
           </div>
+
+          </div>{/* end content wrapper */}
         </div>
 
         {/* Actions */}
@@ -1322,7 +1366,7 @@ export default function AlumniDashboardPage() {
         }).eq('user_id', user.id).select('website_url')
         if (apErr) {
           console.error('[update alumni_profiles]', apErr)
-          alert('Gagal menyimpan data profil: ' + apErr.message)
+          toast('Gagal menyimpan data profil: ' + apErr.message)
         } else {
           console.log('[update alumni_profiles] website_url tersimpan:', apData?.[0]?.website_url)
         }
