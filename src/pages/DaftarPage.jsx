@@ -1,4 +1,4 @@
-import { useState, useRef } from 'react'
+import { useState, useRef, useEffect } from 'react'
 import { Link, useNavigate } from 'react-router-dom'
 import {
   Eye, EyeOff, CheckCircle,
@@ -8,8 +8,6 @@ import heroImg from '../assets/hero.jpg'
 import logoUrl from '@/assets/Logo DM Fix.jpg'
 import { useAuth } from '@/context/AuthContext'
 import { supabase } from '@/lib/supabase'
-
-const ANGKATAN_LIST = Array.from({ length: 2026 - 2006 + 1 }, (_, i) => 2006 + i)
 
 const DOMISILI_GROUPS = [
   { label: 'DKI Jakarta', cities: ['Jakarta Pusat', 'Jakarta Barat', 'Jakarta Selatan', 'Jakarta Timur', 'Jakarta Utara'] },
@@ -204,7 +202,26 @@ function DocSlot({ slot, file, onSelect, onRemove }) {
 
 export default function DaftarPage() {
   const navigate = useNavigate()
-  const { signUp } = useAuth()
+  const { signUp, signInWithGoogle, supaUser, loading: authLoading, profileReady, profile, refreshProfile } = useAuth()
+
+  // Google OAuth mode: user already authenticated
+  const isGoogleMode = !!supaUser
+
+  async function handleGoogleDaftar() {
+    await signInWithGoogle({
+      redirectTo: `${window.location.origin}/auth/callback?mode=daftar`,
+    })
+  }
+
+  const [angkatanList, setAngkatanList] = useState([])
+
+  useEffect(() => {
+    supabase
+      .from('angkatan')
+      .select('id, tahun_lulus, nama_angkatan')
+      .order('tahun_lulus', { ascending: true })
+      .then(({ data }) => { if (data) setAngkatanList(data) })
+  }, [])
 
   const [form, setForm] = useState({
     nama: '', email: '', hp: '', angkatan: '',
@@ -219,17 +236,39 @@ export default function DaftarPage() {
   const [loading, setLoading] = useState(false)
   const [error, setError] = useState('')
 
+  // Pre-fill form from Google metadata once session loads
+  useEffect(() => {
+    if (supaUser) {
+      const googleName = supaUser.user_metadata?.full_name ?? supaUser.user_metadata?.name ?? ''
+      setForm(f => ({ ...f, nama: googleName, email: supaUser.email ?? '' }))
+    }
+  }, [supaUser])
+
+  // Redirect authenticated user who has already completed registration
+  // (skip after form submission to avoid overriding the success screen)
+  useEffect(() => {
+    if (submitted) return
+    if (!authLoading && profileReady && supaUser && profile?.no_hp) {
+      const status = profile?.status ?? 'menunggu'
+      if (status === 'disetujui') navigate('/dashboard', { replace: true })
+      else navigate(`/verifikasi-status?status=${status}`, { replace: true })
+    }
+  }, [authLoading, profileReady, supaUser, profile, navigate, submitted])
+
   const set = (key) => (e) => setForm((prev) => ({ ...prev, [key]: e.target.value }))
 
   const passwordOk   = form.password.length >= 8
   const konfirmasiOk = form.password === form.konfirmasi
   const docsOk       = !!docs.bukti
 
-  const isValid =
-    form.nama && form.email && form.hp && form.angkatan &&
-    form.tempatLahir && form.tanggalLahir &&
-    form.domisili && form.bidang && form.alamat &&
-    passwordOk && konfirmasiOk && docsOk
+  const isValid = isGoogleMode
+    ? form.nama && form.hp && form.angkatan &&
+      form.tempatLahir && form.tanggalLahir &&
+      form.domisili && form.bidang && form.alamat && docsOk
+    : form.nama && form.email && form.hp && form.angkatan &&
+      form.tempatLahir && form.tanggalLahir &&
+      form.domisili && form.bidang && form.alamat &&
+      passwordOk && konfirmasiOk && docsOk
 
   async function handleSubmit(e) {
     e.preventDefault()
@@ -237,18 +276,60 @@ export default function DaftarPage() {
     setLoading(true)
     setError('')
 
-    // 1. Daftar akun — trigger handle_new_user() akan buat row di public.profiles
+    if (isGoogleMode) {
+      // Google mode: update existing profile row
+      try {
+        const { error: updateErr } = await supabase.from('profiles').update({
+          nama_lengkap:   form.nama,
+          no_hp:          form.hp,
+          angkatan:       Number(form.angkatan),
+          tempat_lahir:   form.tempatLahir,
+          tanggal_lahir:  form.tanggalLahir,
+          domisili:       form.domisili,
+          bidang:         form.bidang,
+          alamat_lengkap: form.alamat,
+          status:         'menunggu',
+        }).eq('id', supaUser.id)
+
+        if (updateErr) throw updateErr
+
+        if (docs.bukti) {
+          const ext      = docs.bukti.name.split('.').pop().toLowerCase()
+          const filePath = `${supaUser.id}/foto_bukti.${ext}`
+          const { error: uploadErr } = await supabase.storage
+            .from('documents')
+            .upload(filePath, docs.bukti, { contentType: docs.bukti.type, upsert: true })
+          if (!uploadErr) {
+            await supabase.from('dokumen_verifikasi').insert({
+              user_id:    supaUser.id,
+              jenis:      'foto_bukti',
+              file_url:   filePath,
+              auto_hapus: true,
+            })
+          }
+        }
+
+        setLoading(false)
+        setSubmitted(true)
+      } catch (err) {
+        setLoading(false)
+        setError(err.message)
+      }
+      return
+    }
+
+    // Email/password mode: create new account
     const { data, error: signUpErr } = await signUp({
-      email:       form.email,
-      password:    form.password,
-      namaLengkap: form.nama,
-      noHp:        form.hp,
-      angkatan:    form.angkatan,
-      tempatLahir: form.tempatLahir,
+      email:        form.email,
+      password:     form.password,
+      namaLengkap:  form.nama,
+      noHp:         form.hp,
+      angkatan:     form.angkatan,
+      tempatLahir:  form.tempatLahir,
       tanggalLahir: form.tanggalLahir,
-      domisili:    form.domisili,
-      bidang:      form.bidang,
-      alamat:      form.alamat,
+      domisili:     form.domisili,
+      bidang:       form.bidang,
+      alamat:       form.alamat,
     })
 
     if (signUpErr) {
@@ -261,7 +342,6 @@ export default function DaftarPage() {
       return
     }
 
-    // 2. Upload foto bukti ke bucket 'documents' (hanya jika sesi tersedia)
     const userId  = data.user?.id
     const session = data.session
 
@@ -274,7 +354,6 @@ export default function DaftarPage() {
         .upload(filePath, docs.bukti, { contentType: docs.bukti.type, upsert: true })
 
       if (!uploadErr) {
-        // 3. Simpan referensi ke tabel dokumen_verifikasi
         await supabase.from('dokumen_verifikasi').insert({
           user_id:    userId,
           jenis:      'foto_bukti',
@@ -286,6 +365,15 @@ export default function DaftarPage() {
 
     setLoading(false)
     setSubmitted(true)
+  }
+
+  // Show spinner while auth context is loading (prevents flash for OAuth redirect)
+  if (authLoading || !profileReady) {
+    return (
+      <div className="min-h-screen flex items-center justify-center bg-[#F8FAF9]">
+        <div className="w-8 h-8 border-4 border-green-600 border-t-transparent rounded-full animate-spin" />
+      </div>
+    )
   }
 
   // ── Success screen ─────────────────────────────────────────────────────
@@ -300,7 +388,7 @@ export default function DaftarPage() {
           <p className="text-sm text-gray-500 leading-relaxed mb-5">
             Data dan dokumen Anda telah terkirim. Tim admin akan memverifikasi akun dalam{' '}
             <strong>1–3 hari kerja</strong>. Notifikasi dikirim ke{' '}
-            <span className="font-semibold text-[#1A5C38]">{form.email}</span>.
+            <span className="font-semibold text-[#1A5C38]">{isGoogleMode ? supaUser?.email : form.email}</span>.
           </p>
           <div className="bg-amber-50 border border-amber-200 rounded-xl p-4 mb-6 text-left space-y-1">
             <p className="text-xs font-bold text-amber-800">Status: Menunggu Verifikasi</p>
@@ -308,13 +396,26 @@ export default function DaftarPage() {
               Akun Anda akan aktif setelah dokumen diverifikasi oleh admin portal.
             </p>
           </div>
-          <Link
-            to="/masuk"
-            className="inline-block w-full py-3 rounded-xl text-sm font-bold text-white text-center hover:opacity-90 transition-opacity"
-            style={{ backgroundColor: '#1A5C38' }}
-          >
-            Kembali ke Halaman Masuk
-          </Link>
+          {isGoogleMode ? (
+            <button
+              onClick={async () => {
+                await refreshProfile()
+                navigate('/verifikasi-status?status=menunggu', { replace: true })
+              }}
+              className="inline-block w-full py-3 rounded-xl text-sm font-bold text-white text-center hover:opacity-90 transition-opacity"
+              style={{ backgroundColor: '#1A5C38' }}
+            >
+              Lihat Status Pendaftaran
+            </button>
+          ) : (
+            <Link
+              to="/masuk"
+              className="inline-block w-full py-3 rounded-xl text-sm font-bold text-white text-center hover:opacity-90 transition-opacity"
+              style={{ backgroundColor: '#1A5C38' }}
+            >
+              Kembali ke Halaman Masuk
+            </Link>
+          )}
         </div>
       </div>
     )
@@ -392,8 +493,56 @@ export default function DaftarPage() {
             </div>
           </div>
 
-          <h1 className="text-xl font-extrabold text-[#0A2415] mb-0.5">Buat Akun Alumni</h1>
-          <p className="text-sm text-gray-400 mb-5">Lengkapi biodata diri dan unggah foto verifikasi.</p>
+          <h1 className="text-xl font-extrabold text-[#0A2415] mb-0.5">
+            {isGoogleMode ? 'Lengkapi Data Pendaftaran' : 'Buat Akun Alumni'}
+          </h1>
+          <p className="text-sm text-gray-400 mb-4">
+            {isGoogleMode
+              ? 'Isi biodata dan unggah foto verifikasi untuk melanjutkan.'
+              : 'Lengkapi biodata diri dan unggah foto verifikasi.'}
+          </p>
+
+          {isGoogleMode ? (
+            /* Google connected banner */
+            <div className="flex items-center gap-3 px-4 py-3 rounded-xl border border-green-200 bg-green-50 mb-5">
+              <div className="w-8 h-8 rounded-full bg-green-600 flex items-center justify-center flex-shrink-0">
+                <svg viewBox="0 0 24 24" className="w-4 h-4" fill="none">
+                  <path d="M22.56 12.25c0-.78-.07-1.53-.2-2.25H12v4.26h5.92c-.26 1.37-1.04 2.53-2.21 3.31v2.77h3.57c2.08-1.92 3.28-4.74 3.28-8.09z" fill="#fff"/>
+                  <path d="M12 23c2.97 0 5.46-.98 7.28-2.66l-3.57-2.77c-.98.66-2.23 1.06-3.71 1.06-2.86 0-5.29-1.93-6.16-4.53H2.18v2.84C3.99 20.53 7.7 23 12 23z" fill="#fff"/>
+                  <path d="M5.84 14.09c-.22-.66-.35-1.36-.35-2.09s.13-1.43.35-2.09V7.07H2.18C1.43 8.55 1 10.22 1 12s.43 3.45 1.18 4.93l3.66-2.84z" fill="#fff"/>
+                  <path d="M12 5.38c1.62 0 3.06.56 4.21 1.64l3.15-3.15C17.45 2.09 14.97 1 12 1 7.7 1 3.99 3.47 2.18 7.07l3.66 2.84c.87-2.6 3.3-4.53 6.16-4.53z" fill="#fff"/>
+                </svg>
+              </div>
+              <div className="flex-1 min-w-0">
+                <p className="text-xs font-bold text-green-800">Akun Google Terhubung</p>
+                <p className="text-xs text-green-700 truncate">{supaUser?.email}</p>
+              </div>
+              <CheckCircle className="w-4 h-4 text-green-600 flex-shrink-0" />
+            </div>
+          ) : (
+            <>
+              {/* Google sign-up shortcut */}
+              <button
+                type="button"
+                onClick={handleGoogleDaftar}
+                className="w-full flex items-center justify-center gap-3 py-3 rounded-xl font-semibold text-sm border border-gray-200 bg-white text-gray-700 hover:bg-gray-50 transition-colors mb-4"
+              >
+                <svg viewBox="0 0 24 24" className="w-4 h-4 flex-shrink-0" fill="none">
+                  <path d="M22.56 12.25c0-.78-.07-1.53-.2-2.25H12v4.26h5.92c-.26 1.37-1.04 2.53-2.21 3.31v2.77h3.57c2.08-1.92 3.28-4.74 3.28-8.09z" fill="#4285F4"/>
+                  <path d="M12 23c2.97 0 5.46-.98 7.28-2.66l-3.57-2.77c-.98.66-2.23 1.06-3.71 1.06-2.86 0-5.29-1.93-6.16-4.53H2.18v2.84C3.99 20.53 7.7 23 12 23z" fill="#34A853"/>
+                  <path d="M5.84 14.09c-.22-.66-.35-1.36-.35-2.09s.13-1.43.35-2.09V7.07H2.18C1.43 8.55 1 10.22 1 12s.43 3.45 1.18 4.93l3.66-2.84z" fill="#FBBC05"/>
+                  <path d="M12 5.38c1.62 0 3.06.56 4.21 1.64l3.15-3.15C17.45 2.09 14.97 1 12 1 7.7 1 3.99 3.47 2.18 7.07l3.66 2.84c.87-2.6 3.3-4.53 6.16-4.53z" fill="#EA4335"/>
+                </svg>
+                Daftar dengan Google
+              </button>
+
+              <div className="flex items-center gap-3 mb-4">
+                <div className="flex-1 h-px bg-gray-100" />
+                <span className="text-[10px] font-bold text-gray-400 tracking-[0.15em]">ATAU ISI MANUAL</span>
+                <div className="flex-1 h-px bg-gray-100" />
+              </div>
+            </>
+          )}
 
           <form onSubmit={handleSubmit}>
             {/* 2-column grid on desktop */}
@@ -408,9 +557,17 @@ export default function DaftarPage() {
                 </Field>
 
                 <div className="grid grid-cols-2 gap-3">
-                  <Field label="Email" required>
-                    <TextInput value={form.email} onChange={set('email')} placeholder="email@contoh.com" type="email" required />
-                  </Field>
+                  {isGoogleMode ? (
+                    <Field label="Email">
+                      <div className={inputCls + ' bg-gray-50 text-gray-500 truncate'} style={{ borderColor: '#E5E7EB' }}>
+                        {supaUser?.email}
+                      </div>
+                    </Field>
+                  ) : (
+                    <Field label="Email" required>
+                      <TextInput value={form.email} onChange={set('email')} placeholder="email@contoh.com" type="email" required />
+                    </Field>
+                  )}
                   <Field label="No. HP / WhatsApp" required>
                     <TextInput value={form.hp} onChange={set('hp')} placeholder="08xxxxxxxxxx" type="tel" required />
                   </Field>
@@ -438,8 +595,10 @@ export default function DaftarPage() {
                   <Field label="Angkatan" required>
                     <SelectInput value={form.angkatan} onChange={set('angkatan')} required>
                       <option value="">Pilih tahun</option>
-                      {ANGKATAN_LIST.map((y) => (
-                        <option key={y} value={y}>{y} (Ke-{y - 2005})</option>
+                      {angkatanList.map((row) => (
+                        <option key={row.id} value={row.tahun_lulus}>
+                          {row.tahun_lulus} ({row.nama_angkatan || `Ke-${row.tahun_lulus - 2005}`})
+                        </option>
                       ))}
                     </SelectInput>
                   </Field>
@@ -475,51 +634,55 @@ export default function DaftarPage() {
                 </Field>
               </div>
 
-              {/* ── Kolom 2: Kata Sandi + Dokumen ── */}
+              {/* ── Kolom 2: Kata Sandi (hanya email mode) + Dokumen ── */}
               <div className="space-y-3 lg:pl-6">
-                <SectionLabel>Kata Sandi</SectionLabel>
+                {!isGoogleMode && (
+                  <>
+                    <SectionLabel>Kata Sandi</SectionLabel>
 
-                <Field label="Kata Sandi" required>
-                  <div className="relative">
-                    <input
-                      type={showPass ? 'text' : 'password'}
-                      value={form.password}
-                      onChange={set('password')}
-                      placeholder="Min. 8 karakter"
-                      required
-                      className={inputCls + ' pr-11'}
-                      onFocus={(e) => Object.assign(e.target.style, focusStyle)}
-                      onBlur={(e)  => Object.assign(e.target.style, blurStyle)}
-                    />
-                    <button type="button" onClick={() => setShowPass(!showPass)} className="absolute right-3 top-1/2 -translate-y-1/2 text-gray-400 hover:text-gray-600">
-                      {showPass ? <EyeOff className="w-4 h-4" /> : <Eye className="w-4 h-4" />}
-                    </button>
-                  </div>
-                  {form.password && !passwordOk && (
-                    <p className="text-xs text-red-500 mt-1">Minimal 8 karakter</p>
-                  )}
-                </Field>
+                    <Field label="Kata Sandi" required>
+                      <div className="relative">
+                        <input
+                          type={showPass ? 'text' : 'password'}
+                          value={form.password}
+                          onChange={set('password')}
+                          placeholder="Min. 8 karakter"
+                          required
+                          className={inputCls + ' pr-11'}
+                          onFocus={(e) => Object.assign(e.target.style, focusStyle)}
+                          onBlur={(e)  => Object.assign(e.target.style, blurStyle)}
+                        />
+                        <button type="button" onClick={() => setShowPass(!showPass)} className="absolute right-3 top-1/2 -translate-y-1/2 text-gray-400 hover:text-gray-600">
+                          {showPass ? <EyeOff className="w-4 h-4" /> : <Eye className="w-4 h-4" />}
+                        </button>
+                      </div>
+                      {form.password && !passwordOk && (
+                        <p className="text-xs text-red-500 mt-1">Minimal 8 karakter</p>
+                      )}
+                    </Field>
 
-                <Field label="Konfirmasi Kata Sandi" required>
-                  <div className="relative">
-                    <input
-                      type={showKonfirmasi ? 'text' : 'password'}
-                      value={form.konfirmasi}
-                      onChange={set('konfirmasi')}
-                      placeholder="Ulangi kata sandi"
-                      required
-                      className={inputCls + ' pr-11'}
-                      onFocus={(e) => Object.assign(e.target.style, focusStyle)}
-                      onBlur={(e)  => Object.assign(e.target.style, blurStyle)}
-                    />
-                    <button type="button" onClick={() => setShowKonfirmasi(!showKonfirmasi)} className="absolute right-3 top-1/2 -translate-y-1/2 text-gray-400 hover:text-gray-600">
-                      {showKonfirmasi ? <EyeOff className="w-4 h-4" /> : <Eye className="w-4 h-4" />}
-                    </button>
-                  </div>
-                  {form.konfirmasi && !konfirmasiOk && (
-                    <p className="text-xs text-red-500 mt-1">Kata sandi tidak cocok</p>
-                  )}
-                </Field>
+                    <Field label="Konfirmasi Kata Sandi" required>
+                      <div className="relative">
+                        <input
+                          type={showKonfirmasi ? 'text' : 'password'}
+                          value={form.konfirmasi}
+                          onChange={set('konfirmasi')}
+                          placeholder="Ulangi kata sandi"
+                          required
+                          className={inputCls + ' pr-11'}
+                          onFocus={(e) => Object.assign(e.target.style, focusStyle)}
+                          onBlur={(e)  => Object.assign(e.target.style, blurStyle)}
+                        />
+                        <button type="button" onClick={() => setShowKonfirmasi(!showKonfirmasi)} className="absolute right-3 top-1/2 -translate-y-1/2 text-gray-400 hover:text-gray-600">
+                          {showKonfirmasi ? <EyeOff className="w-4 h-4" /> : <Eye className="w-4 h-4" />}
+                        </button>
+                      </div>
+                      {form.konfirmasi && !konfirmasiOk && (
+                        <p className="text-xs text-red-500 mt-1">Kata sandi tidak cocok</p>
+                      )}
+                    </Field>
+                  </>
+                )}
 
                 <SectionLabel>Dokumen Verifikasi</SectionLabel>
 

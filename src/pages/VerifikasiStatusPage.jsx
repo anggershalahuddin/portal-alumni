@@ -1,5 +1,5 @@
-import { useState } from 'react'
-import { Link, useSearchParams, useNavigate } from 'react-router-dom'
+import { useState, useEffect } from 'react'
+import { Link, Navigate, useSearchParams, useNavigate } from 'react-router-dom'
 import { motion, AnimatePresence } from 'framer-motion'
 import logoUrl from '@/assets/Logo DM Fix.jpg'
 import {
@@ -47,25 +47,50 @@ function DocSlot({ label, icon: Icon, file, onPick, onRemove }) {
 export default function VerifikasiStatusPage() {
   const [params] = useSearchParams()
   const navigate = useNavigate()
-  const { signOut } = useAuth()
+  const { user, profile, loading, profileReady, signOut } = useAuth()
+
+  // Auth guards
+  useEffect(() => {
+    if (loading || !profileReady) return
+    // Tidak login → ke halaman masuk (Bug 2: akun dihapus admin)
+    if (!user) { navigate('/masuk', { replace: true }); return }
+    // Registrasi belum selesai → harus isi form daftar dulu
+    if (profile && !profile.no_hp) { navigate('/daftar', { replace: true }); return }
+    // Sudah diverifikasi admin → masuk dashboard (Bug 1)
+    if (profile?.status === 'disetujui') { navigate('/dashboard', { replace: true }); return }
+  }, [loading, profileReady, user, profile, navigate])
+
+  // Semua hooks harus di atas conditional return
+  const [files, setFiles] = useState({ ktp: null, ijazah: null, foto: null, surat: null })
+  const [catatan, setCatatan] = useState('')
+  const [submitting, setSubmitting] = useState(false)
+  const [submitted, setSubmitted] = useState(false)
+
+  const statusParam = params.get('status') === 'ditolak' ? 'ditolak' : 'menunggu'
+  const [demoStatus, setDemoStatus] = useState(statusParam)
 
   async function handleLogout() {
     await signOut()
     window.location.href = '/masuk'
   }
 
+  // Spinner saat auth belum selesai dimuat
+  if (loading || !profileReady) {
+    return (
+      <div className="min-h-screen flex items-center justify-center bg-[#F1F5F9]">
+        <div className="w-8 h-8 border-4 border-green-600 border-t-transparent rounded-full animate-spin" />
+      </div>
+    )
+  }
+
+  // Synchronous guards — cegah flash konten sebelum useEffect redirect
+  if (!user) return <Navigate to="/masuk" replace />
+  if (profile && !profile.no_hp) return <Navigate to="/daftar" replace />
+  if (profile?.status === 'disetujui') return <Navigate to="/dashboard" replace />
+
   // Status bisa 'menunggu' atau 'ditolak' — diset dari URL param saat redirect setelah login
-  const status = params.get('status') === 'ditolak' ? 'ditolak' : 'menunggu'
+  const status = statusParam
   const pesanAdmin = params.get('pesan') || 'Dokumen yang Anda lampirkan tidak dapat dibaca dengan jelas. Mohon unggah ulang dengan kualitas yang lebih baik dan pastikan semua dokumen yang diminta telah dilampirkan.'
-
-  // State untuk form pengajuan ulang (jika ditolak)
-  const [files, setFiles] = useState({ ktp: null, ijazah: null, foto: null, surat: null })
-  const [catatan, setCatatan] = useState('')
-  const [submitting, setSubmitting] = useState(false)
-  const [submitted, setSubmitted] = useState(false)
-
-  // Demo switcher (untuk preview di development)
-  const [demoStatus, setDemoStatus] = useState(status)
 
   const isRejected = demoStatus === 'ditolak'
 

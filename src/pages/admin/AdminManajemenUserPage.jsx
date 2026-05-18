@@ -3,7 +3,7 @@ import {
   CheckCircle, Users, Shield, Search,
   Download, ChevronDown,
   MoreHorizontal, UserPlus, X, Pencil, Trash2,
-  Lock, Key, Eye, EyeOff, AlertCircle,
+  Lock, Key, Eye, EyeOff, AlertCircle, XCircle,
 } from 'lucide-react'
 import { motion } from 'framer-motion'
 import AdminSidebar from '../../components/admin/AdminSidebar'
@@ -76,7 +76,7 @@ function Avatar({ user, size = 9 }) {
   }
   return (
     <div className={`${cls} flex items-center justify-center text-white text-xs font-bold`} style={{ backgroundColor: '#1A5C38' }}>
-      {user.name.charAt(0)}
+      {(user.name !== '-' ? user.name : (user.email || '?')).charAt(0).toUpperCase()}
     </div>
   )
 }
@@ -211,9 +211,6 @@ function EditUserModal({ user, onClose, onSave }) {
                   <span className="font-bold text-[#1A5C38]">Angkatan {angkatanKe}</span>
                 ) : (
                   <span className="text-gray-400">—</span>
-                )}
-                {angkatanInfo && (
-                  <p className="text-[10px] text-gray-400 mt-0.5 truncate">{angkatanInfo.nama}</p>
                 )}
               </div>
             </div>
@@ -477,6 +474,25 @@ export default function AdminManajemenUserPage() {
   function askConfirm(opts) { setConfirm({ open: true, ...opts }) }
   function closeConfirm()   { setConfirm({ open: false }) }
 
+  const [errorInfo, setErrorInfo] = useState({ open: false, title: '', message: '' })
+  function closeError() { setErrorInfo({ open: false, title: '', message: '' }) }
+  function showDeleteError(msg) {
+    const map = {
+      berita_author_id_fkey:   'User ini masih menjadi penulis berita. Hapus atau ubah penulis berita terkait terlebih dahulu.',
+      agenda_organizer_id_fkey:'User ini terdaftar sebagai penyelenggara agenda. Hapus atau ubah penyelenggara agenda terkait terlebih dahulu.',
+      galeri_uploader_id_fkey: 'User ini memiliki foto galeri yang diunggah. Hapus foto galeri terkait terlebih dahulu.',
+      lowongan_poster_id_fkey: 'User ini masih memiliki lowongan yang diposting. Hapus atau ubah lowongan terkait terlebih dahulu.',
+    }
+    const matched = Object.entries(map).find(([key]) => msg?.includes(key))
+    setErrorInfo({
+      open: true,
+      title: 'Tidak Dapat Menghapus User',
+      message: matched
+        ? matched[1]
+        : `User tidak dapat dihapus karena memiliki data terkait di sistem.\n\nDetail teknis: ${msg}`,
+    })
+  }
+
   /* ── Load all profiles from Supabase ── */
   const loadData = useCallback(async () => {
     setPageLoading(true)
@@ -484,7 +500,8 @@ export default function AdminManajemenUserPage() {
     try {
       const { data: profiles, error: profErr } = await supabase
         .from('profiles')
-        .select('id, nama_lengkap, no_hp, angkatan, role, status, domisili, is_active, permissions, updated_at')
+        .select('id, nama_lengkap, email, no_hp, angkatan, role, status, domisili, is_active, permissions, updated_at, foto_url')
+        .eq('status', 'disetujui')
         .order('created_at', { ascending: false })
 
       if (profErr) throw profErr
@@ -503,14 +520,14 @@ export default function AdminManajemenUserPage() {
         const isSA  = p.role === 'super_admin'
         return {
           id:          p.id,
-          name:        p.nama_lengkap || 'User',
-          email:       '',
+          name:        p.nama_lengkap || '-',
+          email:       p.email ?? '',
           phone:       p.no_hp ?? '',
           angkatan:    p.angkatan,
           peran,
           aktif:       isSA ? true : (p.is_active ?? true),
           lastLogin:   formatLastLogin(p.updated_at),
-          avatar:      '',
+          avatar:      p.foto_url ?? '',
           profesi:          apMap[p.id]?.profesi ?? '',
           hasAlumniProfile: !!apMap[p.id],
           kota:        p.domisili ?? '',
@@ -597,8 +614,14 @@ export default function AdminManajemenUserPage() {
       confirmLabel: 'Ya, Hapus',
       variant: 'danger',
       onConfirm: async () => {
-        const { error } = await supabase.from('profiles').delete().eq('id', id)
-        if (error) { console.error(error); closeConfirm(); return }
+        await Promise.all([
+          supabase.from('berita').update({ author_id: null }).eq('author_id', id),
+          supabase.from('agenda').update({ organizer_id: null }).eq('organizer_id', id),
+          supabase.from('galeri').update({ uploader_id: null }).eq('uploader_id', id),
+          supabase.from('lowongan').update({ poster_id: null }).eq('poster_id', id),
+        ])
+        const { error } = await supabase.rpc('delete_auth_user', { user_id: id })
+        if (error) { console.error(error); closeConfirm(); showDeleteError(error.message); return }
         setUsers((prev) => prev.filter((x) => x.id !== id))
         setSelected((prev) => prev.filter((i) => i !== id))
         setOpenMenuId(null)
@@ -722,8 +745,16 @@ export default function AdminManajemenUserPage() {
       confirmLabel: 'Ya, Hapus Semua',
       variant: 'danger',
       onConfirm: async () => {
-        const { error } = await supabase.from('profiles').delete().in('id', deletableIds)
-        if (error) { console.error(error); closeConfirm(); return }
+        for (const uid of deletableIds) {
+          await Promise.all([
+            supabase.from('berita').update({ author_id: null }).eq('author_id', uid),
+            supabase.from('agenda').update({ organizer_id: null }).eq('organizer_id', uid),
+            supabase.from('galeri').update({ uploader_id: null }).eq('uploader_id', uid),
+            supabase.from('lowongan').update({ poster_id: null }).eq('poster_id', uid),
+          ])
+          const { error } = await supabase.rpc('delete_auth_user', { user_id: uid })
+          if (error) { console.error(error); closeConfirm(); showDeleteError(error.message); return }
+        }
         setUsers((prev) => prev.filter((u) => !deletableIds.includes(u.id)))
         setSelected([])
         closeConfirm()
@@ -916,7 +947,7 @@ export default function AdminManajemenUserPage() {
                                 {u.name}
                                 {isSA && <Shield className="w-3 h-3 text-red-400" />}
                               </p>
-                              <p className="text-xs text-gray-400">{u.email}</p>
+                              {u.email && <p className="text-xs text-gray-400">{u.email}</p>}
                               {u.profesi && <p className="text-[10px] text-gray-300">{u.profesi}{u.kota ? ` · ${u.kota}` : ''}</p>}
                             </div>
                           </div>
@@ -1035,6 +1066,33 @@ export default function AdminManajemenUserPage() {
       )}
 
       <ConfirmDialog open={confirm.open} title={confirm.title} message={confirm.message} confirmLabel={confirm.confirmLabel} variant={confirm.variant} onConfirm={confirm.onConfirm} onCancel={closeConfirm} />
+
+      {errorInfo.open && (
+        <div className="fixed inset-0 z-[80] flex items-center justify-center p-4" style={{ backgroundColor: 'rgba(0,0,0,0.5)' }}>
+          <div className="bg-white rounded-2xl shadow-2xl w-full max-w-sm overflow-hidden">
+            <div className="p-6 pb-4">
+              <div className="flex items-start gap-4">
+                <div className="w-11 h-11 rounded-xl flex items-center justify-center flex-shrink-0" style={{ backgroundColor: '#FFF1F2' }}>
+                  <XCircle className="w-5 h-5" style={{ color: '#BE123C' }} />
+                </div>
+                <div className="flex-1 min-w-0">
+                  <h3 className="text-base font-bold text-gray-900 mb-1 leading-snug">{errorInfo.title}</h3>
+                  <p className="text-sm text-gray-500 leading-relaxed whitespace-pre-line">{errorInfo.message}</p>
+                </div>
+              </div>
+            </div>
+            <div className="px-6 pb-6">
+              <button
+                onClick={closeError}
+                className="w-full py-2.5 rounded-xl text-sm font-semibold text-white transition-opacity hover:opacity-90"
+                style={{ backgroundColor: '#BE123C' }}
+              >
+                Tutup
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   )
 }

@@ -7,20 +7,26 @@ export default function AuthCallbackPage() {
   const didNavigate = useRef(false)
 
   useEffect(() => {
-    function goToPilih() {
+    async function handleSession(session) {
       if (didNavigate.current) return
       didNavigate.current = true
-      navigate('/pilih-dashboard', { replace: true })
+
+      // Check if profile registration is complete (no_hp is the key indicator)
+      const { data: prof } = await supabase
+        .from('profiles')
+        .select('no_hp')
+        .eq('id', session.user.id)
+        .maybeSingle()
+
+      navigate(!prof?.no_hp ? '/daftar' : '/pilih-dashboard', { replace: true })
     }
 
-    // Tangkap SIGNED_IN dari OAuth redirect
     const { data: { subscription } } = supabase.auth.onAuthStateChange((event, session) => {
-      if (event === 'SIGNED_IN' && session) goToPilih()
+      if (event === 'SIGNED_IN' && session) handleSession(session)
     })
 
-    // Fallback: kalau session sudah ada (refresh halaman)
     supabase.auth.getSession().then(({ data: { session } }) => {
-      if (session) goToPilih()
+      if (session) handleSession(session)
       else if (!didNavigate.current) {
         setTimeout(() => {
           if (!didNavigate.current) navigate('/masuk', { replace: true })

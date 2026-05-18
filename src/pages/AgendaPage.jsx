@@ -47,7 +47,7 @@ function mapAgenda(row) {
     waktu,
     lokasiSingkat: row.lokasi ?? '—',
     lokasiDetail: row.lokasi ?? '',
-    lokasiKategori: inferLokasiKategori(row.lokasi),
+    lokasiKategori: row.lokasi_kategori || inferLokasiKategori(row.lokasi),
     mapsUrl: row.maps_url ?? '',
     linkRegistrasi: row.link_registrasi ?? '',
     image: row.foto_url || FALLBACK_IMAGE,
@@ -493,7 +493,7 @@ export default function AgendaPage() {
     try {
       const { data } = await supabase
         .from('agenda')
-        .select('id, judul, deskripsi, lokasi, tanggal_mulai, tanggal_selesai, kategori, foto_url, link_registrasi, maps_url, pembicara, status_pendaftaran, htm, has_sertifikat, published_by, image_hero, pamflet_url')
+        .select('id, judul, deskripsi, lokasi, lokasi_kategori, tanggal_mulai, tanggal_selesai, kategori, foto_url, link_registrasi, maps_url, pembicara, status_pendaftaran, htm, has_sertifikat, published_by, image_hero, pamflet_url')
         .eq('is_aktif', true)
         .order('tanggal_mulai', { ascending: true })
       setAgendaList((data ?? []).map(mapAgenda))

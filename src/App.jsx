@@ -22,6 +22,7 @@ import KontakPage from './pages/KontakPage'
 import PrivasiPage from './pages/PrivasiPage'
 import SyaratPage from './pages/SyaratPage'
 import VerifikasiStatusPage from './pages/VerifikasiStatusPage'
+import AkunDinonaktifkanPage from './pages/AkunDinonaktifkanPage'
 import AuthCallbackPage from './pages/AuthCallbackPage'
 import PilihDashboardPage from './pages/PilihDashboardPage'
 
@@ -59,13 +60,14 @@ function App() {
           <Route path="/masuk" element={<GuestRoute><LoginPage /></GuestRoute>} />
           <Route path="/pesantren" element={<PesantrenPage />} />
           <Route path="/dashboard" element={<ProtectedRoute><AlumniDashboardPage /></ProtectedRoute>} />
-          <Route path="/daftar" element={<GuestRoute><DaftarPage /></GuestRoute>} />
+          <Route path="/daftar" element={<DaftarPage />} />
           <Route path="/karir" element={<KarirPage />} />
           <Route path="/faq" element={<FaqPage />} />
           <Route path="/kontak" element={<KontakPage />} />
           <Route path="/privasi" element={<PrivasiPage />} />
           <Route path="/syarat" element={<SyaratPage />} />
           <Route path="/verifikasi-status" element={<VerifikasiStatusPage />} />
+          <Route path="/akun-dinonaktifkan" element={<AkunDinonaktifkanPage />} />
           <Route path="/auth/callback" element={<AuthCallbackPage />} />
           <Route path="/pilih-dashboard" element={<ProtectedRoute><PilihDashboardPage /></ProtectedRoute>} />
 

@@ -366,6 +366,8 @@ export default function AdminVerifikasiPage() {
   const [filterStatus, setFilterStatus] = useState('')
   const [selected, setSelected]         = useState([])
   const [page, setPage]                 = useState(1)
+  const [statVerifiedToday, setStatVerifiedToday] = useState(0)
+  const [statRejectionRate, setStatRejectionRate] = useState('0%')
 
   // Modal states
   const [rejectTarget, setRejectTarget]             = useState(null)
@@ -381,10 +383,23 @@ export default function AdminVerifikasiPage() {
     setPageLoading(true)
     setLoadError(null)
     try {
+      // Stats: semua status untuk hitung verifikasi hari ini + tingkat penolakan
+      const today = new Date(); today.setHours(0, 0, 0, 0)
+      const { data: allStats } = await supabase
+        .from('profiles')
+        .select('status, updated_at')
+        .in('status', ['disetujui', 'ditolak'])
+      const totalDiputuskan = (allStats ?? []).length
+      const totalDitolak    = (allStats ?? []).filter((p) => p.status === 'ditolak').length
+      const verifiedToday   = (allStats ?? []).filter((p) => p.status === 'disetujui' && new Date(p.updated_at) >= today).length
+      setStatVerifiedToday(verifiedToday)
+      setStatRejectionRate(totalDiputuskan > 0 ? ((totalDitolak / totalDiputuskan) * 100).toFixed(1) + '%' : '0%')
+
       const { data: profiles, error: profErr } = await supabase
         .from('profiles')
-        .select('id, nama_lengkap, no_hp, angkatan, status, pesan_admin, created_at')
+        .select('id, nama_lengkap, email, no_hp, angkatan, status, pesan_admin, created_at, foto_url')
         .in('status', ['menunggu', 'ditolak'])
+        .not('no_hp', 'is', null)
         .order('created_at', { ascending: false })
 
       if (profErr) throw profErr
@@ -420,12 +435,14 @@ export default function AdminVerifikasiPage() {
         }))
         return {
           id:           p.id,
-          name:         p.nama_lengkap || 'Alumni',
+          name:         p.nama_lengkap || '-',
+          email:        p.email ?? '',
           phone:        p.no_hp ?? '',
           angkatan:     p.angkatan,
           status:       p.status,
           tanggal:      formatTanggal(p.created_at),
           rejectionMsg: p.pesan_admin ?? '',
+          avatar:       p.foto_url ?? null,
           berkas,
         }
       })
@@ -444,7 +461,7 @@ export default function AdminVerifikasiPage() {
   /* Filter */
   const filtered = alumni.filter((a) => {
     const q = search.toLowerCase()
-    const matchSearch = !q || a.name.toLowerCase().includes(q) || (a.phone ?? '').includes(q)
+    const matchSearch = !q || a.name.toLowerCase().includes(q) || (a.email ?? '').toLowerCase().includes(q) || (a.phone ?? '').includes(q)
     const matchTahun  = !filterTahun  || String(a.angkatan) === filterTahun
     const matchStatus = !filterStatus || a.status === filterStatus
     return matchSearch && matchTahun && matchStatus
@@ -519,9 +536,8 @@ export default function AdminVerifikasiPage() {
       confirmLabel: 'Ya, Hapus Data',
       variant: 'danger',
       onConfirm: async () => {
-        // Remove docs first, then profile row
         await supabase.from('dokumen_verifikasi').delete().eq('user_id', id)
-        const { error } = await supabase.from('profiles').delete().eq('id', id)
+        const { error } = await supabase.rpc('delete_auth_user', { user_id: id })
         if (error) { console.error(error); closeConfirm(); return }
         setAlumni((prev) => prev.filter((x) => x.id !== id))
         setSelected((prev) => prev.filter((i) => i !== id))
@@ -543,9 +559,9 @@ export default function AdminVerifikasiPage() {
   }
 
   const statCards = [
-    { icon: Clock,       iconColor: '#F59E0B', iconBg: '#FEF3C7', trend: '+15%', up: true,  value: pendingCount, label: 'Menunggu Verifikasi',   sub: 'Permintaan baru dalam 24 jam' },
-    { icon: CheckCircle, iconColor: '#22C55E', iconBg: '#F0FDF4', trend: '+8%',  up: true,  value: 48,           label: 'Terverifikasi Hari Ini', sub: 'Alumni berhasil diaktifkan' },
-    { icon: XCircle,     iconColor: '#EF4444', iconBg: '#FEF2F2', trend: '-2%',  up: false, value: '4.2%',       label: 'Tingkat Penolakan',      sub: 'Dokumen tidak valid/palsu' },
+    { icon: Clock,       iconColor: '#F59E0B', iconBg: '#FEF3C7', value: pendingCount,      label: 'Menunggu Verifikasi',   sub: 'Total pengajuan belum diproses' },
+    { icon: CheckCircle, iconColor: '#22C55E', iconBg: '#F0FDF4', value: statVerifiedToday, label: 'Terverifikasi Hari Ini', sub: 'Alumni berhasil diaktifkan' },
+    { icon: XCircle,     iconColor: '#EF4444', iconBg: '#FEF2F2', value: statRejectionRate, label: 'Tingkat Penolakan',      sub: 'Dari total yang sudah diputuskan' },
   ]
 
   /* ── Loading screen ── */
@@ -709,12 +725,17 @@ export default function AdminVerifikasiPage() {
                         {/* Alumni */}
                         <td className="px-4 py-4">
                           <div className="flex items-center gap-3">
-                            <div className="w-9 h-9 rounded-full flex-shrink-0 bg-green-100 flex items-center justify-center text-xs font-bold text-green-700 uppercase">
-                              {(a.name?.[0] ?? '?')}
-                            </div>
+                            {a.avatar
+                              ? <img src={a.avatar} alt={a.name} className="w-9 h-9 rounded-full flex-shrink-0 object-cover bg-gray-100" />
+                              : (
+                                <div className="w-9 h-9 rounded-full flex-shrink-0 bg-green-100 flex items-center justify-center text-xs font-bold text-green-700 uppercase">
+                                  {(a.name?.[0] ?? a.email?.[0] ?? '?').toUpperCase()}
+                                </div>
+                              )
+                            }
                             <div>
                               <p className="text-sm font-semibold text-gray-900 whitespace-nowrap">{a.name}</p>
-                              {a.phone && <p className="text-xs text-gray-400">{a.phone}</p>}
+                              {a.email && <p className="text-xs text-gray-400">{a.email}</p>}
                             </div>
                           </div>
                         </td>
@@ -861,14 +882,11 @@ export default function AdminVerifikasiPage() {
               const Icon = s.icon
               return (
                 <div key={i} className="bg-white rounded-2xl p-4 shadow-sm border border-gray-100">
-                  <div className="flex items-start justify-between mb-3">
-                    <div className="w-9 h-9 rounded-xl flex items-center justify-center flex-shrink-0"
+                  <div className="mb-3">
+                    <div className="w-9 h-9 rounded-xl flex items-center justify-center"
                       style={{ backgroundColor: s.iconBg }}>
                       <Icon className="w-5 h-5" style={{ color: s.iconColor }} />
                     </div>
-                    <span className={`text-xs font-bold px-2 py-0.5 rounded-full ${s.up ? 'bg-green-50 text-green-600' : 'bg-red-50 text-red-500'}`}>
-                      {s.trend}
-                    </span>
                   </div>
                   <div className="text-2xl font-extrabold text-gray-900 mb-0.5">{s.value}</div>
                   <div className="text-xs font-semibold text-gray-700 mb-0.5">{s.label}</div>

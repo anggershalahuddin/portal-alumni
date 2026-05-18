@@ -4,8 +4,53 @@ import {
   Search, Download, ChevronDown, X, BadgeCheck,
   GraduationCap, Briefcase, BookOpen, Mail, Globe,
   Link2, Filter, Eye, FileSpreadsheet, Building2, Handshake,
-  AlertCircle, Phone,
+  AlertCircle, Phone, MapPin, Calendar, Award,
 } from 'lucide-react'
+
+function IconInstagram({ size = 16 }) {
+  return (
+    <svg width={size} height={size} viewBox="0 0 24 24" fill="none">
+      <defs>
+        <radialGradient id="ig-grad-admin" cx="30%" cy="107%" r="150%">
+          <stop offset="0%" stopColor="#ffd600" />
+          <stop offset="20%" stopColor="#ff7a00" />
+          <stop offset="45%" stopColor="#ff0069" />
+          <stop offset="75%" stopColor="#d300c5" />
+          <stop offset="100%" stopColor="#7638fa" />
+        </radialGradient>
+      </defs>
+      <rect width="24" height="24" rx="6" fill="url(#ig-grad-admin)" />
+      <rect x="6.5" y="6.5" width="11" height="11" rx="3.5" stroke="white" strokeWidth="1.5" fill="none" />
+      <circle cx="12" cy="12" r="2.8" stroke="white" strokeWidth="1.5" fill="none" />
+      <circle cx="16.2" cy="7.8" r="0.9" fill="white" />
+    </svg>
+  )
+}
+function IconYouTube({ size = 16 }) {
+  return (
+    <svg width={size} height={size} viewBox="0 0 24 24">
+      <rect width="24" height="24" rx="6" fill="#FF0000" />
+      <path d="M19.6 8.4a2 2 0 0 0-1.4-1.4C16.9 6.6 12 6.6 12 6.6s-4.9 0-6.2.4A2 2 0 0 0 4.4 8.4C4 9.7 4 12 4 12s0 2.3.4 3.6a2 2 0 0 0 1.4 1.4c1.3.4 6.2.4 6.2.4s4.9 0 6.2-.4a2 2 0 0 0 1.4-1.4C20 14.3 20 12 20 12s0-2.3-.4-3.6z" fill="white" />
+      <polygon points="10,9.5 10,14.5 15,12" fill="#FF0000" />
+    </svg>
+  )
+}
+function IconTwitterX({ size = 16 }) {
+  return (
+    <svg width={size} height={size} viewBox="0 0 24 24">
+      <rect width="24" height="24" rx="6" fill="#000" />
+      <path d="M17.5 5h-2.2l-3.3 4.2L8.8 5H4.5l5.5 7L4.5 19h2.2l3.6-4.5L14 19h4.3l-5.8-7.4L17.5 5z" fill="white" />
+    </svg>
+  )
+}
+function IconFacebook({ size = 16 }) {
+  return (
+    <svg width={size} height={size} viewBox="0 0 24 24">
+      <rect width="24" height="24" rx="6" fill="#1877F2" />
+      <path d="M15.5 8H13.5V6.5C13.5 5.95 13.95 5.5 14.5 5.5H15.5V3H13.5C11.84 3 10.5 4.34 10.5 6V8H8.5V11H10.5V21H13.5V11H15.5L16 8H15.5Z" fill="white" />
+    </svg>
+  )
+}
 import { motion } from 'framer-motion'
 import AdminSidebar from '@/components/admin/AdminSidebar'
 import AdminHeader from '@/components/admin/AdminHeader'
@@ -25,45 +70,49 @@ function escapeCSV(val) {
   return s.includes(',') || s.includes('"') || s.includes('\n') ? `"${s}"` : s
 }
 
+function periodeStr(mulai, selesai, isCurrent) {
+  if (!mulai && !selesai) return ''
+  if (isCurrent) return `${mulai ?? '?'} – Sekarang`
+  if (mulai && selesai) return `${mulai} – ${selesai}`
+  return String(mulai ?? selesai)
+}
+
 function exportCSV(rows) {
   const headers = [
     'Nama', 'Tahun Lulus', 'Angkatan Ke', 'Nama Angkatan',
     'Bidang', 'Profesi', 'Perusahaan', 'Domisili',
-    'Keahlian', 'Bahasa', 'No. HP', 'LinkedIn', 'Website',
-    'Pengalaman Terbaru', 'Institusi Pengalaman', 'Periode Pengalaman',
-    'Pendidikan Terakhir', 'Institusi Pendidikan', 'Tahun Pendidikan',
+    'Keahlian', 'Bahasa',
+    'No. HP', 'Email', 'LinkedIn', 'Instagram', 'Website',
+    'Posisi Terbaru', 'Perusahaan Terbaru', 'Periode Pengalaman',
+    'Jenjang Pendidikan Terakhir', 'Jurusan', 'Institusi Pendidikan', 'Tahun Pendidikan',
+    'Sertifikasi Terbaru', 'Penerbit Sertifikasi',
+    'Publikasi Terbaru', 'Jenis Publikasi',
     'Nama Lembaga', 'Jenis Lembaga', 'Sebagai di Lembaga', 'Buka Kerjasama',
     'Status Verifikasi',
   ]
 
   const csvRows = rows.map(({ alumni, detail, angkatanInfo }) => {
-    const pengExp  = detail?.pengalaman?.[0]
-    const pengPend = detail?.pendidikan?.[0]
-    const lembaga0 = detail?.lembaga?.[0]
+    const exp0  = detail?.pengalaman?.[0]
+    const pend0 = detail?.pendidikan?.[0]
+    const sert0 = detail?.sertifikasi?.[0]
+    const pub0  = detail?.publikasi?.[0]
+    const lemb0 = detail?.lembaga?.[0]
     return [
-      alumni.name,
-      alumni.angkatan,
-      angkatanInfo?.angkatanKe ?? '',
-      angkatanInfo?.nama ?? '',
-      alumni.bidang,
-      alumni.profesi,
-      alumni.perusahaan,
-      alumni.domisili,
+      alumni.name, alumni.angkatan,
+      angkatanInfo?.angkatanKe ?? '', angkatanInfo?.nama ?? '',
+      alumni.bidang, alumni.profesi, alumni.perusahaan, alumni.domisili,
       (alumni.keahlian ?? []).join('; '),
-      (detail?.bahasa ?? []).join('; '),
-      detail?.kontak?.noHp ?? '',
-      detail?.kontak?.linkedin ?? '',
-      detail?.kontak?.website ?? '',
-      pengExp?.jabatan ?? '',
-      pengExp?.institusi ?? '',
-      pengExp?.periode ?? '',
-      pengPend?.gelar ?? '',
-      pengPend?.institusi ?? '',
-      pengPend?.tahun ?? '',
-      lembaga0?.nama ?? '',
-      lembaga0?.jenis ?? '',
-      lembaga0?.sebagai ?? '',
-      lembaga0 ? (lembaga0.openKerjasama ? 'Ya' : 'Tidak') : '',
+      (detail?.bahasa ?? []).map(b => b.nama ?? b).join('; '),
+      detail?.kontak?.noHp ?? '', detail?.kontak?.email ?? '',
+      detail?.kontak?.linkedin ?? '', detail?.kontak?.instagram ?? '', detail?.kontak?.website ?? '',
+      exp0?.posisi ?? '', exp0?.perusahaan ?? '',
+      exp0 ? periodeStr(exp0.tahunMulai, exp0.tahunSelesai, exp0.isCurrent) : '',
+      pend0?.jenjang ?? '', pend0?.jurusan ?? '', pend0?.institusi ?? '',
+      pend0 ? periodeStr(pend0.tahunMulai, pend0.tahunSelesai, pend0.isCurrent) : '',
+      sert0?.nama ?? '', sert0?.penerbit ?? '',
+      pub0?.judul ?? '', pub0?.jenis ?? '',
+      lemb0?.nama ?? '', lemb0?.jenis ?? '', lemb0?.sebagai ?? '',
+      lemb0 ? (lemb0.openKerjasama ? 'Ya' : 'Tidak') : '',
       alumni.isVerified ? 'Terverifikasi' : 'Belum Terverifikasi',
     ].map(escapeCSV).join(',')
   })
@@ -81,31 +130,42 @@ function exportXLSX(rows) {
   const headers = [
     'Nama', 'Tahun Lulus', 'Angkatan Ke', 'Nama Angkatan',
     'Bidang', 'Profesi', 'Perusahaan', 'Domisili',
-    'Keahlian', 'Bahasa', 'No. HP', 'LinkedIn', 'Website',
-    'Pengalaman Terbaru', 'Institusi Pengalaman', 'Periode Pengalaman',
-    'Pendidikan Terakhir', 'Institusi Pendidikan', 'Tahun Pendidikan',
+    'Keahlian', 'Bahasa',
+    'No. HP', 'Email', 'LinkedIn', 'Instagram', 'Website',
+    'Posisi Terbaru', 'Perusahaan Terbaru', 'Periode Pengalaman',
+    'Jenjang Pendidikan Terakhir', 'Jurusan', 'Institusi Pendidikan', 'Tahun Pendidikan',
+    'Sertifikasi Terbaru', 'Penerbit Sertifikasi',
+    'Publikasi Terbaru', 'Jenis Publikasi',
     'Nama Lembaga', 'Jenis Lembaga', 'Sebagai di Lembaga', 'Buka Kerjasama',
     'Status Verifikasi',
   ]
   const data = rows.map(({ alumni, detail, angkatanInfo }) => {
-    const pengExp  = detail?.pengalaman?.[0]
-    const pengPend = detail?.pendidikan?.[0]
-    const lembaga0 = detail?.lembaga?.[0]
+    const exp0  = detail?.pengalaman?.[0]
+    const pend0 = detail?.pendidikan?.[0]
+    const sert0 = detail?.sertifikasi?.[0]
+    const pub0  = detail?.publikasi?.[0]
+    const lemb0 = detail?.lembaga?.[0]
     return [
       alumni.name, alumni.angkatan,
       angkatanInfo?.angkatanKe ?? '', angkatanInfo?.nama ?? '',
       alumni.bidang, alumni.profesi, alumni.perusahaan, alumni.domisili,
-      (alumni.keahlian ?? []).join('; '), (detail?.bahasa ?? []).join('; '),
-      detail?.kontak?.noHp ?? '', detail?.kontak?.linkedin ?? '', detail?.kontak?.website ?? '',
-      pengExp?.jabatan ?? '', pengExp?.institusi ?? '', pengExp?.periode ?? '',
-      pengPend?.gelar ?? '', pengPend?.institusi ?? '', pengPend?.tahun ?? '',
-      lembaga0?.nama ?? '', lembaga0?.jenis ?? '', lembaga0?.sebagai ?? '',
-      lembaga0 ? (lembaga0.openKerjasama ? 'Ya' : 'Tidak') : '',
+      (alumni.keahlian ?? []).join('; '),
+      (detail?.bahasa ?? []).map(b => b.nama ?? b).join('; '),
+      detail?.kontak?.noHp ?? '', detail?.kontak?.email ?? '',
+      detail?.kontak?.linkedin ?? '', detail?.kontak?.instagram ?? '', detail?.kontak?.website ?? '',
+      exp0?.posisi ?? '', exp0?.perusahaan ?? '',
+      exp0 ? periodeStr(exp0.tahunMulai, exp0.tahunSelesai, exp0.isCurrent) : '',
+      pend0?.jenjang ?? '', pend0?.jurusan ?? '', pend0?.institusi ?? '',
+      pend0 ? periodeStr(pend0.tahunMulai, pend0.tahunSelesai, pend0.isCurrent) : '',
+      sert0?.nama ?? '', sert0?.penerbit ?? '',
+      pub0?.judul ?? '', pub0?.jenis ?? '',
+      lemb0?.nama ?? '', lemb0?.jenis ?? '', lemb0?.sebagai ?? '',
+      lemb0 ? (lemb0.openKerjasama ? 'Ya' : 'Tidak') : '',
       alumni.isVerified ? 'Terverifikasi' : 'Belum Terverifikasi',
     ]
   })
   const ws = XLSX.utils.aoa_to_sheet([headers, ...data])
-  ws['!cols'] = headers.map((_, i) => ({ wch: i < 3 ? 20 : 18 }))
+  ws['!cols'] = headers.map((_, i) => ({ wch: i < 4 ? 22 : 18 }))
   const wb = XLSX.utils.book_new()
   XLSX.utils.book_append_sheet(wb, ws, 'Data Alumni')
   XLSX.writeFile(wb, `data-alumni-daarul-mughni-${new Date().toISOString().slice(0, 10)}.xlsx`)
@@ -118,10 +178,12 @@ function AlumniAvatar({ alumni, size = 9 }) {
   if (alumni.avatar) {
     return <img src={alumni.avatar} alt={alumni.name} className={`${cls} object-cover bg-gray-100`} />
   }
+  const displayName = alumni.name !== '-' ? alumni.name : (alumni.email || '?')
+  const initials = getInitials(displayName) || displayName.charAt(0).toUpperCase()
   return (
     <div className={`${cls} flex items-center justify-center text-white text-xs font-bold`}
-      style={{ backgroundColor: getAvatarColor(alumni.name) }}>
-      {getInitials(alumni.name)}
+      style={{ backgroundColor: getAvatarColor(displayName) }}>
+      {initials}
     </div>
   )
 }
@@ -141,15 +203,16 @@ function DetailModal({ alumni, detail, angkatanInfo, onClose }) {
             <div>
               <div className="flex items-center gap-2">
                 <h2 className="font-bold text-[#0A2415] text-base">{alumni.name}</h2>
-                {alumni.isVerified && (
-                  <BadgeCheck className="w-4 h-4 text-[#1A5C38]" />
-                )}
+                {alumni.isVerified && <BadgeCheck className="w-4 h-4 text-[#1A5C38]" />}
               </div>
-              <p className="text-xs text-gray-500">{alumni.profesi} · {alumni.perusahaan}</p>
+              {alumni.email && <p className="text-xs text-gray-400">{alumni.email}</p>}
+              {(alumni.profesi || alumni.perusahaan) && (
+                <p className="text-xs text-gray-500">{[alumni.profesi, alumni.perusahaan].filter(Boolean).join(' · ')}</p>
+              )}
               <p className="text-[11px] text-[#1A5C38] font-medium mt-0.5">
                 {angkatanInfo
-                  ? `Angkatan ${angkatanInfo.angkatanKe} · ${angkatanInfo.tahunLulusan} · ${angkatanInfo.nama}`
-                  : `Angkatan ${alumni.angkatan}`}
+                  ? `${angkatanInfo.tahunLulusan} · Angkatan ke-${angkatanInfo.angkatanKe}${angkatanInfo.nama !== `Angkatan ${angkatanInfo.angkatanKe}` ? ` · ${angkatanInfo.nama}` : ''}`
+                  : alumni.angkatan ? `Angkatan ${alumni.angkatan}` : ''}
               </p>
             </div>
           </div>
@@ -161,16 +224,16 @@ function DetailModal({ alumni, detail, angkatanInfo, onClose }) {
         {/* Tabs */}
         <div className="flex border-b border-gray-100 px-6 overflow-x-auto">
           {[
-            { key: 'ringkasan', label: 'Ringkasan' },
-            { key: 'pengalaman', label: 'Pengalaman' },
-            { key: 'pendidikan', label: 'Pendidikan' },
-            { key: 'lembaga', label: 'Lembaga' },
-            { key: 'kontak', label: 'Kontak' },
+            { key: 'ringkasan',  label: 'Ringkasan' },
+            { key: 'karir',      label: 'Karir' },
+            { key: 'lembaga',    label: 'Lembaga' },
+            { key: 'portofolio', label: 'Portofolio' },
+            { key: 'kontak',     label: 'Kontak' },
           ].map(t => (
             <button
               key={t.key}
               onClick={() => setTab(t.key)}
-              className={`px-4 py-3 text-xs font-semibold border-b-2 transition-colors ${
+              className={`px-4 py-3 text-xs font-semibold border-b-2 whitespace-nowrap transition-colors ${
                 tab === t.key ? 'border-[#1A5C38] text-[#1A5C38]' : 'border-transparent text-gray-400 hover:text-gray-600'
               }`}
             >
@@ -180,7 +243,7 @@ function DetailModal({ alumni, detail, angkatanInfo, onClose }) {
         </div>
 
         {/* Content */}
-        <div className="overflow-y-auto flex-1 p-6 space-y-4">
+        <div className="overflow-y-auto flex-1 p-6 space-y-5">
 
           {tab === 'ringkasan' && (
             <>
@@ -206,8 +269,8 @@ function DetailModal({ alumni, detail, angkatanInfo, onClose }) {
                 <div>
                   <p className="text-[10px] font-bold text-gray-400 uppercase tracking-widest mb-2">Bahasa</p>
                   <div className="flex flex-wrap gap-2">
-                    {detail.bahasa.map(b => (
-                      <span key={b} className="text-xs text-gray-600 border border-gray-200 px-3 py-1 rounded-full">{b}</span>
+                    {detail.bahasa.map((b, i) => (
+                      <span key={i} className="text-xs text-gray-600 border border-gray-200 px-3 py-1 rounded-full">{b}</span>
                     ))}
                   </div>
                 </div>
@@ -219,62 +282,58 @@ function DetailModal({ alumni, detail, angkatanInfo, onClose }) {
             </>
           )}
 
-          {tab === 'pengalaman' && (
-            <div className="space-y-5">
-              {detail?.pengalaman?.length > 0 ? detail.pengalaman.map((p, i) => (
-                <div key={i} className="flex gap-4">
-                  <div className="w-9 h-9 bg-[#F8FAF9] rounded-lg flex items-center justify-center flex-shrink-0">
-                    <Briefcase className="w-4 h-4 text-[#1A5C38]" />
-                  </div>
-                  <div>
-                    <p className="font-semibold text-sm text-[#0A2415]">{p.jabatan}</p>
-                    <p className="text-xs text-[#1A5C38] font-medium">{p.institusi}</p>
-                    <p className="text-xs text-gray-400">{p.periode}</p>
-                    {p.deskripsi && <p className="text-xs text-gray-500 mt-1.5 leading-relaxed">{p.deskripsi}</p>}
-                  </div>
-                </div>
-              )) : (
-                <p className="text-sm text-gray-400 text-center py-8">Belum ada data pengalaman.</p>
-              )}
-            </div>
-          )}
-
-          {tab === 'pendidikan' && (
-            <div className="space-y-5">
-              {/* Pesantren selalu ditampilkan */}
-              <div className="flex gap-4">
-                <div className="w-9 h-9 overflow-hidden rounded-lg flex-shrink-0">
-                  {angkatanInfo?.logo ? (
-                    <img src={angkatanInfo.logo} alt={angkatanInfo.nama} className="w-full h-full object-cover" />
-                  ) : (
-                    <div className="w-full h-full bg-[#FFF8E7] flex items-center justify-center">
-                      <GraduationCap className="w-4 h-4 text-[#F0A500]" />
+          {tab === 'karir' && (
+            <>
+              <div>
+                <p className="text-[10px] font-bold text-gray-400 uppercase tracking-widest mb-3">Pengalaman Kerja</p>
+                <div className="space-y-3">
+                  {detail?.pengalaman?.length > 0 ? detail.pengalaman.map((p, i) => (
+                    <div key={i} className="flex gap-4 p-4 bg-gray-50 rounded-xl">
+                      <div className="w-9 h-9 bg-[#E8F5EE] rounded-lg flex items-center justify-center flex-shrink-0">
+                        <Briefcase className="w-4 h-4 text-[#1A5C38]" />
+                      </div>
+                      <div className="flex-1 min-w-0">
+                        <div className="flex items-start justify-between gap-2 flex-wrap">
+                          <p className="font-semibold text-sm text-[#0A2415]">{p.posisi || '-'}</p>
+                          {p.isCurrent && (
+                            <span className="text-[10px] font-bold px-2 py-0.5 rounded-full bg-[#E8F5EE] text-[#1A5C38]">Saat ini</span>
+                          )}
+                        </div>
+                        {p.perusahaan && <p className="text-xs text-[#1A5C38] font-medium mt-0.5">{p.perusahaan}</p>}
+                        <div className="flex flex-wrap gap-x-3 gap-y-0.5 mt-1">
+                          {p.bidang  && <p className="text-xs text-gray-500">{p.bidang}</p>}
+                          {p.lokasi  && <p className="text-xs text-gray-400 flex items-center gap-1"><MapPin className="w-3 h-3" />{p.lokasi}</p>}
+                          {p.periode && <p className="text-xs text-gray-400 flex items-center gap-1"><Calendar className="w-3 h-3" />{p.periode}</p>}
+                        </div>
+                        {p.deskripsi && <p className="text-xs text-gray-500 mt-1.5 leading-relaxed">{p.deskripsi}</p>}
+                      </div>
                     </div>
+                  )) : (
+                    <p className="text-sm text-gray-400 text-center py-4">Belum ada data pengalaman.</p>
                   )}
                 </div>
-                <div>
-                  <p className="font-semibold text-sm text-[#0A2415]">Santri – Program Tahfidz & Mu'allimin</p>
-                  <p className="text-xs text-[#F0A500] font-medium">Pondok Pesantren Daarul Mughni</p>
-                  <p className="text-xs text-gray-400">
-                    {angkatanInfo
-                      ? `${angkatanInfo.tahunLulusan} · ${angkatanInfo.nama}`
-                      : alumni.angkatan}
-                  </p>
+              </div>
+
+              <div>
+                <p className="text-[10px] font-bold text-gray-400 uppercase tracking-widest mb-3">Riwayat Pendidikan</p>
+                <div className="space-y-3">
+                  {detail?.pendidikan?.length > 0 ? detail.pendidikan.map((p, i) => (
+                    <div key={i} className="flex gap-4 p-4 bg-gray-50 rounded-xl">
+                      <div className="w-9 h-9 bg-[#FFF8E7] rounded-lg flex items-center justify-center flex-shrink-0">
+                        <GraduationCap className="w-4 h-4 text-[#F0A500]" />
+                      </div>
+                      <div className="flex-1 min-w-0">
+                        <p className="font-semibold text-sm text-[#0A2415]">{[p.jenjang, p.jurusan].filter(Boolean).join(' – ')}</p>
+                        {p.institusi && <p className="text-xs text-gray-500 font-medium mt-0.5">{p.institusi}</p>}
+                        {p.periode   && <p className="text-xs text-gray-400 flex items-center gap-1 mt-0.5"><Calendar className="w-3 h-3" />{p.periode}</p>}
+                      </div>
+                    </div>
+                  )) : (
+                    <p className="text-sm text-gray-400 text-center py-4">Belum ada data pendidikan.</p>
+                  )}
                 </div>
               </div>
-              {detail?.pendidikan?.map((p, i) => (
-                <div key={i} className="flex gap-4">
-                  <div className="w-9 h-9 bg-[#F8FAF9] rounded-lg flex items-center justify-center flex-shrink-0">
-                    <BookOpen className="w-4 h-4 text-gray-400" />
-                  </div>
-                  <div>
-                    <p className="font-semibold text-sm text-[#0A2415]">{p.gelar}</p>
-                    <p className="text-xs text-gray-500">{p.institusi}</p>
-                    <p className="text-xs text-gray-400">{p.tahun}</p>
-                  </div>
-                </div>
-              ))}
-            </div>
+            </>
           )}
 
           {tab === 'lembaga' && (
@@ -301,13 +360,11 @@ function DetailModal({ alumni, detail, angkatanInfo, onClose }) {
                     <p className="text-xs text-[#1A5C38] font-medium mt-0.5">{l.jenis}</p>
                     <div className="flex flex-wrap gap-x-4 gap-y-0.5 mt-1">
                       {l.bidang && <p className="text-xs text-gray-500">{l.bidang}</p>}
-                      {l.lokasi && <p className="text-xs text-gray-400">{l.lokasi}</p>}
+                      {l.lokasi && <p className="text-xs text-gray-400 flex items-center gap-1"><MapPin className="w-3 h-3" />{l.lokasi}</p>}
                       {l.tahun  && <p className="text-xs text-gray-400">Est. {l.tahun}</p>}
                     </div>
                     {l.deskripsi && <p className="text-xs text-gray-500 mt-1.5 leading-relaxed">{l.deskripsi}</p>}
-                    {l.website && (
-                      <p className="text-xs text-blue-500 mt-1">{l.website}</p>
-                    )}
+                    {l.website  && <p className="text-xs text-blue-500 mt-1">{l.website}</p>}
                   </div>
                 </div>
               )) : (
@@ -316,27 +373,117 @@ function DetailModal({ alumni, detail, angkatanInfo, onClose }) {
             </div>
           )}
 
+          {tab === 'portofolio' && (
+            <>
+              <div>
+                <p className="text-[10px] font-bold text-gray-400 uppercase tracking-widest mb-3">Sertifikasi</p>
+                <div className="space-y-3">
+                  {detail?.sertifikasi?.length > 0 ? detail.sertifikasi.map((s, i) => (
+                    <div key={i} className="flex gap-3 p-3 bg-gray-50 rounded-xl">
+                      <div className="w-8 h-8 bg-[#E8F5EE] rounded-lg flex items-center justify-center flex-shrink-0">
+                        <Award className="w-4 h-4 text-[#1A5C38]" />
+                      </div>
+                      <div className="flex-1 min-w-0">
+                        <p className="font-semibold text-sm text-[#0A2415]">{s.nama}</p>
+                        <div className="flex flex-wrap gap-x-3 gap-y-0.5 mt-0.5">
+                          {s.penerbit && <p className="text-xs text-[#1A5C38] font-medium">{s.penerbit}</p>}
+                          {s.tahun   && <p className="text-xs text-gray-400">{s.tahun}</p>}
+                          {s.noCert  && <p className="text-xs text-gray-400">No. {s.noCert}</p>}
+                        </div>
+                        {s.url && (
+                          <a href={s.url} target="_blank" rel="noopener noreferrer" className="text-xs text-blue-500 mt-1 inline-block">Lihat Sertifikat →</a>
+                        )}
+                      </div>
+                    </div>
+                  )) : (
+                    <p className="text-sm text-gray-400 text-center py-3">Belum ada sertifikasi.</p>
+                  )}
+                </div>
+              </div>
+
+              <div>
+                <p className="text-[10px] font-bold text-gray-400 uppercase tracking-widest mb-3">Publikasi &amp; Karya</p>
+                <div className="space-y-3">
+                  {detail?.publikasi?.length > 0 ? detail.publikasi.map((pub, i) => (
+                    <div key={i} className="flex gap-3 p-3 bg-gray-50 rounded-xl">
+                      <div className="w-8 h-8 bg-[#F8FAF9] rounded-lg flex items-center justify-center flex-shrink-0">
+                        <BookOpen className="w-4 h-4 text-gray-500" />
+                      </div>
+                      <div className="flex-1 min-w-0">
+                        <p className="font-semibold text-sm text-[#0A2415]">{pub.judul}</p>
+                        <div className="flex flex-wrap gap-x-3 gap-y-0.5 mt-0.5">
+                          {pub.penerbit && <p className="text-xs text-gray-500">{pub.penerbit}</p>}
+                          {pub.tahun   && <p className="text-xs text-gray-400">{pub.tahun}</p>}
+                        </div>
+                        {pub.deskripsi && <p className="text-xs text-gray-500 mt-1 leading-relaxed">{pub.deskripsi}</p>}
+                        {pub.url && (
+                          <a href={pub.url} target="_blank" rel="noopener noreferrer" className="text-xs text-blue-500 mt-1 inline-block">Lihat Publikasi →</a>
+                        )}
+                      </div>
+                    </div>
+                  )) : (
+                    <p className="text-sm text-gray-400 text-center py-3">Belum ada publikasi.</p>
+                  )}
+                </div>
+              </div>
+
+              <div>
+                <p className="text-[10px] font-bold text-gray-400 uppercase tracking-widest mb-3">Berkas / Dokumen</p>
+                <div className="space-y-2">
+                  {detail?.berkas?.length > 0 ? detail.berkas.map((b, i) => (
+                    <div key={i} className="flex items-center gap-3 p-3 bg-gray-50 rounded-xl">
+                      <div className="w-8 h-8 bg-[#F8FAF9] rounded-lg flex items-center justify-center flex-shrink-0">
+                        <Link2 className="w-4 h-4 text-gray-400" />
+                      </div>
+                      <div className="flex-1 min-w-0">
+                        <p className="font-medium text-sm text-[#0A2415] truncate">{b.nama}</p>
+                        <div className="flex gap-2 mt-0.5">
+                          {b.tipe   && <p className="text-[10px] text-gray-400 uppercase">{b.tipe}</p>}
+                          {b.ukuran && <p className="text-[10px] text-gray-400">{b.ukuran}</p>}
+                        </div>
+                      </div>
+                      {b.fileUrl && (
+                        <a href={b.fileUrl} target="_blank" rel="noopener noreferrer" className="text-xs text-blue-500 flex-shrink-0">Buka</a>
+                      )}
+                    </div>
+                  )) : (
+                    <p className="text-sm text-gray-400 text-center py-3">Belum ada berkas.</p>
+                  )}
+                </div>
+              </div>
+            </>
+          )}
+
           {tab === 'kontak' && (
-            <div className="space-y-3">
-              {detail?.kontak?.noHp && (
-                <div className="flex items-center gap-3 p-3 bg-gray-50 rounded-xl">
-                  <Phone className="w-4 h-4 text-[#1A5C38]" />
-                  <span className="text-sm text-gray-700">{detail.kontak.noHp}</span>
-                </div>
-              )}
-              {detail?.kontak?.linkedin && (
-                <div className="flex items-center gap-3 p-3 bg-gray-50 rounded-xl">
-                  <Link2 className="w-4 h-4 text-blue-500" />
-                  <span className="text-sm text-gray-700">{detail.kontak.linkedin}</span>
-                </div>
-              )}
-              {detail?.kontak?.website && (
-                <div className="flex items-center gap-3 p-3 bg-gray-50 rounded-xl">
-                  <Globe className="w-4 h-4 text-gray-500" />
-                  <span className="text-sm text-gray-700">{detail.kontak.website}</span>
-                </div>
-              )}
-              {!detail?.kontak?.noHp && !detail?.kontak?.linkedin && !detail?.kontak?.website && (
+            <div className="space-y-2">
+              {[
+                { key: 'noHp',      icon: <Phone className="w-4 h-4 text-[#1A5C38]" />, href: v => `tel:${v}` },
+                { key: 'email',     icon: <Mail  className="w-4 h-4 text-gray-500"  />, href: v => `mailto:${v}` },
+                { key: 'linkedin',  icon: <Link2 className="w-4 h-4 text-blue-600"  />, href: v => v },
+                { key: 'instagram', icon: <IconInstagram size={16} />,                  href: v => v },
+                { key: 'twitter',   icon: <IconTwitterX  size={16} />,                  href: v => v },
+                { key: 'facebook',  icon: <IconFacebook  size={16} />,                  href: v => v },
+                { key: 'youtube',   icon: <IconYouTube   size={16} />,                  href: v => v },
+                { key: 'website',   icon: <Globe className="w-4 h-4 text-gray-500"  />, href: v => v },
+              ]
+                .filter(({ key }) => !!detail?.kontak?.[key])
+                .map(({ key, icon, href }) => {
+                  const val = detail.kontak[key]
+                  return (
+                    <a
+                      key={key}
+                      href={href(val)}
+                      target={key !== 'noHp' ? '_blank' : undefined}
+                      rel="noopener noreferrer"
+                      className="flex items-center gap-3 p-3 bg-gray-50 rounded-xl hover:bg-gray-100 transition-colors"
+                    >
+                      {icon}
+                      <span className="text-sm text-gray-700 truncate">{val}</span>
+                    </a>
+                  )
+                })
+              }
+              {!Object.values(detail?.kontak ?? {}).some(Boolean) && (
                 <p className="text-sm text-gray-400 text-center py-8">Belum ada data kontak.</p>
               )}
             </div>
@@ -371,7 +518,7 @@ export default function AdminDataAlumniPage() {
       // Semua profiles yang punya alumni_profiles + status disetujui (inkl. super_admin/admin)
       const { data: profiles, error: profErr } = await supabase
         .from('profiles')
-        .select('id, nama_lengkap, no_hp, angkatan, bidang, domisili, status, role, alumni_profiles!inner(user_id)')
+        .select('id, nama_lengkap, email, no_hp, angkatan, bidang, domisili, status, role, foto_url, alumni_profiles!inner(user_id)')
         .eq('status', 'disetujui')
         .order('created_at', { ascending: false })
 
@@ -380,71 +527,128 @@ export default function AdminDataAlumniPage() {
 
       const ids = profiles.map((p) => p.id)
 
-      // alumni_profiles + all sub-tables + angkatan in parallel
-      const [apRes, keahlianRes, bahasaRes, pekerjaanRes, pendidikanRes, lembagaRes, angkatanRes] =
-        await Promise.all([
-          supabase.from('alumni_profiles').select('*').in('user_id', ids),
-          supabase.from('keahlian_alumni').select('*').in('alumni_id', ids),
-          supabase.from('bahasa_alumni').select('*').in('alumni_id', ids),
-          supabase.from('pekerjaan').select('*').in('alumni_id', ids),
-          supabase.from('pendidikan').select('*').in('alumni_id', ids),
-          supabase.from('lembaga_alumni').select('*').in('alumni_id', ids),
-          supabase.from('angkatan').select('id, tahun_lulus, nama_angkatan').order('tahun_lulus'),
-        ])
+      // Phase 1: alumni_profiles + angkatan (needed to get alumni_profiles.id for sub-table queries)
+      const [apRes, angkatanRes] = await Promise.all([
+        supabase.from('alumni_profiles').select('*').in('user_id', ids),
+        supabase.from('angkatan').select('id, tahun_lulus, nama_angkatan').order('tahun_lulus'),
+      ])
 
       const fetchedAngkatan = (angkatanRes.data ?? []).map(mapAngkatan)
       setAngkatanList(fetchedAngkatan)
 
-      const apAll        = apRes.data ?? []
-      const keahlianAll  = keahlianRes.data ?? []
-      const bahasaAll    = bahasaRes.data ?? []
-      const pekerjaanAll = pekerjaanRes.data ?? []
-      const pendidikanAll= pendidikanRes.data ?? []
-      const lembagaAll   = lembagaRes.data ?? []
+      const apAll  = apRes.data ?? []
+      // alumni_profiles.id (random UUID, different from profiles.id!) — used by all sub-tables
+      const apIds  = apAll.map((ap) => ap.id)
+
+      // Phase 2: sub-tables keyed by alumni_profiles.id
+      const [keahlianRes, bahasaRes, pekerjaanRes, pendidikanRes, lembagaRes, sertifikasiRes, publikasiRes, berkasRes] =
+        await Promise.all([
+          apIds.length ? supabase.from('keahlian_alumni').select('*').in('alumni_id', apIds)  : Promise.resolve({ data: [] }),
+          apIds.length ? supabase.from('bahasa_alumni').select('*').in('alumni_id', apIds)    : Promise.resolve({ data: [] }),
+          apIds.length ? supabase.from('pekerjaan').select('*').in('alumni_id', apIds)        : Promise.resolve({ data: [] }),
+          apIds.length ? supabase.from('pendidikan').select('*').in('alumni_id', apIds)       : Promise.resolve({ data: [] }),
+          apIds.length ? supabase.from('lembaga_alumni').select('*').in('alumni_id', apIds)   : Promise.resolve({ data: [] }),
+          apIds.length ? supabase.from('sertifikasi').select('*').in('alumni_id', apIds)      : Promise.resolve({ data: [] }),
+          apIds.length ? supabase.from('publikasi').select('*').in('alumni_id', apIds)        : Promise.resolve({ data: [] }),
+          apIds.length ? supabase.from('berkas_alumni').select('*').in('alumni_id', apIds)    : Promise.resolve({ data: [] }),
+        ])
+
+      const keahlianAll    = keahlianRes.data ?? []
+      const bahasaAll      = bahasaRes.data ?? []
+      const pekerjaanAll   = pekerjaanRes.data ?? []
+      const pendidikanAll  = pendidikanRes.data ?? []
+      const lembagaAll     = lembagaRes.data ?? []
+      const sertifikasiAll = sertifikasiRes.data ?? []
+      const publikasiAll   = publikasiRes.data ?? []
+      const berkasAll      = berkasRes.data ?? []
 
       const enrichedData = profiles.map((p) => {
-        const ap  = apAll.find((a) => a.user_id === p.id) ?? {}
-        const pid = p.id
+        const ap   = apAll.find((a) => a.user_id === p.id) ?? {}
+        const apId = ap.id  // alumni_profiles.id — match key for sub-tables
 
         const alumni = {
-          id:         pid,
-          name:       p.nama_lengkap || 'Alumni',
+          id:         p.id,
+          name:       p.nama_lengkap || '-',
+          email:      p.email ?? '',
           noHp:       p.no_hp ?? '',
           angkatan:   p.angkatan,
           bidang:     p.bidang ?? '',
           profesi:    ap.profesi ?? '',
           perusahaan: ap.perusahaan ?? '',
           domisili:   p.domisili ?? '',
-          keahlian:   keahlianAll.filter((k) => k.alumni_id === pid).map((k) => k.nama),
+          keahlian:   apId ? keahlianAll.filter((k) => k.alumni_id === apId).map((k) => k.nama) : [],
           isVerified: p.status === 'disetujui',
-          avatar:     null,
+          avatar:     p.foto_url ?? null,
         }
 
         const detail = {
           bio:    ap.bio ?? '',
-          bahasa: bahasaAll.filter((b) => b.alumni_id === pid).map((b) => b.nama),
+          bahasa: apId ? bahasaAll.filter((b) => b.alumni_id === apId).map((b) => b.nama) : [],
           kontak: {
-            noHp:     p.no_hp ?? '',
-            linkedin: ap.linkedin_url ?? '',
-            website:  ap.website_url ?? '',
+            noHp:      p.no_hp ?? '',
+            email:     p.email ?? '',
+            linkedin:  ap.linkedin_url ?? '',
+            instagram: ap.instagram_url ?? '',
+            twitter:   ap.twitter_url ?? '',
+            facebook:  ap.facebook_url ?? '',
+            youtube:   ap.youtube_url ?? '',
+            website:   ap.website_url ?? '',
           },
-          pengalaman: pekerjaanAll
-            .filter((pek) => pek.alumni_id === pid)
+          pengalaman: apId ? pekerjaanAll
+            .filter((pek) => pek.alumni_id === apId)
+            .sort((a, b) => (b.is_current ? 1 : 0) - (a.is_current ? 1 : 0))
             .map((pek) => ({
-              jabatan:   pek.posisi ?? '',
-              institusi: pek.institusi ?? '',
-              periode:   pek.periode ?? '',
-              deskripsi: pek.deskripsi ?? '',
-            })),
-          pendidikan: pendidikanAll
-            .filter((pend) => pend.alumni_id === pid)
+              posisi:      pek.posisi ?? '',
+              perusahaan:  pek.perusahaan ?? '',
+              bidang:      pek.bidang ?? '',
+              lokasi:      pek.lokasi ?? '',
+              periode:     periodeStr(pek.tahun_mulai, pek.tahun_selesai, pek.is_current),
+              deskripsi:   pek.deskripsi ?? '',
+              isCurrent:   pek.is_current ?? false,
+              tahunMulai:  pek.tahun_mulai ?? null,
+              tahunSelesai: pek.tahun_selesai ?? null,
+            })) : [],
+          pendidikan: apId ? pendidikanAll
+            .filter((pend) => pend.alumni_id === apId)
+            .sort((a, b) => (b.tahun_selesai ?? 0) - (a.tahun_selesai ?? 0))
             .map((pend) => ({
-              gelar:     pend.gelar ?? '',
-              institusi: pend.institusi ?? '',
-              tahun:     pend.tahun ?? '',
-            })),
-          lembaga: lembagaAll
-            .filter((l) => l.alumni_id === pid)
+              jenjang:     pend.jenjang ?? '',
+              jurusan:     pend.jurusan ?? '',
+              institusi:   pend.institusi ?? '',
+              periode:     periodeStr(pend.tahun_mulai, pend.tahun_selesai, pend.is_current),
+              tahunMulai:  pend.tahun_mulai ?? null,
+              tahunSelesai: pend.tahun_selesai ?? null,
+              isCurrent:   pend.is_current ?? false,
+            })) : [],
+          sertifikasi: apId ? sertifikasiAll
+            .filter((s) => s.alumni_id === apId)
+            .map((s) => ({
+              nama:     s.nama ?? '',
+              penerbit: s.penerbit ?? '',
+              tahun:    s.tahun ?? '',
+              noCert:   s.no_cert ?? '',
+              url:      s.url ?? '',
+            })) : [],
+          publikasi: apId ? publikasiAll
+            .filter((pub) => pub.alumni_id === apId)
+            .map((pub) => ({
+              judul:    pub.judul ?? '',
+              penerbit: pub.penerbit ?? '',
+              tahun:    pub.tahun ?? '',
+              url:      pub.url ?? '',
+              deskripsi: pub.deskripsi ?? '',
+            })) : [],
+          berkas: apId ? berkasAll
+            .filter((b) => b.alumni_id === apId)
+            .map((b) => ({
+              nama:     b.nama ?? '',
+              tipe:     b.tipe ?? b.kategori ?? 'FILE',
+              ukuran:   b.ukuran ?? '',
+              kategori: b.kategori ?? '',
+              fileUrl:  b.file_url ?? '',
+            })) : [],
+          lembaga: apId ? lembagaAll
+            .filter((l) => l.alumni_id === apId)
             .map((l) => ({
               nama:          l.nama ?? '',
               jenis:         l.jenis ?? '',
@@ -455,7 +659,7 @@ export default function AdminDataAlumniPage() {
               openKerjasama: l.open_kerjasama ?? false,
               deskripsi:     l.deskripsi ?? '',
               website:       l.website ?? '',
-            })),
+            })) : [],
         }
 
         const angkatanInfo = fetchedAngkatan.find((x) => x.tahunLulusan === p.angkatan) ?? null
@@ -678,9 +882,7 @@ export default function AdminDataAlumniPage() {
                             <AlumniAvatar alumni={alumni} size={9} />
                             <div>
                               <p className="font-semibold text-[#0A2415] text-sm leading-snug">{alumni.name}</p>
-                              {det?.kontak?.noHp && (
-                                <p className="text-[11px] text-gray-400">{det.kontak.noHp}</p>
-                              )}
+                              {alumni.email && <p className="text-[11px] text-gray-400">{alumni.email}</p>}
                             </div>
                           </div>
                         </td>

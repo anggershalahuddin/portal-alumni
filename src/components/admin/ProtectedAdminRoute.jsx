@@ -60,6 +60,8 @@ export default function ProtectedAdminRoute({ children, requiredPerm }) {
 
   if (!user) return <Navigate to="/masuk" replace />
 
+  if (profile?.is_active === false) return <Navigate to="/akun-dinonaktifkan" replace />
+
   // Gagal setelah 5x retry
   if (fetchFailed && !profile) {
     return (

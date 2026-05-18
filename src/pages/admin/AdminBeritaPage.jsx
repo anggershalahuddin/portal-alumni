@@ -170,6 +170,8 @@ function KategoriManagerModal({ kategoris, onClose, onAdd, onDelete }) {
 // ── Berita Modal ───────────────────────────────────────────────────────────────
 function BeritaModal({ berita, kategoris, onClose, onSave }) {
   const isEdit = !!berita
+  const { profile: currentProfile } = useAuth()
+  const canPublish = ['super_admin', 'admin'].includes(currentProfile?.role)
   const [form, setForm] = useState(isEdit
     ? {
         judul: berita.judul,
@@ -297,8 +299,11 @@ function BeritaModal({ berita, kategoris, onClose, onSave }) {
               <div>
                 <label className="block text-sm font-semibold text-gray-700 mb-1.5">Status</label>
                 <select value={form.status} onChange={e => setForm({ ...form, status: e.target.value })} className={inputCls}>
-                  {STATUS_LIST.map(s => <option key={s}>{s}</option>)}
+                  {STATUS_LIST.filter(s => canPublish || s !== 'Terbit').map(s => <option key={s}>{s}</option>)}
                 </select>
+                {!canPublish && (
+                  <p className="text-[11px] text-gray-400 mt-1">Hanya Admin yang dapat menerbitkan berita langsung.</p>
+                )}
               </div>
             </div>
           </div>

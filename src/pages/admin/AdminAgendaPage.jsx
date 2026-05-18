@@ -7,6 +7,7 @@ import ConfirmDialog from '../../components/admin/ConfirmDialog'
 import ImageUploadBox from '../../components/admin/ImageUploadBox'
 import { PaginationBar, PerPageSelector } from '../../components/PaginationBar'
 import { supabase } from '@/lib/supabase'
+import { agendaKategori, agendaLokasi } from '@/data/agenda'
 
 const STATUS_AGENDA = ['Akan Datang', 'Berlangsung', 'Selesai', 'Dibatalkan']
 
@@ -21,6 +22,20 @@ const WARNA_OPSI = [
   '#F0A500', '#1A5C38', '#3B82F6', '#F97316',
   '#A855F7', '#EF4444', '#14B8A6', '#EC4899',
 ]
+
+const KATEGORI_COLORS = {
+  reuni:    { bg: '#F0A500', text: '#fff' },
+  edukasi:  { bg: '#3B82F6', text: '#fff' },
+  dakwah:   { bg: '#1A5C38', text: '#fff' },
+  sosial:   { bg: '#F97316', text: '#fff' },
+  olahraga: { bg: '#A855F7', text: '#fff' },
+}
+
+const LOKASI_COLORS = {
+  pondok: { bg: '#1A5C38', text: '#fff' },
+  online: { bg: '#0E7490', text: '#fff' },
+  luar:   { bg: '#6B7280', text: '#fff' },
+}
 
 const initialTags = [
   { id: 'reuni',    label: 'Reuni & Silaturahmi', bg: '#F0A500', text: '#fff' },
@@ -95,6 +110,7 @@ function mapAgendaRow(row) {
     tanggal: formatTanggal(row.tanggal_mulai),
     waktu,
     lokasi: row.lokasi ?? '—',
+    lokasiKategori: row.lokasi_kategori ?? '',
     lokasiDetail: row.lokasi ?? '',
     mapsUrl: row.maps_url ?? '',
     kapasitas: 0,
@@ -362,6 +378,7 @@ function AgendaModal({ agenda, tags, onClose, onSave }) {
           jam_mulai: extractTime(agenda.tanggal_mulai_raw),
           jam_selesai: extractTime(agenda.tanggal_selesai_raw),
           lokasi: agenda.lokasi === '—' ? '' : (agenda.lokasi ?? ''),
+          lokasiKategori: agenda.lokasiKategori || '',
           lokasiDetail: agenda.lokasiDetail || '',
           mapsUrl: agenda.mapsUrl || '',
           link_registrasi: agenda.link_registrasi || '',
@@ -383,6 +400,7 @@ function AgendaModal({ agenda, tags, onClose, onSave }) {
           jam_mulai: '',
           jam_selesai: '',
           lokasi: '',
+          lokasiKategori: '',
           lokasiDetail: '',
           mapsUrl: '',
           link_registrasi: '',
@@ -442,32 +460,29 @@ function AgendaModal({ agenda, tags, onClose, onSave }) {
                 placeholder="Nama acara atau kegiatan" className={inputCls} />
             </div>
 
-            {/* Tag / Kategori */}
+            {/* Kategori */}
             <div>
-              <label className="block text-sm font-semibold text-gray-700 mb-2">Tag Kategori</label>
-              {tags.length === 0 ? (
-                <p className="text-xs text-gray-400 italic">Belum ada tag. Tambahkan melalui tombol "Kelola Tag".</p>
-              ) : (
-                <div className="flex flex-wrap gap-2">
-                  {tags.map((t) => {
-                    const isSelected = form.kategori === t.id
-                    return (
-                      <button
-                        key={t.id}
-                        type="button"
-                        onClick={() => setForm({ ...form, kategori: isSelected ? '' : t.id })}
-                        className="text-xs font-semibold px-3 py-1.5 rounded-full border-2 transition-all"
-                        style={isSelected
-                          ? { backgroundColor: t.bg, color: t.text, borderColor: t.bg }
-                          : { backgroundColor: 'transparent', color: t.bg, borderColor: t.bg }
-                        }
-                      >
-                        {t.label}
-                      </button>
-                    )
-                  })}
-                </div>
-              )}
+              <label className="block text-sm font-semibold text-gray-700 mb-2">Kategori</label>
+              <div className="flex flex-wrap gap-2">
+                {agendaKategori.filter(k => k.value !== 'semua').map((k) => {
+                  const colors = KATEGORI_COLORS[k.value] || { bg: '#6B7280', text: '#fff' }
+                  const isSelected = form.kategori === k.value
+                  return (
+                    <button
+                      key={k.value}
+                      type="button"
+                      onClick={() => setForm({ ...form, kategori: isSelected ? '' : k.value })}
+                      className="text-xs font-semibold px-3 py-1.5 rounded-full border-2 transition-all"
+                      style={isSelected
+                        ? { backgroundColor: colors.bg, color: colors.text, borderColor: colors.bg }
+                        : { backgroundColor: 'transparent', color: colors.bg, borderColor: colors.bg }
+                      }
+                    >
+                      {k.label}
+                    </button>
+                  )
+                })}
+              </div>
             </div>
 
             <div className="grid grid-cols-2 gap-4">
@@ -510,6 +525,30 @@ function AgendaModal({ agenda, tags, onClose, onSave }) {
               <label className="block text-sm font-semibold text-gray-700 mb-1.5">Lokasi Singkat</label>
               <input type="text" value={form.lokasi} onChange={(e) => setForm({ ...form, lokasi: e.target.value })}
                 placeholder="contoh: Aula Utama, Zoom Webinar" className={inputCls} />
+            </div>
+            <div>
+              <label className="block text-sm font-semibold text-gray-700 mb-2">Kategori Lokasi</label>
+              <div className="flex flex-wrap gap-2">
+                {agendaLokasi.filter(l => l.value !== 'semua').map((l) => {
+                  const colors = LOKASI_COLORS[l.value] || { bg: '#6B7280', text: '#fff' }
+                  const isSelected = form.lokasiKategori === l.value
+                  return (
+                    <button
+                      key={l.value}
+                      type="button"
+                      onClick={() => setForm({ ...form, lokasiKategori: isSelected ? '' : l.value })}
+                      className="text-xs font-semibold px-3 py-1.5 rounded-full border-2 transition-all"
+                      style={isSelected
+                        ? { backgroundColor: colors.bg, color: colors.text, borderColor: colors.bg }
+                        : { backgroundColor: 'transparent', color: colors.bg, borderColor: colors.bg }
+                      }
+                    >
+                      {l.label}
+                    </button>
+                  )
+                })}
+              </div>
+              <p className="text-[11px] text-gray-400 mt-1">Digunakan untuk filter lokasi di halaman agenda publik.</p>
             </div>
             <div>
               <label className="block text-sm font-semibold text-gray-700 mb-1.5">Alamat Lengkap</label>
@@ -651,7 +690,7 @@ export default function AdminAgendaPage() {
     try {
       const { data, error: err } = await supabase
         .from('agenda')
-        .select('id, judul, deskripsi, lokasi, tanggal_mulai, tanggal_selesai, kategori, foto_url, link_registrasi, is_aktif, maps_url, pembicara, status_pendaftaran, htm, has_sertifikat, published_by, image_hero, pamflet_url')
+        .select('id, judul, deskripsi, lokasi, lokasi_kategori, tanggal_mulai, tanggal_selesai, kategori, foto_url, link_registrasi, is_aktif, maps_url, pembicara, status_pendaftaran, htm, has_sertifikat, published_by, image_hero, pamflet_url')
         .order('tanggal_mulai', { ascending: false })
       if (err) throw err
       setAgenda((data ?? []).map(mapAgendaRow))
@@ -699,6 +738,7 @@ export default function AdminAgendaPage() {
           tanggal_mulai: tanggalMulai,
           tanggal_selesai: tanggalSelesai,
           kategori: form.kategori || null,
+          lokasi_kategori: form.lokasiKategori || null,
           foto_url: form.thumbnail || null,
           link_registrasi: form.link_registrasi || null,
           is_aktif: form.status !== 'Dibatalkan',

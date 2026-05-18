@@ -179,10 +179,13 @@ export function AuthProvider({ children }) {
     await supabase.auth.signOut()
   }, [])
 
-  const signInWithGoogle = useCallback(async () => {
+  const signInWithGoogle = useCallback(async ({ redirectTo } = {}) => {
     const { data, error } = await supabase.auth.signInWithOAuth({
       provider: 'google',
-      options: { redirectTo: `${window.location.origin}/auth/callback` },
+      options: {
+        redirectTo: redirectTo ?? `${window.location.origin}/auth/callback`,
+        queryParams: { prompt: 'select_account' },
+      },
     })
     return { data, error }
   }, [])

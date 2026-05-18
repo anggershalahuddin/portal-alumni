@@ -154,7 +154,7 @@ export default function AdminDashboardPage() {
         supabase.from('galeri').select('id', { count: 'exact', head: true }),
         supabase.from('lowongan').select('id', { count: 'exact', head: true }).eq('is_aktif', true),
         supabase.from('berita').select('judul, published_at').eq('status', 'published').order('published_at', { ascending: false }).limit(3),
-        supabase.from('profiles').select('id, nama_lengkap, angkatan, status, updated_at').in('status', ['menunggu', 'disetujui', 'ditolak']).order('updated_at', { ascending: false }).limit(5),
+        supabase.from('profiles').select('id, nama_lengkap, angkatan, status, updated_at, foto_url').in('status', ['menunggu', 'disetujui', 'ditolak']).order('updated_at', { ascending: false }).limit(5),
       ])
       setStats({
         alumni: alumniCount ?? 0,
@@ -171,6 +171,7 @@ export default function AdminDashboardPage() {
         angkatan: v.angkatan ?? '—',
         status: v.status,
         tanggal: formatTanggal(v.updated_at),
+        avatar: v.foto_url ?? null,
       })))
     }
     loadDashboard()
@@ -304,9 +305,10 @@ export default function AdminDashboardPage() {
                   >
                     <td className="px-5 py-3">
                       <div className="flex items-center gap-2.5">
-                        <div className="w-7 h-7 rounded-full flex items-center justify-center text-[10px] font-bold text-white flex-shrink-0" style={{ backgroundColor: '#1A5C38' }}>
-                          {getInitials(r.name)}
-                        </div>
+                        {r.avatar
+                          ? <img src={r.avatar} alt={r.name} className="w-7 h-7 rounded-full flex-shrink-0 object-cover bg-gray-100" />
+                          : <div className="w-7 h-7 rounded-full flex items-center justify-center text-[10px] font-bold text-white flex-shrink-0" style={{ backgroundColor: '#1A5C38' }}>{getInitials(r.name)}</div>
+                        }
                         <span className="text-sm font-semibold text-gray-800">{r.name}</span>
                       </div>
                     </td>
