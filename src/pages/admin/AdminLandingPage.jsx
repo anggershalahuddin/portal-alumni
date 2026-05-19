@@ -156,8 +156,14 @@ function TestimoniModal({ data, onClose, onSave }) {
     foto_url: null, inisial: '', warna_avatar: '#1A5C38',
     urutan: 0, is_aktif: true,
   })
+  const [angkatanList, setAngkatanList] = useState([])
   function set(k, v) { setForm(f => ({ ...f, [k]: v })) }
   const valid = form.nama.trim() && form.isi.trim()
+
+  useEffect(() => {
+    supabase.from('angkatan').select('tahun_lulus, nama_angkatan').order('tahun_lulus', { ascending: false })
+      .then(({ data }) => setAngkatanList(data ?? []))
+  }, [])
 
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center p-4" style={{ backgroundColor: 'rgba(0,0,0,0.5)' }}>
@@ -174,7 +180,14 @@ function TestimoniModal({ data, onClose, onSave }) {
           <div className="grid grid-cols-2 gap-3">
             <div>
               <label className="text-xs font-semibold text-gray-600 mb-1 block">Angkatan</label>
-              <input value={form.angkatan} onChange={e => set('angkatan', e.target.value)} placeholder="cth. Angkatan 2010" className={inputCls} />
+              <select value={form.angkatan ?? ''} onChange={e => set('angkatan', e.target.value || null)} className={inputCls}>
+                <option value="">— Pilih Angkatan —</option>
+                {angkatanList.map(a => (
+                  <option key={a.tahun_lulus} value={`Angkatan ${a.tahun_lulus - 2005} (${a.tahun_lulus})`}>
+                    {`Angkatan ${a.tahun_lulus - 2005} (${a.tahun_lulus})${a.nama_angkatan ? ' · ' + a.nama_angkatan : ''}`}
+                  </option>
+                ))}
+              </select>
             </div>
             <div>
               <label className="text-xs font-semibold text-gray-600 mb-1 block">Urutan</label>
