@@ -20,6 +20,15 @@ export default function GuestRoute({ children }) {
 
   if (!user) return children
 
+  // User baru login tapi profile belum selesai di-fetch (gap ~800ms di AuthContext)
+  if (!profile) {
+    return (
+      <div className="min-h-screen flex items-center justify-center bg-gray-50">
+        <div className="w-8 h-8 border-4 border-green-600 border-t-transparent rounded-full animate-spin" />
+      </div>
+    )
+  }
+
   const role   = profile?.role   ?? null
   const status = profile?.status ?? null
 

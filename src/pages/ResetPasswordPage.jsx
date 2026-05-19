@@ -41,11 +41,13 @@ export default function ResetPasswordPage() {
     }
     setLoading(true)
     const { error: err } = await supabase.auth.updateUser({ password })
-    setLoading(false)
     if (err) {
+      setLoading(false)
       setError(err.message)
       return
     }
+    await supabase.auth.signOut()
+    setLoading(false)
     setDone(true)
     setTimeout(() => navigate('/masuk', { replace: true }), 3000)
   }
