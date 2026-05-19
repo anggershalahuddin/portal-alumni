@@ -2351,7 +2351,15 @@ export default function AlumniDashboardPage() {
                           <p className="text-[10px] text-gray-400">{doc.tipe} · {doc.ukuran}</p>
                         </div>
                         <div className="flex items-center gap-1 opacity-0 group-hover:opacity-100 transition-opacity">
-                          <button className="w-7 h-7 rounded-lg hover:bg-white flex items-center justify-center text-gray-400 hover:text-[#1A5C38] transition-colors">
+                          <button
+                            onClick={async () => {
+                              if (!doc.file_url) return
+                              const { data } = await supabase.storage.from('berkas-alumni').createSignedUrl(doc.file_url, 120)
+                              if (data?.signedUrl) window.open(data.signedUrl, '_blank')
+                            }}
+                            className="w-7 h-7 rounded-lg hover:bg-white flex items-center justify-center text-gray-400 hover:text-[#1A5C38] transition-colors"
+                            title="Unduh dokumen"
+                          >
                             <Download className="w-3.5 h-3.5" />
                           </button>
                           <button onClick={() => delDokumen(doc.id, doc.file_url)}

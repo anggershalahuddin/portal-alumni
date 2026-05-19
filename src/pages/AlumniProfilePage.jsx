@@ -269,9 +269,10 @@ export default function AlumniProfilePage() {
             website:       l.website ?? '',
           })),
           dokumen: (berkasRes.data ?? []).map((b) => ({
-            nama:   b.nama,
-            tipe:   b.tipe ?? b.kategori ?? 'FILE',
-            ukuran: b.ukuran ?? '',
+            nama:    b.nama,
+            tipe:    b.tipe ?? b.kategori ?? 'FILE',
+            ukuran:  b.ukuran ?? '',
+            fileUrl: b.file_url ?? '',
           })),
           publikasi: (publikasiRes.data ?? []).map((pub) => ({
             judul:    pub.judul ?? '',
@@ -831,9 +832,14 @@ export default function AlumniProfilePage() {
                   <h3 className="font-bold text-[#0A2415] text-sm mb-4">Dokumen & Lampiran</h3>
                   <div className="space-y-2">
                     {detail.dokumen.map((doc) => (
-                      <div
+                      <button
                         key={doc.nama}
-                        className="flex items-center gap-3 p-3 bg-[#F8FAF9] rounded-lg hover:bg-[#E8F5EE] transition-colors cursor-pointer group"
+                        onClick={async () => {
+                          if (!doc.fileUrl) return
+                          const { data } = await supabase.storage.from('berkas-alumni').createSignedUrl(doc.fileUrl, 120)
+                          if (data?.signedUrl) window.open(data.signedUrl, '_blank')
+                        }}
+                        className="w-full flex items-center gap-3 p-3 bg-[#F8FAF9] rounded-lg hover:bg-[#E8F5EE] transition-colors cursor-pointer group text-left"
                       >
                         <div className="w-8 h-8 bg-red-100 rounded-lg flex items-center justify-center flex-shrink-0">
                           <span className="text-[10px] font-bold text-red-500">{doc.tipe}</span>
@@ -843,7 +849,7 @@ export default function AlumniProfilePage() {
                           <p className="text-[10px] text-gray-400">{doc.tipe} · {doc.ukuran}</p>
                         </div>
                         <Download className="w-4 h-4 text-gray-400 group-hover:text-[#1A5C38] transition-colors flex-shrink-0" />
-                      </div>
+                      </button>
                     ))}
                   </div>
                 </div>

@@ -4,7 +4,7 @@ import {
   Search, ChevronDown, X, BadgeCheck,
   GraduationCap, Briefcase, BookOpen, Mail, Globe,
   Link2, Filter, Eye, FileSpreadsheet, Building2, Handshake,
-  AlertCircle, Phone, MapPin, Calendar, Award, Loader2, RefreshCw,
+  AlertCircle, Phone, MapPin, Calendar, Award, Loader2, RefreshCw, Download,
 } from 'lucide-react'
 
 function IconInstagram({ size = 16 }) {
@@ -414,7 +414,15 @@ function DetailModal({ alumni, detail, angkatanInfo, onClose }) {
                         </div>
                       </div>
                       {b.fileUrl && (
-                        <a href={b.fileUrl} target="_blank" rel="noopener noreferrer" className="text-xs text-blue-500 flex-shrink-0">Buka</a>
+                        <button
+                          onClick={async () => {
+                            const { data } = await supabase.storage.from('berkas-alumni').createSignedUrl(b.fileUrl, 120)
+                            if (data?.signedUrl) window.open(data.signedUrl, '_blank')
+                          }}
+                          className="text-xs text-blue-500 hover:text-blue-700 flex-shrink-0 flex items-center gap-1"
+                        >
+                          <Download className="w-3 h-3" /> Unduh
+                        </button>
                       )}
                     </div>
                   )) : (
