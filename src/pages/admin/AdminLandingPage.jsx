@@ -189,10 +189,14 @@ function TestimoniModal({ data, onClose, onSave }) {
             <label className="text-xs font-semibold text-gray-600 mb-1 block">Isi Testimoni <span className="text-red-400">*</span></label>
             <textarea value={form.isi} onChange={e => set('isi', e.target.value)} rows={4} placeholder="Tulis kutipan testimoni alumni..." className={`${inputCls} resize-none`} />
           </div>
-          <div>
-            <label className="text-xs font-semibold text-gray-600 mb-1 block">URL Foto <span className="text-gray-400 font-normal">(opsional)</span></label>
-            <input value={form.foto_url ?? ''} onChange={e => set('foto_url', e.target.value || null)} placeholder="https://..." className={inputCls} />
-          </div>
+          <ImageUploadBox
+            label="Foto (opsional)"
+            hint="JPG / PNG, maks 2 MB"
+            value={form.foto_url ?? ''}
+            onChange={v => set('foto_url', v || null)}
+            bucket="site-assets"
+            pathPrefix="testimoni"
+          />
           <div className="grid grid-cols-2 gap-3">
             <div>
               <label className="text-xs font-semibold text-gray-600 mb-1 block">Inisial Avatar <span className="text-gray-400 font-normal">(opsional, otomatis jika kosong)</span></label>
