@@ -182,11 +182,12 @@ function TestimoniModal({ data, onClose, onSave }) {
               <label className="text-xs font-semibold text-gray-600 mb-1 block">Angkatan</label>
               <select value={form.angkatan ?? ''} onChange={e => set('angkatan', e.target.value || null)} className={inputCls}>
                 <option value="">— Pilih Angkatan —</option>
-                {angkatanList.map(a => (
-                  <option key={a.tahun_lulus} value={`Angkatan ${a.tahun_lulus - 2005} (${a.tahun_lulus})`}>
-                    {`Angkatan ${a.tahun_lulus - 2005} (${a.tahun_lulus})${a.nama_angkatan ? ' · ' + a.nama_angkatan : ''}`}
-                  </option>
-                ))}
+                {angkatanList.map(a => {
+                  const label = `Marhalah ${a.tahun_lulus - 2005} (${a.tahun_lulus})${a.nama_angkatan ? ' - ' + a.nama_angkatan : ''}`
+                  return (
+                    <option key={a.tahun_lulus} value={label}>{label}</option>
+                  )
+                })}
               </select>
             </div>
             <div>
