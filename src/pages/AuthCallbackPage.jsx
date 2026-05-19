@@ -2,6 +2,8 @@ import { useEffect, useRef } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { supabase } from '../lib/supabase'
 
+const ADMIN_ROLES = ['super_admin', 'admin', 'editor']
+
 export default function AuthCallbackPage() {
   const navigate = useNavigate()
   const didNavigate = useRef(false)
@@ -11,14 +13,21 @@ export default function AuthCallbackPage() {
       if (didNavigate.current) return
       didNavigate.current = true
 
-      // Check if profile registration is complete (no_hp is the key indicator)
       const { data: prof } = await supabase
         .from('profiles')
-        .select('no_hp')
+        .select('no_hp, role, status')
         .eq('id', session.user.id)
         .maybeSingle()
 
-      navigate(!prof?.no_hp ? '/daftar' : '/pilih-dashboard', { replace: true })
+      if (!prof?.no_hp) {
+        navigate('/daftar', { replace: true })
+      } else if (ADMIN_ROLES.includes(prof?.role)) {
+        navigate('/pilih-dashboard', { replace: true })
+      } else if (prof?.status === 'menunggu' || prof?.status === 'ditolak') {
+        navigate(`/verifikasi-status?status=${prof.status}`, { replace: true })
+      } else {
+        navigate('/dashboard', { replace: true })
+      }
     }
 
     const { data: { subscription } } = supabase.auth.onAuthStateChange((event, session) => {
