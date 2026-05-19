@@ -247,12 +247,15 @@ export default function AlumniProfilePage() {
             periode:   [pek.tahun_mulai, pek.is_current ? 'Sekarang' : pek.tahun_selesai].filter(Boolean).join(' – '),
             deskripsi: pek.deskripsi ?? '',
           })),
-          pendidikan: (pendidikanRes.data ?? []).map((pend) => ({
-            jenjang:   pend.jenjang ?? '',
-            gelar:     [pend.gelar_depan, pend.gelar_belakang].filter(Boolean).join(', '),
-            institusi: pend.institusi ?? '',
-            tahun:     [pend.tahun_mulai, pend.is_current ? 'Sekarang' : pend.tahun_selesai].filter(Boolean).join(' – '),
-          })),
+          pendidikan: (pendidikanRes.data ?? [])
+            .sort((a, b) => (b.is_current ? 1 : 0) - (a.is_current ? 1 : 0) || (b.tahun_selesai ?? 0) - (a.tahun_selesai ?? 0))
+            .map((pend) => ({
+              jenjang:   pend.jenjang ?? '',
+              gelar:     [pend.gelar_depan, pend.gelar_belakang].filter(Boolean).join(', '),
+              institusi: pend.institusi ?? '',
+              tahun:     [pend.tahun_mulai, pend.is_current ? 'Sekarang' : pend.tahun_selesai].filter(Boolean).join(' – '),
+              isCurrent: pend.is_current ?? false,
+            })),
           lembaga: (lembagaRes.data ?? []).map((l) => ({
             nama:          l.nama ?? '',
             jenis:         l.jenis ?? '',
@@ -616,7 +619,10 @@ export default function AlumniProfilePage() {
                             <GraduationCap className="w-5 h-5 text-[#F0A500]" />
                           </div>
                           <div>
-                            <p className="font-bold text-sm text-[#0A2415]">{p.jenjang}</p>
+                            <div className="flex items-center gap-2 flex-wrap">
+                              <p className="font-bold text-sm text-[#0A2415]">{p.jenjang}</p>
+                              {p.isCurrent && <span className="text-[10px] font-bold bg-green-100 text-green-700 px-2 py-0.5 rounded-full">Sedang Belajar</span>}
+                            </div>
                             {p.gelar && <p className="text-xs text-[#1A5C38] font-medium">{p.gelar}</p>}
                             <p className="text-xs text-gray-500">{p.institusi}</p>
                             <p className="text-xs text-gray-400">{p.tahun}</p>

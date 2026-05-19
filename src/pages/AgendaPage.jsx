@@ -252,6 +252,8 @@ function PamfletLightbox({ src, onClose }) {
 
 function EventModal({ event, onClose }) {
   const [pamfletOpen, setPamfletOpen] = useState(false)
+  const { supaUser } = useAuth()
+  const navigate = useNavigate()
 
   useEffect(() => {
     document.body.style.overflow = 'hidden'

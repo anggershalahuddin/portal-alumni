@@ -290,7 +290,10 @@ function DetailModal({ alumni, detail, angkatanInfo, onClose }) {
                         <GraduationCap className="w-4 h-4 text-[#F0A500]" />
                       </div>
                       <div className="flex-1 min-w-0">
-                        <p className="font-semibold text-sm text-[#0A2415]">{[p.jenjang, p.jurusan].filter(Boolean).join(' – ')}</p>
+                        <div className="flex items-center gap-2 flex-wrap">
+                          <p className="font-semibold text-sm text-[#0A2415]">{[p.jenjang, p.jurusan].filter(Boolean).join(' – ')}</p>
+                          {p.isCurrent && <span className="text-[10px] font-bold bg-green-100 text-green-700 px-2 py-0.5 rounded-full">Sedang Belajar</span>}
+                        </div>
                         {p.institusi && <p className="text-xs text-gray-500 font-medium mt-0.5">{p.institusi}</p>}
                         {p.periode   && <p className="text-xs text-gray-400 flex items-center gap-1 mt-0.5"><Calendar className="w-3 h-3" />{p.periode}</p>}
                       </div>
@@ -578,7 +581,7 @@ export default function AdminDataAlumniPage() {
             })) : [],
           pendidikan: apId ? pendidikanAll
             .filter((pend) => pend.alumni_id === apId)
-            .sort((a, b) => (b.tahun_selesai ?? 0) - (a.tahun_selesai ?? 0))
+            .sort((a, b) => (b.is_current ? 1 : 0) - (a.is_current ? 1 : 0) || (b.tahun_selesai ?? 0) - (a.tahun_selesai ?? 0))
             .map((pend) => ({
               jenjang:     pend.jenjang ?? '',
               jurusan:     pend.jurusan ?? '',
