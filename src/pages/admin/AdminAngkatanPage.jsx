@@ -50,13 +50,13 @@ function LogoBox({ previewUrl, onChange }) {
   )
 }
 
-const EMPTY_FORM = { tahunLulusan: '', angkatanKe: '', nama: '', logoPreview: null, logoFile: null }
+const EMPTY_FORM = { tahunLulusan: '', angkatanKe: '', nama: '', ketua: '', noHpKetua: '', logoPreview: null, logoFile: null }
 
 function AngkatanModal({ data, onClose, onSave }) {
   const isEdit = !!data
   const [form, setForm] = useState(
     isEdit
-      ? { tahunLulusan: String(data.tahunLulusan), angkatanKe: String(data.angkatanKe), nama: data.nama, logoPreview: data.logoUrl ?? null, logoFile: null }
+      ? { tahunLulusan: String(data.tahunLulusan), angkatanKe: String(data.angkatanKe), nama: data.nama, ketua: data.ketua ?? '', noHpKetua: data.noHpKetua ?? '', logoPreview: data.logoUrl ?? null, logoFile: null }
       : { ...EMPTY_FORM }
   )
 
@@ -72,6 +72,8 @@ function AngkatanModal({ data, onClose, onSave }) {
       tahunLulusan: parseInt(form.tahunLulusan),
       angkatanKe: parseInt(form.angkatanKe),
       nama: form.nama.trim(),
+      ketua: form.ketua.trim(),
+      noHpKetua: form.noHpKetua.trim(),
       logoPreview: form.logoPreview,
       logoFile: form.logoFile,
     })
@@ -140,6 +142,30 @@ function AngkatanModal({ data, onClose, onSave }) {
                     required
                   />
                 </div>
+
+                {/* Ketua angkatan */}
+                <div>
+                  <label className="block text-xs font-semibold text-gray-600 mb-1.5">Ketua Angkatan</label>
+                  <input
+                    type="text"
+                    value={form.ketua}
+                    onChange={e => setForm(f => ({ ...f, ketua: e.target.value }))}
+                    placeholder="Nama ketua angkatan"
+                    className="w-full border border-gray-200 rounded-lg px-3 py-2 text-sm focus:outline-none focus:border-[#1A5C38]"
+                  />
+                </div>
+
+                {/* No HP ketua */}
+                <div>
+                  <label className="block text-xs font-semibold text-gray-600 mb-1.5">No. HP Ketua</label>
+                  <input
+                    type="tel"
+                    value={form.noHpKetua}
+                    onChange={e => setForm(f => ({ ...f, noHpKetua: e.target.value }))}
+                    placeholder="contoh: 08123456789"
+                    className="w-full border border-gray-200 rounded-lg px-3 py-2 text-sm focus:outline-none focus:border-[#1A5C38]"
+                  />
+                </div>
               </div>
 
               {/* Logo */}
@@ -185,6 +211,8 @@ function mapAngkatan(row) {
     angkatanKe: row.tahun_lulus - 2005,
     nama: row.nama_angkatan ?? `Angkatan ${row.tahun_lulus - 2005}`,
     logoUrl: row.logo_url ?? null,
+    ketua: row.ketua_angkatan ?? '',
+    noHpKetua: row.no_hp_ketua ?? '',
   }
 }
 
@@ -264,15 +292,17 @@ export default function AdminAngkatanPage() {
         }
 
         const dbData = {
-          tahun_lulus:   formData.tahunLulusan,
-          tahun_masuk:   formData.tahunLulusan - 4,
-          nama_angkatan: formData.nama,
-          logo_url:      logoUrl ?? null,
+          tahun_lulus:      formData.tahunLulusan,
+          tahun_masuk:      formData.tahunLulusan - 4,
+          nama_angkatan:    formData.nama,
+          logo_url:         logoUrl ?? null,
+          ketua_angkatan:   formData.ketua || null,
+          no_hp_ketua:      formData.noHpKetua || null,
         }
         if (isEdit) {
           const { error } = await supabase.from('angkatan').update(dbData).eq('id', modal.data.id)
           if (!error) setAngkatan(prev => prev.map(a => a.id === modal.data.id
-            ? { ...a, tahunLulusan: formData.tahunLulusan, angkatanKe: formData.angkatanKe, nama: formData.nama, logoUrl }
+            ? { ...a, tahunLulusan: formData.tahunLulusan, angkatanKe: formData.angkatanKe, nama: formData.nama, logoUrl, ketua: formData.ketua, noHpKetua: formData.noHpKetua }
             : a))
         } else {
           const { data, error } = await supabase.from('angkatan').insert(dbData).select('id').single()
@@ -282,6 +312,8 @@ export default function AdminAngkatanPage() {
             angkatanKe: formData.angkatanKe,
             nama: formData.nama,
             logoUrl,
+            ketua: formData.ketua,
+            noHpKetua: formData.noHpKetua,
           }])
         }
         setModal(null)
@@ -390,15 +422,17 @@ export default function AdminAngkatanPage() {
                     </th>
                     <th className="text-center px-4 py-3 text-xs font-semibold text-gray-500">Tahun Lulusan</th>
                     <th className="text-left px-4 py-3 text-xs font-semibold text-gray-500">Nama Angkatan</th>
+                    <th className="text-left px-4 py-3 text-xs font-semibold text-gray-500">Ketua</th>
+                    <th className="text-left px-4 py-3 text-xs font-semibold text-gray-500">No. HP Ketua</th>
                     <th className="text-center px-4 py-3 text-xs font-semibold text-gray-500">Aksi</th>
                   </tr>
                 </thead>
                 <tbody>
                   {(loading || refreshing) ? (
-                    <tr><td colSpan={6} className="text-center py-16"><Loader2 className="w-6 h-6 animate-spin text-gray-400 mx-auto" /></td></tr>
+                    <tr><td colSpan={8} className="text-center py-16"><Loader2 className="w-6 h-6 animate-spin text-gray-400 mx-auto" /></td></tr>
                   ) : paged.length === 0 ? (
                     <tr>
-                      <td colSpan={6} className="text-center py-16 text-gray-400">
+                      <td colSpan={8} className="text-center py-16 text-gray-400">
                         <GraduationCap className="w-8 h-8 mx-auto mb-2 opacity-30" />
                         <p className="text-sm">Tidak ada data angkatan ditemukan</p>
                       </td>
@@ -430,6 +464,14 @@ export default function AdminAngkatanPage() {
                       </td>
                       <td className="px-4 py-3">
                         <p className="font-semibold text-[#0A2415] text-sm">{item.nama}</p>
+                      </td>
+                      <td className="px-4 py-3">
+                        <p className="text-sm text-gray-700">{item.ketua || <span className="text-gray-300">—</span>}</p>
+                      </td>
+                      <td className="px-4 py-3">
+                        {item.noHpKetua
+                          ? <a href={`tel:${item.noHpKetua}`} className="text-sm text-[#1A5C38] hover:underline">{item.noHpKetua}</a>
+                          : <span className="text-gray-300">—</span>}
                       </td>
                       <td className="px-4 py-3">
                         <div className="flex items-center justify-center gap-1">
