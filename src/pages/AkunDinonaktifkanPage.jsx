@@ -1,9 +1,19 @@
+import { useEffect } from 'react'
+import { useNavigate } from 'react-router-dom'
 import { ShieldOff, Mail, LogOut } from 'lucide-react'
 import logoUrl from '@/assets/Logo DM Fix.jpg'
 import { useAuth } from '@/context/AuthContext'
 
 export default function AkunDinonaktifkanPage() {
-  const { user, signOut } = useAuth()
+  const { user, profile, signOut } = useAuth()
+  const navigate = useNavigate()
+
+  // Auto-redirect ketika admin mengaktifkan kembali akun (poll 30 detik di AuthContext)
+  useEffect(() => {
+    if (profile && profile.is_active !== false) {
+      navigate('/dashboard', { replace: true })
+    }
+  }, [profile, navigate])
 
   async function handleSignOut() {
     await signOut()
