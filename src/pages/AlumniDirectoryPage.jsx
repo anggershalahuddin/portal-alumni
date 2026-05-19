@@ -605,7 +605,7 @@ export default function AlumniDirectoryPage() {
 
                     <div className="flex items-center gap-1.5 text-xs text-[#F0A500] font-semibold mb-2">
                       <GraduationCap className="w-3.5 h-3.5" />
-                      Angkatan {alumni.angkatan}
+                      {alumni.angkatan ? `Marhalah ${alumni.angkatan - 2005} - Tahun ${alumni.angkatan}` : '—'}
                     </div>
 
                     {(alumni.profesi || alumni.perusahaan) && (
