@@ -7,7 +7,6 @@ import {
   Lock, Key, Eye, EyeOff, AlertCircle, XCircle, Loader2, RefreshCw,
 } from 'lucide-react'
 import { motion } from 'framer-motion'
-import AdminSidebar from '../../components/admin/AdminSidebar'
 import AdminHeader from '../../components/admin/AdminHeader'
 import ConfirmDialog from '../../components/admin/ConfirmDialog'
 import { PaginationBar, PerPageSelector } from '../../components/PaginationBar'
@@ -813,21 +812,14 @@ export default function AdminManajemenUserPage() {
 
   if (pageLoading) {
     return (
-      <div className="flex min-h-screen" style={{ backgroundColor: '#F1F5F9' }}>
-        <AdminSidebar active="users" />
-        <div className="flex-1 flex items-center justify-center">
-          <div className="w-8 h-8 border-4 border-green-600 border-t-transparent rounded-full animate-spin" />
-        </div>
+      <div className="flex-1 flex items-center justify-center py-24">
+        <div className="w-8 h-8 border-4 border-green-600 border-t-transparent rounded-full animate-spin" />
       </div>
     )
   }
 
   return (
-    <div className="flex min-h-screen" style={{ backgroundColor: '#F1F5F9' }}>
-      <AdminSidebar active="users" />
-
-      <div className="flex-1 flex flex-col min-w-0">
-
+    <>
         <AdminHeader
           searchValue={search}
           onSearchChange={(v) => { setSearch(v); setPage(1) }}
@@ -1103,7 +1095,6 @@ export default function AdminManajemenUserPage() {
             </div>
           </div>
         </motion.div>
-      </div>
 
       {/* Modals */}
       {modal?.type === 'tambah' && (
@@ -1152,6 +1143,6 @@ export default function AdminManajemenUserPage() {
           </div>
         </div>
       )}
-    </div>
+    </>
   )
 }

@@ -1,7 +1,6 @@
 import { useState, useEffect } from 'react'
 import { motion } from 'framer-motion'
 import { Users, Newspaper, CalendarDays, TrendingUp, Clock, Image, Briefcase, ArrowUpRight } from 'lucide-react'
-import AdminSidebar from '../../components/admin/AdminSidebar'
 import AdminHeader from '../../components/admin/AdminHeader'
 import { getInitials } from '../../data/alumni'
 import { supabase } from '@/lib/supabase'
@@ -178,11 +177,7 @@ export default function AdminDashboardPage() {
   }, [])
 
   return (
-    <div className="flex min-h-screen" style={{ backgroundColor: '#F1F5F9' }}>
-      <AdminSidebar active="dashboard" />
-
-      <div className="flex-1 flex flex-col min-w-0">
-
+    <>
         <AdminHeader
           searchValue={search}
           onSearchChange={setSearch}
@@ -332,7 +327,6 @@ export default function AdminDashboardPage() {
           </div>
           <p className="text-xs text-gray-400">Portal Alumni Daarul Mughni · Admin v2.0</p>
         </div>
-      </div>
-    </div>
+    </>
   )
 }

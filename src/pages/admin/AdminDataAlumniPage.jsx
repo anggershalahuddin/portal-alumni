@@ -52,7 +52,6 @@ function IconFacebook({ size = 16 }) {
   )
 }
 import { motion } from 'framer-motion'
-import AdminSidebar from '@/components/admin/AdminSidebar'
 import AdminHeader from '@/components/admin/AdminHeader'
 import { PaginationBar, PerPageSelector } from '@/components/PaginationBar'
 import { getAvatarColor, getInitials, bidangList } from '@/data/alumni'
@@ -684,20 +683,14 @@ export default function AdminDataAlumniPage() {
   /* ── Loading screen ── */
   if (pageLoading) {
     return (
-      <div className="flex min-h-screen bg-[#F8FAF9]">
-        <AdminSidebar active="alumni-data" />
-        <div className="flex-1 flex items-center justify-center">
-          <div className="w-8 h-8 border-4 border-green-600 border-t-transparent rounded-full animate-spin" />
-        </div>
+      <div className="flex-1 flex items-center justify-center py-24">
+        <div className="w-8 h-8 border-4 border-green-600 border-t-transparent rounded-full animate-spin" />
       </div>
     )
   }
 
   return (
-    <div className="flex min-h-screen bg-[#F8FAF9]">
-      <AdminSidebar active="alumni-data" />
-
-      <div className="flex-1 flex flex-col min-w-0">
+    <>
         <AdminHeader searchPlaceholder="Cari data alumni..." />
 
         <motion.div
@@ -939,7 +932,6 @@ export default function AdminDataAlumniPage() {
             )}
           </div>
         </motion.div>
-      </div>
 
       {detail && (
         <DetailModal
@@ -949,6 +941,6 @@ export default function AdminDataAlumniPage() {
           onClose={() => setDetail(null)}
         />
       )}
-    </div>
+    </>
   )
 }

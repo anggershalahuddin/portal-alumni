@@ -3,7 +3,6 @@ import * as XLSX from 'xlsx'
 import { Plus, Pencil, Trash2, X, Download, MapPin, Calendar, Users, Tag, Loader2, AlertCircle, RefreshCw } from 'lucide-react'
 import { toast } from '@/lib/toast'
 import { motion } from 'framer-motion'
-import AdminSidebar from '../../components/admin/AdminSidebar'
 import AdminHeader from '../../components/admin/AdminHeader'
 import ConfirmDialog from '../../components/admin/ConfirmDialog'
 import ImageUploadBox from '../../components/admin/ImageUploadBox'
@@ -845,10 +844,7 @@ export default function AdminAgendaPage() {
   }
 
   return (
-    <div className="flex min-h-screen" style={{ backgroundColor: '#F1F5F9' }}>
-      <AdminSidebar active="agenda" />
-
-      <div className="flex-1 flex flex-col min-w-0">
+    <>
         <AdminHeader
           searchValue={search}
           onSearchChange={(v) => { setSearch(v); setPage(1) }}
@@ -1005,7 +1001,6 @@ export default function AdminAgendaPage() {
           </div>
           <p className="text-xs text-gray-400">Portal Alumni Daarul Mughni · Admin v2.0</p>
         </div>
-      </div>
 
       {tagModal && (
         <TagManagerModal
@@ -1026,6 +1021,6 @@ export default function AdminAgendaPage() {
       )}
 
       <ConfirmDialog open={confirm.open} title={confirm.title} message={confirm.message} confirmLabel={confirm.confirmLabel} variant={confirm.variant} onConfirm={confirm.onConfirm} onCancel={closeConfirm} />
-    </div>
+    </>
   )
 }

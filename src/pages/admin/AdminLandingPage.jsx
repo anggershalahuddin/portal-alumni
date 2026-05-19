@@ -2,7 +2,6 @@
 import { Plus, Pencil, Trash2, X, Check, Eye, EyeOff, Star, Target, GraduationCap, Loader2, MessageSquareQuote } from 'lucide-react'
 import { toast } from '@/lib/toast'
 import { motion } from 'framer-motion'
-import AdminSidebar from '../../components/admin/AdminSidebar'
 import AdminHeader from '../../components/admin/AdminHeader'
 import ConfirmDialog from '../../components/admin/ConfirmDialog'
 import ImageUploadBox from '../../components/admin/ImageUploadBox'
@@ -465,10 +464,7 @@ export default function AdminLandingPage() {
   ]
 
   return (
-    <div className="flex min-h-screen" style={{ backgroundColor: '#F1F5F9' }}>
-      <AdminSidebar active="landing" />
-
-      <div className="flex-1 flex flex-col min-w-0">
+    <>
         <AdminHeader
           searchValue={search}
           onSearchChange={setSearch}
@@ -720,7 +716,6 @@ export default function AdminLandingPage() {
             </div>
           )}
         </motion.div>
-      </div>
 
       {/* Modals */}
       {guruModal !== null && (
@@ -746,6 +741,6 @@ export default function AdminLandingPage() {
       )}
 
       <ConfirmDialog open={confirm.open} title={confirm.title} message={confirm.message} confirmLabel={confirm.confirmLabel} variant={confirm.variant} onConfirm={confirm.onConfirm} onCancel={closeConfirm} />
-    </div>
+    </>
   )
 }

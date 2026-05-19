@@ -1,7 +1,6 @@
 ﻿import { useState, useEffect, useCallback } from 'react'
 import { Plus, Trash2, Edit2, Briefcase, X, Check, MapPin, Clock, ChevronDown, ChevronUp, Layers, Loader2, AlertCircle, RefreshCw } from 'lucide-react'
 import { motion } from 'framer-motion'
-import AdminSidebar from '../../components/admin/AdminSidebar'
 import AdminHeader from '../../components/admin/AdminHeader'
 import ConfirmDialog from '../../components/admin/ConfirmDialog'
 import { bidangLowongan as seedBidang, tipeLowongan } from '../../data/lowongan'
@@ -352,10 +351,7 @@ export default function AdminKarirPage() {
   const aktifCount = lowongan.filter(l => l.aktif).length
 
   return (
-    <div className="flex min-h-screen" style={{ backgroundColor: '#F1F5F9' }}>
-      <AdminSidebar active="karir" />
-
-      <div className="flex-1 flex flex-col min-w-0">
+    <>
         <AdminHeader
           searchValue={search}
           onSearchChange={setSearch}
@@ -442,7 +438,6 @@ export default function AdminKarirPage() {
             </div>
           )}
         </motion.div>
-      </div>
 
       {modal !== null && (
         <LowonganModal item={modal?.id ? modal : null} onClose={() => setModal(null)} onSave={handleSave} bidangs={bidangs} />
@@ -461,6 +456,6 @@ export default function AdminKarirPage() {
       )}
 
       <ConfirmDialog open={confirm.open} title={confirm.title} message={confirm.message} confirmLabel={confirm.confirmLabel} variant={confirm.variant} onConfirm={confirm.onConfirm} onCancel={closeConfirm} />
-    </div>
+    </>
   )
 }

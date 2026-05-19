@@ -8,7 +8,6 @@ import {
   AlertCircle, Trash2, ZoomIn, RefreshCw, Loader2,
 } from 'lucide-react'
 import { motion } from 'framer-motion'
-import AdminSidebar from '../../components/admin/AdminSidebar'
 import AdminHeader from '../../components/admin/AdminHeader'
 import ConfirmDialog from '../../components/admin/ConfirmDialog'
 import { supabase } from '@/lib/supabase'
@@ -668,23 +667,14 @@ export default function AdminVerifikasiPage() {
   /* ── Loading screen ── */
   if (pageLoading) {
     return (
-      <div className="flex min-h-screen" style={{ backgroundColor: '#F1F5F9' }}>
-        <AdminSidebar active="verifikasi" />
-        <div className="flex-1 flex items-center justify-center">
-          <div className="w-8 h-8 border-4 border-green-600 border-t-transparent rounded-full animate-spin" />
-        </div>
+      <div className="flex-1 flex items-center justify-center py-24">
+        <div className="w-8 h-8 border-4 border-green-600 border-t-transparent rounded-full animate-spin" />
       </div>
     )
   }
 
   return (
-    <div className="flex min-h-screen" style={{ backgroundColor: '#F1F5F9' }}>
-
-      <AdminSidebar active="verifikasi" />
-
-      {/* ── Main ── */}
-      <div className="flex-1 flex flex-col min-w-0">
-
+    <>
         <AdminHeader
           searchValue={search}
           onSearchChange={(v) => { setSearch(v); setPage(1) }}
@@ -1044,7 +1034,6 @@ export default function AdminVerifikasiPage() {
             </div>
           </div>
         </motion.div>
-      </div>
 
       {/* ── Modals ── */}
       {berkasTarget && <BerkasModal alumni={berkasTarget} onClose={() => setBerkasTarget(null)} />}
@@ -1058,6 +1047,6 @@ export default function AdminVerifikasiPage() {
       {showSuccess && <SuccessModal onClose={() => setShowSuccess(false)} />}
       {showRejectedConfirm && <RejectedConfirmModal onClose={() => setShowRejectedConfirm(false)} />}
       <ConfirmDialog open={confirm.open} title={confirm.title} message={confirm.message} confirmLabel={confirm.confirmLabel} variant={confirm.variant} onConfirm={confirm.onConfirm} onCancel={closeConfirm} />
-    </div>
+    </>
   )
 }

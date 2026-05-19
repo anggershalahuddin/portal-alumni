@@ -1,7 +1,6 @@
 import { useState, useEffect, useCallback } from 'react'
 import { Bell, Check, CheckCheck, Trash2, Shield, Newspaper, CalendarDays, Users, AlertCircle, Loader2, RefreshCw } from 'lucide-react'
 import { motion } from 'framer-motion'
-import AdminSidebar from '../../components/admin/AdminSidebar'
 import AdminHeader from '../../components/admin/AdminHeader'
 import ConfirmDialog from '../../components/admin/ConfirmDialog'
 import { supabase } from '@/lib/supabase'
@@ -91,10 +90,7 @@ export default function AdminNotifikasiPage() {
   }
 
   return (
-    <div className="flex min-h-screen" style={{ backgroundColor: '#F1F5F9' }}>
-      <AdminSidebar active="notifikasi" />
-
-      <div className="flex-1 flex flex-col min-w-0">
+    <>
         <AdminHeader searchPlaceholder="Cari notifikasi..." />
 
         <motion.div
@@ -214,7 +210,6 @@ export default function AdminNotifikasiPage() {
             })}
           </div>
         </motion.div>
-      </div>
 
       <ConfirmDialog
         open={confirm.open}
@@ -225,6 +220,6 @@ export default function AdminNotifikasiPage() {
         onConfirm={confirm.onConfirm}
         onCancel={closeConfirm}
       />
-    </div>
+    </>
   )
 }

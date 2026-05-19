@@ -2,7 +2,6 @@ import { useState, useEffect, useCallback } from 'react'
 import * as XLSX from 'xlsx'
 import { Activity, Download, Shield, Newspaper, CalendarDays, Users, Settings, Image, Building2, Briefcase, GraduationCap, LogIn, LogOut, Trash2, Loader2, AlertCircle, ChevronLeft, ChevronRight } from 'lucide-react'
 import { motion } from 'framer-motion'
-import AdminSidebar from '../../components/admin/AdminSidebar'
 import AdminHeader from '../../components/admin/AdminHeader'
 import { supabase } from '@/lib/supabase'
 
@@ -167,10 +166,7 @@ export default function AdminLogPage() {
   const endEntry   = Math.min(page * perPage, totalCount)
 
   return (
-    <div className="flex min-h-screen" style={{ backgroundColor: '#F1F5F9' }}>
-      <AdminSidebar active="log" />
-
-      <div className="flex-1 flex flex-col min-w-0">
+    <>
         <AdminHeader
           searchValue={search}
           onSearchChange={setSearch}
@@ -365,7 +361,6 @@ export default function AdminLogPage() {
             </div>
           )}
         </motion.div>
-      </div>
-    </div>
+    </>
   )
 }

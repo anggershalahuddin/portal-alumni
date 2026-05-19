@@ -2,7 +2,6 @@
 import { Plus, Trash2, Edit2, Image, X, Check, Eye, Tag, Layers, Loader2, AlertCircle, RefreshCw } from 'lucide-react'
 import { toast } from '@/lib/toast'
 import { motion } from 'framer-motion'
-import AdminSidebar from '../../components/admin/AdminSidebar'
 import AdminHeader from '../../components/admin/AdminHeader'
 import ImageUploadBox from '../../components/admin/ImageUploadBox'
 import ConfirmDialog from '../../components/admin/ConfirmDialog'
@@ -262,10 +261,7 @@ export default function AdminGaleriPage() {
   const isAtLimit  = galeri.length >= MAX_GALERI
 
   return (
-    <div className="flex min-h-screen" style={{ backgroundColor: '#F1F5F9' }}>
-      <AdminSidebar active="galeri" />
-
-      <div className="flex-1 flex flex-col min-w-0">
+    <>
         <AdminHeader
           searchValue={search}
           onSearchChange={(v) => { setSearch(v); setPage(1) }}
@@ -415,7 +411,6 @@ export default function AdminGaleriPage() {
             </div>
           </div>
         </motion.div>
-      </div>
 
       {modal !== null && (
         <GaleriModal
@@ -449,6 +444,6 @@ export default function AdminGaleriPage() {
           </div>
         </div>
       )}
-    </div>
+    </>
   )
 }

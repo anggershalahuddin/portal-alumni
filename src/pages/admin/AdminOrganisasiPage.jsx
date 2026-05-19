@@ -1,7 +1,6 @@
 ﻿import { useState, useEffect, useCallback } from 'react'
 import { Plus, Trash2, Edit2, Building2, X, Check, Users, Mail, Calendar, Loader2, RefreshCw } from 'lucide-react'
 import { motion } from 'framer-motion'
-import AdminSidebar from '../../components/admin/AdminSidebar'
 import AdminHeader from '../../components/admin/AdminHeader'
 import ImageUploadBox from '../../components/admin/ImageUploadBox'
 import ConfirmDialog from '../../components/admin/ConfirmDialog'
@@ -188,10 +187,7 @@ export default function AdminOrganisasiPage() {
   }
 
   return (
-    <div className="flex min-h-screen" style={{ backgroundColor: '#F1F5F9' }}>
-      <AdminSidebar active="organisasi" />
-
-      <div className="flex-1 flex flex-col min-w-0">
+    <>
         <AdminHeader
           searchValue={search}
           onSearchChange={setSearch}
@@ -315,13 +311,12 @@ export default function AdminOrganisasiPage() {
             </div>
           )}
         </motion.div>
-      </div>
 
       {modal !== null && (
         <OrganisasiModal item={modal?.id ? modal : null} onClose={() => setModal(null)} onSave={handleSave} />
       )}
 
       <ConfirmDialog open={confirm.open} title={confirm.title} message={confirm.message} confirmLabel={confirm.confirmLabel} variant={confirm.variant} onConfirm={confirm.onConfirm} onCancel={closeConfirm} />
-    </div>
+    </>
   )
 }

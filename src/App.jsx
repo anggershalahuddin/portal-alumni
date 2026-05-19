@@ -5,6 +5,7 @@ import ScrollToTop from './components/ScrollToTop'
 import { AuthProvider } from './context/AuthContext'
 import { SiteConfigProvider } from './context/SiteConfigContext'
 import ProtectedAdminRoute from './components/admin/ProtectedAdminRoute'
+import AdminLayout from './components/admin/AdminLayout'
 import ProtectedRoute from './components/ProtectedRoute'
 import GuestRoute from './components/GuestRoute'
 import IdleWarningModal from './components/IdleWarningModal'
@@ -92,79 +93,24 @@ function App() {
             <Route path="/auth/callback" element={<AuthCallbackPage />} />
             <Route path="/pilih-dashboard" element={<ProtectedRoute><PilihDashboardPage /></ProtectedRoute>} />
 
-            {/* ── Admin routes (role-protected) ── */}
-            <Route path="/admin" element={<Navigate to="/admin/dashboard" replace />} />
-
-            <Route path="/admin/dashboard" element={
-              <ProtectedAdminRoute requiredPerm="dashboard">
-                <AdminDashboardPage />
-              </ProtectedAdminRoute>
-            } />
-            <Route path="/admin/verifikasi" element={
-              <ProtectedAdminRoute requiredPerm="verifikasi">
-                <AdminVerifikasiPage />
-              </ProtectedAdminRoute>
-            } />
-            <Route path="/admin/users" element={
-              <ProtectedAdminRoute requiredPerm="users">
-                <AdminManajemenUserPage />
-              </ProtectedAdminRoute>
-            } />
-            <Route path="/admin/alumni-data" element={
-              <ProtectedAdminRoute requiredPerm="alumni-data">
-                <AdminDataAlumniPage />
-              </ProtectedAdminRoute>
-            } />
-            <Route path="/admin/angkatan" element={
-              <ProtectedAdminRoute requiredPerm="angkatan">
-                <AdminAngkatanPage />
-              </ProtectedAdminRoute>
-            } />
-            <Route path="/admin/organisasi" element={
-              <ProtectedAdminRoute requiredPerm="organisasi">
-                <AdminOrganisasiPage />
-              </ProtectedAdminRoute>
-            } />
-            <Route path="/admin/berita" element={
-              <ProtectedAdminRoute requiredPerm="berita">
-                <AdminBeritaPage />
-              </ProtectedAdminRoute>
-            } />
-            <Route path="/admin/agenda" element={
-              <ProtectedAdminRoute requiredPerm="agenda">
-                <AdminAgendaPage />
-              </ProtectedAdminRoute>
-            } />
-            <Route path="/admin/galeri" element={
-              <ProtectedAdminRoute requiredPerm="galeri">
-                <AdminGaleriPage />
-              </ProtectedAdminRoute>
-            } />
-            <Route path="/admin/landing" element={
-              <ProtectedAdminRoute requiredPerm="landing">
-                <AdminLandingPage />
-              </ProtectedAdminRoute>
-            } />
-            <Route path="/admin/karir" element={
-              <ProtectedAdminRoute requiredPerm="karir">
-                <AdminKarirPage />
-              </ProtectedAdminRoute>
-            } />
-            <Route path="/admin/notifikasi" element={
-              <ProtectedAdminRoute requiredPerm="notifikasi">
-                <AdminNotifikasiPage />
-              </ProtectedAdminRoute>
-            } />
-            <Route path="/admin/log" element={
-              <ProtectedAdminRoute requiredPerm="log">
-                <AdminLogPage />
-              </ProtectedAdminRoute>
-            } />
-            <Route path="/admin/pengaturan" element={
-              <ProtectedAdminRoute requiredPerm="pengaturan">
-                <AdminPengaturanPage />
-              </ProtectedAdminRoute>
-            } />
+            {/* ── Admin routes — sidebar/header persistent via AdminLayout ── */}
+            <Route path="/admin" element={<AdminLayout />}>
+              <Route index element={<Navigate to="/admin/dashboard" replace />} />
+              <Route path="dashboard"   element={<ProtectedAdminRoute requiredPerm="dashboard"><AdminDashboardPage /></ProtectedAdminRoute>} />
+              <Route path="verifikasi"  element={<ProtectedAdminRoute requiredPerm="verifikasi"><AdminVerifikasiPage /></ProtectedAdminRoute>} />
+              <Route path="users"       element={<ProtectedAdminRoute requiredPerm="users"><AdminManajemenUserPage /></ProtectedAdminRoute>} />
+              <Route path="alumni-data" element={<ProtectedAdminRoute requiredPerm="alumni-data"><AdminDataAlumniPage /></ProtectedAdminRoute>} />
+              <Route path="angkatan"    element={<ProtectedAdminRoute requiredPerm="angkatan"><AdminAngkatanPage /></ProtectedAdminRoute>} />
+              <Route path="organisasi"  element={<ProtectedAdminRoute requiredPerm="organisasi"><AdminOrganisasiPage /></ProtectedAdminRoute>} />
+              <Route path="berita"      element={<ProtectedAdminRoute requiredPerm="berita"><AdminBeritaPage /></ProtectedAdminRoute>} />
+              <Route path="agenda"      element={<ProtectedAdminRoute requiredPerm="agenda"><AdminAgendaPage /></ProtectedAdminRoute>} />
+              <Route path="galeri"      element={<ProtectedAdminRoute requiredPerm="galeri"><AdminGaleriPage /></ProtectedAdminRoute>} />
+              <Route path="landing"     element={<ProtectedAdminRoute requiredPerm="landing"><AdminLandingPage /></ProtectedAdminRoute>} />
+              <Route path="karir"       element={<ProtectedAdminRoute requiredPerm="karir"><AdminKarirPage /></ProtectedAdminRoute>} />
+              <Route path="notifikasi"  element={<ProtectedAdminRoute requiredPerm="notifikasi"><AdminNotifikasiPage /></ProtectedAdminRoute>} />
+              <Route path="log"         element={<ProtectedAdminRoute requiredPerm="log"><AdminLogPage /></ProtectedAdminRoute>} />
+              <Route path="pengaturan"  element={<ProtectedAdminRoute requiredPerm="pengaturan"><AdminPengaturanPage /></ProtectedAdminRoute>} />
+            </Route>
           </Routes>
         </Suspense>
       </BrowserRouter>

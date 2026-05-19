@@ -1,7 +1,6 @@
 ﻿import { useState, useRef, useEffect, useCallback } from 'react'
 import { Plus, Pencil, Trash2, GraduationCap, Upload, X, ChevronUp, ChevronDown, Loader2, RefreshCw } from 'lucide-react'
 import { motion } from 'framer-motion'
-import AdminSidebar from '@/components/admin/AdminSidebar'
 import AdminHeader from '@/components/admin/AdminHeader'
 import ConfirmDialog from '@/components/admin/ConfirmDialog'
 import { PaginationBar, PerPageSelector } from '@/components/PaginationBar'
@@ -311,10 +310,7 @@ export default function AdminAngkatanPage() {
   }
 
   return (
-    <div className="flex min-h-screen bg-[#F8FAF9]">
-      <AdminSidebar active="angkatan" />
-
-      <div className="flex-1 flex flex-col min-w-0">
+    <>
         {/* Header */}
         <AdminHeader
           searchValue={search}
@@ -466,7 +462,6 @@ export default function AdminAngkatanPage() {
             )}
           </div>
         </motion.div>
-      </div>
 
       {modal && (
         <AngkatanModal
@@ -477,6 +472,6 @@ export default function AdminAngkatanPage() {
       )}
 
       <ConfirmDialog open={confirm.open} title={confirm.title} message={confirm.message} confirmLabel={confirm.confirmLabel} variant={confirm.variant} onConfirm={confirm.onConfirm} onCancel={closeConfirm} />
-    </div>
+    </>
   )
 }

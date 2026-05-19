@@ -1,7 +1,6 @@
 import { useState, useEffect, useCallback } from 'react'
 import { Settings, Edit2, Check, X, AlertTriangle, Send, Save, Shield, Loader2 } from 'lucide-react'
 import { motion } from 'framer-motion'
-import AdminSidebar from '../../components/admin/AdminSidebar'
 import AdminHeader from '../../components/admin/AdminHeader'
 import ConfirmDialog from '../../components/admin/ConfirmDialog'
 import { siteConfig as defaultConfig } from '../../data/siteConfig'
@@ -154,10 +153,7 @@ export default function AdminPengaturanPage() {
   ]
 
   return (
-    <div className="flex min-h-screen" style={{ backgroundColor: '#F1F5F9' }}>
-      <AdminSidebar active="pengaturan" />
-
-      <div className="flex-1 flex flex-col min-w-0">
+    <>
         <AdminHeader searchPlaceholder="Cari pengaturan..." />
 
         <motion.div
@@ -313,7 +309,6 @@ export default function AdminPengaturanPage() {
             </div>
           )}
         </motion.div>
-      </div>
 
       <ConfirmDialog
         open={confirm.open}
@@ -324,6 +319,6 @@ export default function AdminPengaturanPage() {
         onConfirm={confirm.onConfirm}
         onCancel={closeConfirm}
       />
-    </div>
+    </>
   )
 }
