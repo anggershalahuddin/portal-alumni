@@ -56,6 +56,7 @@ import AdminHeader from '@/components/admin/AdminHeader'
 import { PaginationBar, PerPageSelector } from '@/components/PaginationBar'
 import { getAvatarColor, getInitials, bidangList } from '@/data/alumni'
 import { supabase } from '@/lib/supabase'
+import { ensureAbsoluteUrl } from '@/lib/utils'
 
 function mapAngkatan(row) {
   return { id: row.id, tahunLulusan: row.tahun_lulus, angkatanKe: row.tahun_lulus - 2005, nama: row.nama_angkatan ?? `Angkatan ${row.tahun_lulus - 2005}` }
@@ -361,7 +362,7 @@ function DetailModal({ alumni, detail, angkatanInfo, onClose }) {
                           {s.noCert  && <p className="text-xs text-gray-400">No. {s.noCert}</p>}
                         </div>
                         {s.url && (
-                          <a href={s.url} target="_blank" rel="noopener noreferrer" className="text-xs text-blue-500 mt-1 inline-block">Lihat Sertifikat →</a>
+                          <a href={ensureAbsoluteUrl(s.url)} target="_blank" rel="noopener noreferrer" className="text-xs text-blue-500 mt-1 inline-block">Lihat Sertifikat →</a>
                         )}
                       </div>
                     </div>
@@ -387,7 +388,7 @@ function DetailModal({ alumni, detail, angkatanInfo, onClose }) {
                         </div>
                         {pub.deskripsi && <p className="text-xs text-gray-500 mt-1 leading-relaxed">{pub.deskripsi}</p>}
                         {pub.url && (
-                          <a href={pub.url} target="_blank" rel="noopener noreferrer" className="text-xs text-blue-500 mt-1 inline-block">Lihat Publikasi →</a>
+                          <a href={ensureAbsoluteUrl(pub.url)} target="_blank" rel="noopener noreferrer" className="text-xs text-blue-500 mt-1 inline-block">Lihat Publikasi →</a>
                         )}
                       </div>
                     </div>

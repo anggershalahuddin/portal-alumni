@@ -3,6 +3,7 @@ import { motion } from 'framer-motion'
 import { MapPin, Clock, CalendarDays, ArrowRight, ExternalLink } from 'lucide-react'
 import { fadeLeft, fadeUp, stagger, viewport } from '@/lib/animations'
 import { useAuth } from '@/context/AuthContext'
+import { ensureAbsoluteUrl } from '@/lib/utils'
 
 const BULAN = ['JAN','FEB','MAR','APR','MEI','JUN','JUL','AGU','SEP','OKT','NOV','DES']
 
@@ -86,7 +87,7 @@ export default function Agenda({ events = [], loading }) {
                         ev.maps_url
                           ? (
                             <a
-                              href={ev.maps_url}
+                              href={ensureAbsoluteUrl(ev.maps_url)}
                               target="_blank"
                               rel="noopener noreferrer"
                               className="flex items-center gap-1 text-xs text-[#1A5C38] hover:underline"
@@ -111,7 +112,7 @@ export default function Agenda({ events = [], loading }) {
                     {ev.link_registrasi && (
                       supaUser ? (
                         <a
-                          href={ev.link_registrasi}
+                          href={ensureAbsoluteUrl(ev.link_registrasi)}
                           target="_blank"
                           rel="noopener noreferrer"
                           onClick={e => e.stopPropagation()}

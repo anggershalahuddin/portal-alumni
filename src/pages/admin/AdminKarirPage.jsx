@@ -6,6 +6,11 @@ import ConfirmDialog from '../../components/admin/ConfirmDialog'
 import { bidangLowongan as seedBidang, tipeLowongan } from '../../data/lowongan'
 import { supabase } from '@/lib/supabase'
 
+function ensureAbsoluteUrl(url) {
+  if (!url) return url
+  return /^https?:\/\//i.test(url) ? url : `https://${url}`
+}
+
 function KelolaBidangModal({ bidangs, onClose, onAdd, onDelete }) {
   const [newLabel, setNewLabel] = useState('')
   const [newValue, setNewValue] = useState('')
@@ -59,7 +64,7 @@ function LowonganModal({ item, onClose, onSave, bidangs }) {
     item ?? {
       judul: '', instansi: '', tipe: 'full-time', bidang: 'pendidikan',
       lokasi: '', deskripsi: '', syarat: [''],
-      gaji_min: '', gaji_max: '', deadline: '', tanggalPosting: today, aktif: true, slug: '',
+      gaji_min: '', gaji_max: '', deadline: '', tanggalPosting: today, linkPendaftaran: '', aktif: true, slug: '',
     }
   )
   const [syaratInput, setSyaratInput] = useState((item?.syarat ?? ['']).join('\n'))
@@ -134,6 +139,11 @@ function LowonganModal({ item, onClose, onSave, bidangs }) {
               <label className="text-xs font-semibold text-gray-700 mb-1 block">Batas Pendaftaran</label>
               <input type="date" value={form.deadline} onChange={e => set('deadline', e.target.value)} className="w-full px-3 py-2 rounded-xl border border-gray-200 text-sm outline-none focus:border-green-400" />
             </div>
+          </div>
+          <div>
+            <label className="text-xs font-semibold text-gray-700 mb-1 block">Link Pendaftaran</label>
+            <input value={form.linkPendaftaran} onChange={e => set('linkPendaftaran', e.target.value)} placeholder="https://forms.google.com/..." className="w-full px-3 py-2 rounded-xl border border-gray-200 text-sm outline-none focus:border-green-400" />
+            <p className="text-[10px] text-gray-400 mt-1">Pastikan diawali https:// — jika tidak, akan ditambahkan otomatis</p>
           </div>
           <label className="flex items-center gap-2 cursor-pointer">
             <input type="checkbox" checked={form.aktif} onChange={e => set('aktif', e.target.checked)} className="w-4 h-4 accent-green-700" />
@@ -233,6 +243,7 @@ function mapLowongan(row) {
     gaji_max: row.gaji_max ?? '',
     deadline: row.deadline ?? '',
     tanggalPosting: row.created_at ? new Date(row.created_at).toISOString().split('T')[0] : '',
+    linkPendaftaran: row.link_pendaftaran ?? '',
     tags: [],
     aktif: row.is_aktif,
     slug: '',
@@ -260,7 +271,7 @@ export default function AdminKarirPage() {
     setError(null)
     const { data, error: err } = await supabase
       .from('lowongan')
-      .select('id, judul, perusahaan, lokasi, tipe, deskripsi, persyaratan, gaji_min, gaji_max, deadline, is_aktif, created_at')
+      .select('id, judul, perusahaan, lokasi, tipe, deskripsi, persyaratan, gaji_min, gaji_max, deadline, is_aktif, created_at, link_pendaftaran')
       .order('created_at', { ascending: false })
     if (err) { setError(err.message); if (!silent) setLoading(false); return }
     setLowongan((data ?? []).map(mapLowongan))
@@ -304,6 +315,7 @@ export default function AdminKarirPage() {
           gaji_max: form.gaji_max ? parseInt(form.gaji_max) : null,
           deadline: form.deadline || null,
           is_aktif: form.aktif,
+          link_pendaftaran: form.linkPendaftaran ? ensureAbsoluteUrl(form.linkPendaftaran) : null,
         }
         if (isEdit) {
           const { error: err } = await supabase.from('lowongan').update(dbData).eq('id', form.id)

@@ -13,6 +13,7 @@ import { getAvatarColor, getInitials } from '@/data/alumni'
 import { PaginationBar, PerPageSelector } from '@/components/PaginationBar'
 import { fadeUp, stagger } from '@/lib/animations'
 import { supabase } from '@/lib/supabase'
+import { ensureAbsoluteUrl } from '@/lib/utils'
 
 const FALLBACK_IMAGE = 'https://images.unsplash.com/photo-1540575467063-178a50c2df87?auto=format&fit=crop&w=600&q=80'
 
@@ -48,8 +49,8 @@ function mapAgenda(row) {
     lokasiSingkat: row.lokasi ?? '—',
     lokasiDetail: row.lokasi ?? '',
     lokasiKategori: row.lokasi_kategori || inferLokasiKategori(row.lokasi),
-    mapsUrl: row.maps_url ?? '',
-    linkRegistrasi: row.link_registrasi ?? '',
+    mapsUrl: ensureAbsoluteUrl(row.maps_url ?? ''),
+    linkRegistrasi: ensureAbsoluteUrl(row.link_registrasi ?? ''),
     image: row.foto_url || FALLBACK_IMAGE,
     imageHero: row.image_hero || row.foto_url || FALLBACK_IMAGE.replace('w=600', 'w=1200'),
     excerpt: row.deskripsi ?? '',

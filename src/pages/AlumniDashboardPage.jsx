@@ -16,6 +16,7 @@ import { kategoriStyle } from '../data/agenda'
 import { useAuth } from '@/context/AuthContext'
 import { supabase } from '@/lib/supabase'
 import { toast } from '@/lib/toast'
+import { ensureAbsoluteUrl } from '@/lib/utils'
 import ConfirmDialog from '../components/admin/ConfirmDialog'
 
 function createImage(url) {
@@ -2221,7 +2222,7 @@ export default function AlumniDashboardPage() {
                           <p className="text-xs font-bold text-gray-900 leading-snug">{p.judul}</p>
                           <p className="text-[10px] text-gray-500 mt-0.5">{p.penerbit}{p.tahun ? ` · ${p.tahun}` : ''}</p>
                           {p.deskripsi && <p className="text-[10px] text-gray-400 mt-1 leading-relaxed line-clamp-2">{p.deskripsi}</p>}
-                          {p.url && <a href={p.url} target="_blank" rel="noreferrer" className="text-[10px] text-[#1A5C38] font-semibold flex items-center gap-1 mt-1 hover:underline"><ExternalLink className="w-3 h-3" />Lihat Publikasi</a>}
+                          {p.url && <a href={ensureAbsoluteUrl(p.url)} target="_blank" rel="noreferrer" className="text-[10px] text-[#1A5C38] font-semibold flex items-center gap-1 mt-1 hover:underline"><ExternalLink className="w-3 h-3" />Lihat Publikasi</a>}
                         </div>
                         <div className="opacity-0 group-hover:opacity-100 flex items-center gap-0.5 transition-all">
                           <button onClick={() => setModal({ type: 'editPublikasi', item: p })}
@@ -2293,7 +2294,7 @@ export default function AlumniDashboardPage() {
                                 </div>
                                 {u.deskripsi && <p className="text-xs text-gray-500 mt-1.5 leading-relaxed line-clamp-2">{u.deskripsi}</p>}
                                 {u.website && (
-                                  <a href={u.website} target="_blank" rel="noreferrer"
+                                  <a href={ensureAbsoluteUrl(u.website)} target="_blank" rel="noreferrer"
                                     className="text-[10px] text-[#1A5C38] font-semibold flex items-center gap-1 mt-1 hover:underline">
                                     <Globe className="w-3 h-3" />Website
                                   </a>

@@ -14,6 +14,7 @@ import Footer from '@/components/landing/Footer'
 import { getAvatarColor, getInitials } from '@/data/alumni'
 import { fadeUp } from '@/lib/animations'
 import { supabase } from '@/lib/supabase'
+import { ensureAbsoluteUrl } from '@/lib/utils'
 
 function mapAngkatan(row) {
   return { id: row.id, tahunLulusan: row.tahun_lulus, angkatanKe: row.tahun_lulus - 2005, nama: row.nama_angkatan ?? `Angkatan ${row.tahun_lulus - 2005}` }
@@ -681,7 +682,7 @@ export default function AlumniProfilePage() {
                                 </div>
                                 {l.deskripsi && <p className="text-xs text-gray-500 mt-1.5 leading-relaxed">{l.deskripsi}</p>}
                                 {l.website && (
-                                  <a href={`https://${l.website}`} target="_blank" rel="noreferrer"
+                                  <a href={ensureAbsoluteUrl(l.website)} target="_blank" rel="noreferrer"
                                     className="text-[11px] text-[#1A5C38] font-semibold flex items-center gap-1 mt-1 hover:underline">
                                     <Globe className="w-3 h-3" />{l.website}
                                   </a>
@@ -725,7 +726,7 @@ export default function AlumniProfilePage() {
                               </div>
                               {pub.deskripsi && <p className="text-xs text-gray-500 mt-1 leading-relaxed">{pub.deskripsi}</p>}
                               {pub.url && (
-                                <a href={pub.url} target="_blank" rel="noreferrer"
+                                <a href={ensureAbsoluteUrl(pub.url)} target="_blank" rel="noreferrer"
                                   className="text-[11px] text-[#1A5C38] font-semibold flex items-center gap-1 mt-1.5 hover:underline">
                                   <ExternalLink className="w-3 h-3" /> Lihat Publikasi
                                 </a>

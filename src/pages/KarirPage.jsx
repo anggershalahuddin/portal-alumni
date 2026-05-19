@@ -6,6 +6,11 @@ import Footer from '../components/landing/Footer'
 import { bidangLowongan, tipeLowongan } from '../data/lowongan'
 import { supabase } from '@/lib/supabase'
 
+function ensureAbsoluteUrl(url) {
+  if (!url) return url
+  return /^https?:\/\//i.test(url) ? url : `https://${url}`
+}
+
 const TIPE_STYLE = {
   fulltime: { bg: '#F0FDF4', text: '#15803D' },
   parttime: { bg: '#EFF6FF', text: '#1D4ED8' },
@@ -133,12 +138,24 @@ function JobDetailModal({ job, onClose }) {
 
         {/* CTA */}
         <div className="sticky bottom-0 bg-white border-t border-gray-100 px-6 py-4">
-          <button
-            className="w-full flex items-center justify-center gap-2 py-3 rounded-xl text-sm font-bold text-white hover:opacity-90 transition-opacity"
-            style={{ backgroundColor: '#1A5C38' }}
-          >
-            Lamar Sekarang <ExternalLink className="w-4 h-4" />
-          </button>
+          {job.linkPendaftaran ? (
+            <a
+              href={job.linkPendaftaran}
+              target="_blank"
+              rel="noopener noreferrer"
+              className="w-full flex items-center justify-center gap-2 py-3 rounded-xl text-sm font-bold text-white hover:opacity-90 transition-opacity"
+              style={{ backgroundColor: '#1A5C38' }}
+            >
+              Lamar Sekarang <ExternalLink className="w-4 h-4" />
+            </a>
+          ) : (
+            <button
+              disabled
+              className="w-full flex items-center justify-center gap-2 py-3 rounded-xl text-sm font-bold text-gray-400 bg-gray-100 cursor-not-allowed"
+            >
+              Link Pendaftaran Belum Tersedia
+            </button>
+          )}
         </div>
       </div>
     </div>
@@ -160,6 +177,7 @@ function mapLowongan(row) {
     syarat: row.persyaratan ?? [],
     deadline: row.deadline ?? null,
     tanggalPosting: row.created_at,
+    linkPendaftaran: row.link_pendaftaran ? ensureAbsoluteUrl(row.link_pendaftaran) : null,
     tags: [],
     bidang: '',
     aktif: row.is_aktif,
@@ -176,7 +194,7 @@ export default function KarirPage() {
   useEffect(() => {
     supabase
       .from('lowongan')
-      .select('id, judul, perusahaan, lokasi, tipe, deskripsi, persyaratan, gaji_min, gaji_max, deadline, is_aktif, created_at')
+      .select('id, judul, perusahaan, lokasi, tipe, deskripsi, persyaratan, gaji_min, gaji_max, deadline, is_aktif, created_at, link_pendaftaran')
       .eq('is_aktif', true)
       .order('created_at', { ascending: false })
       .then(({ data }) => {
