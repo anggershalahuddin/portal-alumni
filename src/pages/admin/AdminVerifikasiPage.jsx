@@ -5,7 +5,7 @@ import {
   CheckCircle, XCircle,
   Users, Download, ChevronDown,
   ChevronLeft, ChevronRight, FileText, X, Clock,
-  AlertCircle, Filter, Trash2, ZoomIn, RefreshCw, Loader2,
+  AlertCircle, Trash2, ZoomIn, RefreshCw, Loader2,
 } from 'lucide-react'
 import { motion } from 'framer-motion'
 import AdminSidebar from '../../components/admin/AdminSidebar'
@@ -421,7 +421,6 @@ export default function AdminVerifikasiPage() {
         .from('profiles')
         .select('id, nama_lengkap, email, no_hp, angkatan, status, pesan_admin, created_at, foto_url')
         .in('status', ['menunggu', 'ditolak'])
-        .not('no_hp', 'is', null)
         .order('created_at', { ascending: false })
 
       if (profErr) throw profErr
@@ -456,15 +455,16 @@ export default function AdminVerifikasiPage() {
           file_url: d.file_url,
         }))
         return {
-          id:           p.id,
-          name:         p.nama_lengkap || '-',
-          email:        p.email ?? '',
-          phone:        p.no_hp ?? '',
-          angkatan:     p.angkatan,
-          status:       p.status,
-          tanggal:      formatTanggal(p.created_at),
-          rejectionMsg: p.pesan_admin ?? '',
-          avatar:       p.foto_url ?? null,
+          id:             p.id,
+          name:           p.nama_lengkap || '-',
+          email:          p.email ?? '',
+          phone:          p.no_hp ?? '',
+          angkatan:       p.angkatan,
+          status:         p.status,
+          tanggal:        formatTanggal(p.created_at),
+          rejectionMsg:   p.pesan_admin ?? '',
+          avatar:         p.foto_url ?? null,
+          isFormComplete: !!p.no_hp,
           berkas,
         }
       })
@@ -491,14 +491,15 @@ export default function AdminVerifikasiPage() {
     const q = search.toLowerCase()
     const matchSearch = !q || a.name.toLowerCase().includes(q) || (a.email ?? '').toLowerCase().includes(q) || (a.phone ?? '').includes(q)
     const matchTahun  = !filterTahun  || String(a.angkatan) === filterTahun
-    const matchStatus = !filterStatus || a.status === filterStatus
+    const matchStatus = !filterStatus
+      || (filterStatus === 'belum_lengkap' ? (!a.isFormComplete && a.status === 'menunggu') : a.status === filterStatus)
     return matchSearch && matchTahun && matchStatus
   })
 
   const totalPages  = Math.max(1, Math.ceil(filtered.length / PER_PAGE))
   const safePage    = Math.min(page, totalPages)
   const paged       = filtered.slice((safePage - 1) * PER_PAGE, safePage * PER_PAGE)
-  const pendingCount = alumni.filter((a) => a.status === 'menunggu').length
+  const pendingCount = alumni.filter((a) => a.status === 'menunggu' && a.isFormComplete).length
 
   /* ── Actions ── */
   function handleApprove(id) {
@@ -567,36 +568,63 @@ export default function AdminVerifikasiPage() {
     setShowRejectedConfirm(true)
   }
 
+  const selectedComplete   = selected.filter(id => alumni.find(a => a.id === id)?.isFormComplete)
+  const selectedIncomplete = selected.filter(id => !alumni.find(a => a.id === id)?.isFormComplete)
+
   function handleBulkVerify() {
-    if (selected.length === 0) return
+    if (selectedComplete.length === 0) return
     askConfirm({
-      title: `Verifikasi ${selected.length} Alumni`,
-      message: `Apakah Anda yakin ingin memverifikasi ${selected.length} alumni sekaligus? Semua akun yang dipilih akan segera diaktifkan.`,
+      title: `Verifikasi ${selectedComplete.length} Alumni`,
+      message: `Apakah Anda yakin ingin memverifikasi ${selectedComplete.length} alumni sekaligus? Semua akun yang dipilih akan segera diaktifkan.`,
       confirmLabel: 'Ya, Verifikasi Semua',
       variant: 'success',
       onConfirm: async () => {
         const { error } = await supabase
           .from('profiles')
           .update({ status: 'disetujui', role: 'alumni' })
-          .in('id', selected)
+          .in('id', selectedComplete)
         if (error) { console.error(error); closeConfirm(); return }
         await Promise.all([
           logAksi({
             user_id: supaUser?.id,
             aksi: 'verifikasi',
-            detail: { aksi: 'setujui', jumlah: selected.length, keterangan: `Verifikasi massal ${selected.length} alumni` },
+            detail: { aksi: 'setujui', jumlah: selectedComplete.length, keterangan: `Verifikasi massal ${selectedComplete.length} alumni` },
           }),
-          ...selected.map(uid => createNotifikasi({
+          ...selectedComplete.map(uid => createNotifikasi({
             judul: 'Akun Anda Telah Diverifikasi',
             pesan: 'Selamat! Akun alumni Anda telah diverifikasi. Anda kini dapat mengakses semua fitur portal.',
             tipe: 'verifikasi',
             target_user_id: uid,
           })),
         ])
-        setAlumni((prev) => prev.filter((a) => !selected.includes(a.id)))
-        setSelected([])
+        setAlumni((prev) => prev.filter((a) => !selectedComplete.includes(a.id)))
+        setSelected((prev) => prev.filter(id => !selectedComplete.includes(id)))
         closeConfirm()
         setShowSuccess(true)
+      },
+    })
+  }
+
+  function handleBulkDelete() {
+    if (selectedIncomplete.length === 0) return
+    askConfirm({
+      title: `Hapus ${selectedIncomplete.length} Pendaftaran Belum Lengkap`,
+      message: `Apakah Anda yakin ingin menghapus ${selectedIncomplete.length} data pendaftaran yang belum dilengkapi? Tindakan ini tidak dapat dibatalkan.`,
+      confirmLabel: 'Ya, Hapus Semua',
+      variant: 'danger',
+      onConfirm: async () => {
+        for (const id of selectedIncomplete) {
+          await supabase.from('dokumen_verifikasi').delete().eq('user_id', id)
+          await supabase.rpc('delete_auth_user', { user_id: id })
+        }
+        await logAksi({
+          user_id: supaUser?.id,
+          aksi: 'hapus',
+          detail: { jumlah: selectedIncomplete.length, keterangan: `Hapus massal ${selectedIncomplete.length} pendaftaran belum lengkap` },
+        })
+        setAlumni((prev) => prev.filter((a) => !selectedIncomplete.includes(a.id)))
+        setSelected((prev) => prev.filter(id => !selectedIncomplete.includes(id)))
+        closeConfirm()
       },
     })
   }
@@ -625,7 +653,7 @@ export default function AdminVerifikasiPage() {
 
   function toggleAll() {
     const pagedIds = paged.map((a) => a.id)
-    const allSelected = pagedIds.every((id) => selected.includes(id))
+    const allSelected = pagedIds.length > 0 && pagedIds.every((id) => selected.includes(id))
     setSelected((prev) =>
       allSelected ? prev.filter((id) => !pagedIds.includes(id)) : [...new Set([...prev, ...pagedIds])]
     )
@@ -687,7 +715,7 @@ export default function AdminVerifikasiPage() {
                     {pendingCount} Pending
                   </span>
                 </div>
-                <div className="flex items-center gap-2">
+                <div className="flex items-center gap-2 flex-wrap">
                   <button onClick={refreshData} disabled={refreshing} className="flex items-center gap-1.5 px-4 py-2 rounded-xl border border-gray-200 bg-white text-sm font-medium text-gray-700 hover:bg-gray-50 transition-colors disabled:opacity-60">
                     {refreshing
                       ? <Loader2 className="w-4 h-4 animate-spin" />
@@ -699,13 +727,23 @@ export default function AdminVerifikasiPage() {
                     <Download className="w-4 h-4" />
                     Ekspor Excel
                   </button>
+                  {selectedIncomplete.length > 0 && (
+                    <button
+                      onClick={handleBulkDelete}
+                      className="flex items-center gap-1.5 px-4 py-2 rounded-xl text-sm font-bold text-white transition-opacity hover:opacity-90"
+                      style={{ backgroundColor: '#DC2626' }}
+                    >
+                      <Trash2 className="w-4 h-4" />
+                      Hapus Massal ({selectedIncomplete.length})
+                    </button>
+                  )}
                   <button
-                    onClick={selected.length > 0 ? handleBulkVerify : undefined}
+                    onClick={selectedComplete.length > 0 ? handleBulkVerify : undefined}
                     className="flex items-center gap-1.5 px-4 py-2 rounded-xl text-sm font-bold text-white transition-opacity hover:opacity-90"
-                    style={{ backgroundColor: selected.length > 0 ? '#1A5C38' : '#6B7280' }}
+                    style={{ backgroundColor: selectedComplete.length > 0 ? '#1A5C38' : '#6B7280' }}
                   >
                     <CheckCircle className="w-4 h-4" />
-                    Verifikasi Massal{selected.length > 0 ? ` (${selected.length})` : ''}
+                    Verifikasi Massal{selectedComplete.length > 0 ? ` (${selectedComplete.length})` : ''}
                   </button>
                 </div>
               </div>
@@ -745,14 +783,11 @@ export default function AdminVerifikasiPage() {
                   <option value="">Semua Status</option>
                   <option value="menunggu">Menunggu Verifikasi</option>
                   <option value="ditolak">Ditolak</option>
+                  <option value="belum_lengkap">Belum Lengkap</option>
                 </select>
                 <ChevronDown className="absolute right-2.5 top-1/2 -translate-y-1/2 w-3.5 h-3.5 text-gray-400 pointer-events-none" />
               </div>
 
-              <button className="flex items-center gap-1.5 px-3 py-2 rounded-xl border border-gray-200 bg-white text-sm text-gray-600 hover:bg-gray-50 transition-colors">
-                <Filter className="w-3.5 h-3.5" />
-                Filter Lanjut
-              </button>
             </div>
 
             {/* Table */}
@@ -830,7 +865,7 @@ export default function AdminVerifikasiPage() {
                           {a.angkatan ? (
                             <>
                               <p className="text-sm font-semibold text-gray-900">{a.angkatan}</p>
-                              <p className="text-xs text-gray-400">Angkatan Ke-{getAngkatanKe(a.angkatan)}</p>
+                              <p className="text-xs text-gray-400">Angkatan Ke-{a.angkatan ? getAngkatanKe(a.angkatan) : 'N/A'}</p>
                             </>
                           ) : (
                             <p className="text-sm text-gray-400">-</p>
@@ -840,7 +875,12 @@ export default function AdminVerifikasiPage() {
                         {/* Status dengan tooltip */}
                         <td className="px-4 py-4">
                           <div className="relative inline-block group">
-                            {a.status === 'menunggu' ? (
+                            {a.status === 'menunggu' && !a.isFormComplete ? (
+                              <span className="inline-flex items-center gap-1 px-2.5 py-1 rounded-full text-xs font-semibold bg-gray-100 text-gray-500 border border-gray-200 whitespace-nowrap">
+                                <AlertCircle className="w-3 h-3" />
+                                Belum Lengkap
+                              </span>
+                            ) : a.status === 'menunggu' ? (
                               <span className="inline-flex items-center gap-1 px-2.5 py-1 rounded-full text-xs font-semibold bg-amber-50 text-amber-600 border border-amber-200 whitespace-nowrap">
                                 <Clock className="w-3 h-3" />
                                 Menunggu Verifikasi
@@ -888,20 +928,24 @@ export default function AdminVerifikasiPage() {
                             >
                               <Trash2 className="w-4 h-4" />
                             </button>
-                            <button
-                              onClick={() => setRejectTarget(a)}
-                              title="Tolak"
-                              className="w-8 h-8 rounded-full flex items-center justify-center border border-red-200 bg-red-50 text-red-500 hover:bg-red-100 transition-colors"
-                            >
-                              <XCircle className="w-4 h-4" />
-                            </button>
-                            <button
-                              onClick={() => handleApprove(a.id)}
-                              title="Terima"
-                              className="w-8 h-8 rounded-full flex items-center justify-center border border-green-200 bg-green-50 text-green-600 hover:bg-green-100 transition-colors"
-                            >
-                              <CheckCircle className="w-4 h-4" />
-                            </button>
+                            {a.isFormComplete && (
+                              <>
+                                <button
+                                  onClick={() => setRejectTarget(a)}
+                                  title="Tolak"
+                                  className="w-8 h-8 rounded-full flex items-center justify-center border border-red-200 bg-red-50 text-red-500 hover:bg-red-100 transition-colors"
+                                >
+                                  <XCircle className="w-4 h-4" />
+                                </button>
+                                <button
+                                  onClick={() => handleApprove(a.id)}
+                                  title="Terima"
+                                  className="w-8 h-8 rounded-full flex items-center justify-center border border-green-200 bg-green-50 text-green-600 hover:bg-green-100 transition-colors"
+                                >
+                                  <CheckCircle className="w-4 h-4" />
+                                </button>
+                              </>
+                            )}
                           </div>
                         </td>
                       </motion.tr>

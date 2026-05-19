@@ -11,6 +11,7 @@ const navLinks = [
   { label: 'Pesantren', href: '/pesantren' },
   { label: 'Galeri', href: '/galeri' },
   { label: 'Alumni', href: '/direktori' },
+  { label: 'Organisasi', href: '/organisasi' },
   { label: 'Berita', href: '/berita' },
   { label: 'Agenda', href: '/agenda' },
   { label: 'Karir', href: '/karir' },
@@ -31,6 +32,8 @@ function NavLink({ label, href, onClick, mobile }) {
       ? location.pathname.startsWith('/galeri')
       : href === '/karir'
       ? location.pathname.startsWith('/karir')
+      : href === '/organisasi'
+      ? location.pathname.startsWith('/organisasi')
       : href === '/'
       ? location.pathname === '/'
       : false

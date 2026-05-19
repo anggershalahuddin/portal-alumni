@@ -74,6 +74,7 @@ export default function AlumniDirectoryPage() {
   const [expandBidang, setExpandBidang]     = useState(false)
   const [showAllAngkatan, setShowAllAngkatan] = useState(false)
   const [showMobileFilter, setShowMobileFilter] = useState(false)
+  const [angkatanFromDB, setAngkatanFromDB]     = useState([])
 
   /* ── Load verified alumni from Supabase ── */
   const loadAlumni = useCallback(async () => {
@@ -151,10 +152,27 @@ export default function AlumniDirectoryPage() {
 
   useEffect(() => { loadAlumni() }, [loadAlumni])
 
+  useEffect(() => {
+    supabase
+      .from('angkatan')
+      .select('tahun_lulus, nama_angkatan')
+      .eq('is_aktif', true)
+      .order('tahun_lulus', { ascending: false })
+      .then(({ data }) => {
+        if (data?.length) {
+          setAngkatanFromDB(data.map(a => ({
+            year: a.tahun_lulus,
+            angkatanKe: a.tahun_lulus - 2005,
+          })))
+        }
+      })
+  }, [])
+
   const TOTAL_ALUMNI   = alumniList.length
   const TOTAL_VERIFIED = alumniList.filter((a) => a.isVerified).length
 
-  const shownAngkatan = showAllAngkatan ? angkatanList : angkatanList.slice(0, 4)
+  const activeAngkatanList = angkatanFromDB.length > 0 ? angkatanFromDB : angkatanList
+  const shownAngkatan = showAllAngkatan ? activeAngkatanList : activeAngkatanList.slice(0, 6)
 
   function triggerSearch() {
     setSearch(inputValue)

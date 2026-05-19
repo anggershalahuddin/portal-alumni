@@ -313,7 +313,7 @@ export default function AdminDashboardPage() {
                       </div>
                     </td>
                     <td className="px-5 py-3 text-sm text-gray-500">
-                      {r.angkatan} <span className="text-[10px] text-gray-400">(Ke-{r.angkatan - 2005})</span>
+                      {r.angkatan ?? '—'} <span className="text-[10px] text-gray-400">(Ke-{r.angkatan ? r.angkatan - 2005 : 'N/A'})</span>
                     </td>
                     <td className="px-5 py-3 text-sm text-gray-500">{r.tanggal}</td>
                     <td className="px-5 py-3"><StatusBadge status={r.status} /></td>

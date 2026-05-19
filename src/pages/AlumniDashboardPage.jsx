@@ -82,13 +82,39 @@ function tipeConfig(tipe) {
 }
 
 // ── Alumni notifications ───────────────────────────────────────────────────────
-const initNotif = [
-  { id: 1, icon: Shield, color: '#1A5C38', bg: '#F0FDF4', judul: 'Akun Anda Terverifikasi', pesan: 'Selamat! Akun alumni Anda telah berhasil diverifikasi oleh admin portal.', waktu: '1 hari lalu', dibaca: false },
-  { id: 2, icon: CalendarDays, color: '#0E7490', bg: '#ECFEFF', judul: 'Agenda Mendatang', pesan: 'Reuni Akbar Lintas Angkatan 2024 akan berlangsung minggu depan. Segera daftar!', waktu: '2 hari lalu', dibaca: false },
-  { id: 3, icon: Briefcase, color: '#7C3AED', bg: '#FAF5FF', judul: 'Lowongan Baru Sesuai Profil', pesan: 'Terdapat 2 lowongan baru yang sesuai dengan bidang teknologi Anda.', waktu: '3 hari lalu', dibaca: true },
-  { id: 4, icon: Newspaper, color: '#D97706', bg: '#FFFBEB', judul: 'Berita Terbaru', pesan: 'Pondok Pesantren Daarul Mughni resmikan Gedung Laboratorium Bahasa Baru.', waktu: '4 hari lalu', dibaca: true },
-  { id: 5, icon: AlertCircle, color: '#6B7280', bg: '#F9FAFB', judul: 'Profil Belum Lengkap', pesan: 'Lengkapi foto profil dan LinkedIn Anda untuk meningkatkan visibilitas di direktori alumni.', waktu: '5 hari lalu', dibaca: true },
-]
+const NOTIF_TIPE_CONFIG = {
+  verifikasi: { icon: Shield,       color: '#1A5C38', bg: '#F0FDF4' },
+  berita:     { icon: Newspaper,    color: '#D97706', bg: '#FFFBEB' },
+  agenda:     { icon: CalendarDays, color: '#0E7490', bg: '#ECFEFF' },
+  user:       { icon: Briefcase,    color: '#7C3AED', bg: '#FAF5FF' },
+  sistem:     { icon: AlertCircle,  color: '#6B7280', bg: '#F9FAFB' },
+}
+
+function notifRelativeTime(iso) {
+  if (!iso) return ''
+  const diff = Date.now() - new Date(iso).getTime()
+  const mins = Math.floor(diff / 60000)
+  if (mins < 1)  return 'Baru saja'
+  if (mins < 60) return `${mins} menit lalu`
+  const hours = Math.floor(mins / 60)
+  if (hours < 24) return `${hours} jam lalu`
+  const days = Math.floor(hours / 24)
+  return `${days} hari lalu`
+}
+
+function mapNotif(row) {
+  const cfg = NOTIF_TIPE_CONFIG[row.tipe] ?? NOTIF_TIPE_CONFIG.sistem
+  return {
+    id:     row.id,
+    icon:   cfg.icon,
+    color:  cfg.color,
+    bg:     cfg.bg,
+    judul:  row.judul,
+    pesan:  row.pesan ?? '',
+    waktu:  notifRelativeTime(row.created_at),
+    dibaca: row.is_dibaca,
+  }
+}
 
 // ── Utilities ──────────────────────────────────────────────────────────────────
 function initials(name) {
@@ -1118,7 +1144,7 @@ export default function AlumniDashboardPage() {
   const [keahlian, setKeahlian]     = useState([])
   const [bahasa, setBahasa]         = useState([])
   const [dokumen, setDokumen]       = useState([])
-  const [notif, setNotif]           = useState(initNotif)
+  const [notif, setNotif]           = useState([])
 
   // Sidebar widget data (loaded from Supabase)
   const [recentNews, setRecentNews]         = useState([])
@@ -1139,11 +1165,34 @@ export default function AlumniDashboardPage() {
   function askConfirm(opts) { setConfirm({ open: true, ...opts }) }
   function closeConfirm() { setConfirm({ open: false }) }
 
+  // ── Notifikasi ───────────────────────────────────────────────────────────────
+  async function loadNotif() {
+    const { data } = await supabase
+      .from('notifikasi')
+      .select('id, judul, pesan, tipe, is_dibaca, created_at')
+      .order('created_at', { ascending: false })
+      .limit(20)
+    if (data) setNotif(data.map(mapNotif))
+  }
+
+  async function markNotifRead(id) {
+    setNotif(prev => prev.map(n => n.id === id ? { ...n, dibaca: true } : n))
+    await supabase.from('notifikasi').update({ is_dibaca: true }).eq('id', id)
+  }
+
+  async function markAllNotifRead() {
+    const unreadIds = notif.filter(n => !n.dibaca).map(n => n.id)
+    if (!unreadIds.length) return
+    setNotif(prev => prev.map(n => ({ ...n, dibaca: true })))
+    await supabase.from('notifikasi').update({ is_dibaca: true }).in('id', unreadIds)
+  }
+
   // ── Load data dari Supabase ──────────────────────────────────────────────────
   useEffect(() => {
     if (!user || !profileReady) return
     loadDashboard()
     loadWidgets()
+    loadNotif()
   }, [user?.id, profileReady]) // eslint-disable-line react-hooks/exhaustive-deps
 
   async function loadWidgets() {
@@ -1729,17 +1778,23 @@ export default function AlumniDashboardPage() {
                     <div className="flex items-center justify-between px-4 py-3 border-b border-gray-50">
                       <span className="text-sm font-bold text-gray-900">Notifikasi</span>
                       {unreadCount > 0 && (
-                        <button onClick={() => setNotif(n => n.map(x => ({ ...x, dibaca: true })))}
+                        <button onClick={markAllNotifRead}
                           className="text-[10px] font-semibold text-[#1A5C38] flex items-center gap-1 hover:underline">
                           <CheckCheck className="w-3 h-3" /> Semua Dibaca
                         </button>
                       )}
                     </div>
                     <div className="max-h-72 overflow-y-auto">
+                      {notif.length === 0 && (
+                        <div className="px-4 py-8 text-center">
+                          <Bell className="w-6 h-6 text-gray-300 mx-auto mb-2" />
+                          <p className="text-xs text-gray-400">Belum ada notifikasi</p>
+                        </div>
+                      )}
                       {notif.map(n => {
                         const Icon = n.icon
                         return (
-                          <div key={n.id} onClick={() => setNotif(prev => prev.map(x => x.id === n.id ? { ...x, dibaca: true } : x))}
+                          <div key={n.id} onClick={() => markNotifRead(n.id)}
                             className={`flex items-start gap-3 px-4 py-3 border-b border-gray-50 last:border-0 cursor-pointer hover:bg-gray-50 transition-colors ${!n.dibaca ? 'bg-green-50/40' : ''}`}>
                             <div className="w-8 h-8 rounded-xl flex items-center justify-center flex-shrink-0" style={{ backgroundColor: n.bg }}>
                               <Icon className="w-4 h-4" style={{ color: n.color }} />
