@@ -72,11 +72,14 @@ function GuruModal({ data, onClose, onSave }) {
               Foto <span className="text-gray-400 font-normal">(opsional)</span>
             </label>
             <ImageUploadBox
-              hint="Upload atau paste URL foto guru"
+              hint="JPG / PNG — akan di-crop otomatis"
               value={form.foto ?? ''}
               onChange={url => set('foto', url || null)}
               bucket="site-assets"
               pathPrefix="guru"
+              enableCrop
+              cropShape="round"
+              aspect={1}
             />
           </div>
           <div className="p-3 rounded-xl border border-amber-100 bg-amber-50/50">
@@ -205,11 +208,14 @@ function TestimoniModal({ data, onClose, onSave }) {
           </div>
           <ImageUploadBox
             label="Foto (opsional)"
-            hint="JPG / PNG, maks 2 MB"
+            hint="JPG / PNG — akan di-crop otomatis"
             value={form.foto_url ?? ''}
             onChange={v => set('foto_url', v || null)}
             bucket="site-assets"
             pathPrefix="testimoni"
+            enableCrop
+            cropShape="round"
+            aspect={1}
           />
           <div className="grid grid-cols-2 gap-3">
             <div>
