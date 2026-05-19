@@ -1,6 +1,6 @@
 import { useState, useEffect } from 'react'
 import { motion } from 'framer-motion'
-import { Building2, Users, Mail, Calendar, Search, Loader2 } from 'lucide-react'
+import { Building2, Users, Mail, Calendar, Search, Loader2, X, ExternalLink } from 'lucide-react'
 import Navbar from '@/components/landing/Navbar'
 import Footer from '@/components/landing/Footer'
 import { fadeUp, stagger } from '@/lib/animations'
@@ -19,12 +19,123 @@ function mapOrg(row) {
   }
 }
 
-function OrgCard({ org, index }) {
+function DetailModal({ org, onClose }) {
+  useEffect(() => {
+    document.body.style.overflow = 'hidden'
+    const handleKey = (e) => { if (e.key === 'Escape') onClose() }
+    window.addEventListener('keydown', handleKey)
+    return () => {
+      document.body.style.overflow = ''
+      window.removeEventListener('keydown', handleKey)
+    }
+  }, [onClose])
+
+  return (
+    <div
+      className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/60 backdrop-blur-sm"
+      onClick={onClose}
+    >
+      <motion.div
+        initial={{ opacity: 0, scale: 0.97, y: 12 }}
+        animate={{ opacity: 1, scale: 1, y: 0 }}
+        transition={{ duration: 0.22, ease: 'easeOut' }}
+        className="bg-white rounded-2xl w-full max-w-lg shadow-2xl overflow-hidden"
+        onClick={e => e.stopPropagation()}
+      >
+        {/* Header */}
+        <div className="relative bg-[#0A2415] px-6 pt-8 pb-6">
+          <button
+            onClick={onClose}
+            className="absolute top-4 right-4 w-8 h-8 bg-white/10 hover:bg-white/20 rounded-full flex items-center justify-center transition-colors"
+          >
+            <X className="w-4 h-4 text-white" />
+          </button>
+          <div className="flex items-center gap-4">
+            {org.logo ? (
+              <img
+                src={org.logo}
+                alt={org.nama}
+                className="w-16 h-16 rounded-2xl object-cover flex-shrink-0 border-2 border-white/20 bg-white"
+              />
+            ) : (
+              <div className="w-16 h-16 rounded-2xl flex-shrink-0 flex items-center justify-center text-white font-bold text-2xl bg-[#1A5C38]">
+                {(org.singkatan || org.nama).charAt(0)}
+              </div>
+            )}
+            <div>
+              <p className="text-xl font-extrabold text-white leading-tight">
+                {org.singkatan || org.nama}
+              </p>
+              {org.singkatan && (
+                <p className="text-white/60 text-sm mt-0.5">{org.nama}</p>
+              )}
+            </div>
+          </div>
+        </div>
+
+        {/* Body */}
+        <div className="px-6 py-5 space-y-4 max-h-[60vh] overflow-y-auto">
+          {org.deskripsi && (
+            <div>
+              <p className="text-[10px] font-bold text-gray-400 uppercase tracking-widest mb-1.5">Tentang</p>
+              <p className="text-sm text-gray-600 leading-relaxed whitespace-pre-line">{org.deskripsi}</p>
+            </div>
+          )}
+
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 pt-2">
+            {org.ketua && (
+              <div className="flex items-start gap-3 p-3 bg-gray-50 rounded-xl">
+                <div className="w-8 h-8 bg-[#E8F5EE] rounded-lg flex items-center justify-center flex-shrink-0">
+                  <Users className="w-4 h-4 text-[#1A5C38]" />
+                </div>
+                <div>
+                  <p className="text-[10px] font-bold text-gray-400 uppercase tracking-wider">Ketua</p>
+                  <p className="text-sm font-semibold text-gray-800 mt-0.5">{org.ketua}</p>
+                </div>
+              </div>
+            )}
+            {org.tahunBerdiri && (
+              <div className="flex items-start gap-3 p-3 bg-gray-50 rounded-xl">
+                <div className="w-8 h-8 bg-[#E8F5EE] rounded-lg flex items-center justify-center flex-shrink-0">
+                  <Calendar className="w-4 h-4 text-[#1A5C38]" />
+                </div>
+                <div>
+                  <p className="text-[10px] font-bold text-gray-400 uppercase tracking-wider">Tahun Berdiri</p>
+                  <p className="text-sm font-semibold text-gray-800 mt-0.5">{org.tahunBerdiri}</p>
+                </div>
+              </div>
+            )}
+          </div>
+        </div>
+
+        {/* Footer */}
+        {org.kontak && (
+          <div className="px-6 py-4 border-t border-gray-100 flex items-center justify-between gap-3">
+            <div className="flex items-center gap-2 text-sm text-gray-500 min-w-0">
+              <Mail className="w-4 h-4 text-[#1A5C38] flex-shrink-0" />
+              <span className="truncate">{org.kontak}</span>
+            </div>
+            <a
+              href={`mailto:${org.kontak}`}
+              className="flex items-center gap-1.5 px-4 py-2 rounded-xl text-sm font-bold text-white flex-shrink-0 hover:opacity-90 transition-opacity"
+              style={{ backgroundColor: '#1A5C38' }}
+            >
+              Hubungi <ExternalLink className="w-3.5 h-3.5" />
+            </a>
+          </div>
+        )}
+      </motion.div>
+    </div>
+  )
+}
+
+function OrgCard({ org, index, onClick }) {
   return (
     <motion.div
       variants={fadeUp}
       custom={index}
-      className="bg-white rounded-2xl border border-gray-100 p-6 flex flex-col gap-4 hover:shadow-lg hover:-translate-y-0.5 transition-all duration-300"
+      onClick={onClick}
+      className="bg-white rounded-2xl border border-gray-100 p-6 flex flex-col gap-4 hover:shadow-lg hover:-translate-y-0.5 transition-all duration-300 cursor-pointer"
     >
       <div className="flex items-start gap-4">
         {org.logo ? (
@@ -66,7 +177,7 @@ function OrgCard({ org, index }) {
         {org.kontak && (
           <div className="flex items-center gap-1.5 text-xs text-gray-500">
             <Mail className="w-3.5 h-3.5 text-[#1A5C38]" />
-            <a href={`mailto:${org.kontak}`} className="hover:text-[#1A5C38] transition-colors">{org.kontak}</a>
+            <span className="truncate max-w-[140px]">{org.kontak}</span>
           </div>
         )}
         {org.tahunBerdiri && (
@@ -76,6 +187,8 @@ function OrgCard({ org, index }) {
           </div>
         )}
       </div>
+
+      <p className="text-[11px] text-[#1A5C38] font-semibold -mt-2">Lihat Detail →</p>
     </motion.div>
   )
 }
@@ -84,6 +197,7 @@ export default function OrganisasiPage() {
   const [list, setList] = useState([])
   const [loading, setLoading] = useState(true)
   const [search, setSearch] = useState('')
+  const [selected, setSelected] = useState(null)
 
   useEffect(() => {
     async function load() {
@@ -186,13 +300,15 @@ export default function OrganisasiPage() {
             className="grid sm:grid-cols-2 lg:grid-cols-3 gap-5"
           >
             {filtered.map((org, i) => (
-              <OrgCard key={org.id} org={org} index={i} />
+              <OrgCard key={org.id} org={org} index={i} onClick={() => setSelected(org)} />
             ))}
           </motion.div>
         )}
       </div>
 
       <Footer />
+
+      {selected && <DetailModal org={selected} onClose={() => setSelected(null)} />}
     </div>
   )
 }
