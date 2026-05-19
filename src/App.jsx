@@ -34,6 +34,7 @@ const AkunDinonaktifkanPage = lazy(() => import('./pages/AkunDinonaktifkanPage')
 const AkunDihapusPage       = lazy(() => import('./pages/AkunDihapusPage'))
 const AuthCallbackPage      = lazy(() => import('./pages/AuthCallbackPage'))
 const PilihDashboardPage    = lazy(() => import('./pages/PilihDashboardPage'))
+const ResetPasswordPage     = lazy(() => import('./pages/ResetPasswordPage'))
 
 // ── Admin pages ───────────────────────────────────────────────────────────────
 const AdminDashboardPage    = lazy(() => import('./pages/admin/AdminDashboardPage'))
@@ -91,6 +92,7 @@ function App() {
             <Route path="/akun-dinonaktifkan" element={<AkunDinonaktifkanPage />} />
             <Route path="/akun-dihapus" element={<AkunDihapusPage />} />
             <Route path="/auth/callback" element={<AuthCallbackPage />} />
+            <Route path="/reset-password" element={<ResetPasswordPage />} />
             <Route path="/pilih-dashboard" element={<ProtectedRoute><PilihDashboardPage /></ProtectedRoute>} />
 
             {/* ── Admin routes — sidebar/header persistent via AdminLayout ── */}

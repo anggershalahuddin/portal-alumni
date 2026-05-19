@@ -1,6 +1,6 @@
 import { useState } from 'react'
 import { Link, useNavigate } from 'react-router-dom'
-import { Mail, Lock, Eye, EyeOff, Shield, AlertCircle, ArrowLeft } from 'lucide-react'
+import { Mail, Lock, Eye, EyeOff, Shield, AlertCircle, ArrowLeft, CheckCircle2 } from 'lucide-react'
 import heroImg from '@/assets/hero.jpg'
 import logoUrl from '@/assets/Logo DM Fix.jpg'
 import { useAuth } from '@/context/AuthContext'
@@ -16,6 +16,27 @@ export default function LoginPage() {
   const [showPassword, setShowPassword] = useState(false)
   const [error, setError] = useState('')
   const [loading, setLoading] = useState(false)
+
+  // forgot-password state
+  const [view, setView] = useState('login') // 'login' | 'forgot' | 'sent'
+  const [forgotEmail, setForgotEmail] = useState('')
+  const [forgotLoading, setForgotLoading] = useState(false)
+  const [forgotError, setForgotError] = useState('')
+
+  async function handleForgot(e) {
+    e.preventDefault()
+    setForgotError('')
+    setForgotLoading(true)
+    const { error: err } = await supabase.auth.resetPasswordForEmail(forgotEmail.trim(), {
+      redirectTo: `${window.location.origin}/reset-password`,
+    })
+    setForgotLoading(false)
+    if (err) {
+      setForgotError(err.message)
+      return
+    }
+    setView('sent')
+  }
 
   async function handleSubmit(e) {
     e.preventDefault()
@@ -155,6 +176,82 @@ export default function LoginPage() {
             </Link>
           </div>
 
+          {/* ── Forgot password: email form ── */}
+          {view === 'forgot' && (
+            <>
+              <button
+                type="button"
+                onClick={() => { setView('login'); setForgotError('') }}
+                className="flex items-center gap-1.5 text-xs font-semibold text-gray-400 hover:text-gray-700 transition-colors mb-6"
+              >
+                <ArrowLeft className="w-3.5 h-3.5" /> Kembali ke Login
+              </button>
+              <h2 className="text-[1.9rem] font-extrabold text-gray-900 mb-1 leading-tight">Reset Kata Sandi</h2>
+              <p className="text-gray-500 text-sm mb-7">
+                Masukkan email akun Anda. Kami akan mengirimkan link untuk membuat kata sandi baru.
+              </p>
+              <form onSubmit={handleForgot} className="space-y-4">
+                <div>
+                  <label className="block text-sm font-semibold text-gray-700 mb-1.5">Alamat Email</label>
+                  <div className="relative">
+                    <Mail className="absolute left-3.5 top-1/2 -translate-y-1/2 w-4 h-4 text-gray-400" />
+                    <input
+                      type="email"
+                      value={forgotEmail}
+                      onChange={e => setForgotEmail(e.target.value)}
+                      placeholder="nama@email.com"
+                      required
+                      className="w-full pl-10 pr-4 py-3 rounded-xl border border-gray-200 bg-gray-50 text-sm outline-none transition-all placeholder:text-gray-400"
+                      onFocus={e => { e.target.style.borderColor='#1A5C38'; e.target.style.backgroundColor='#fff'; e.target.style.boxShadow='0 0 0 3px rgba(26,92,56,0.1)' }}
+                      onBlur={e => { e.target.style.borderColor='#e5e7eb'; e.target.style.backgroundColor='#f9fafb'; e.target.style.boxShadow='none' }}
+                    />
+                  </div>
+                </div>
+                {forgotError && (
+                  <div className="flex items-center gap-2 p-3 rounded-xl bg-red-50 border border-red-200">
+                    <AlertCircle className="w-4 h-4 text-red-500 flex-shrink-0" />
+                    <p className="text-xs text-red-600">{forgotError}</p>
+                  </div>
+                )}
+                <button
+                  type="submit"
+                  disabled={forgotLoading}
+                  className="w-full py-3.5 rounded-xl font-bold text-sm text-white transition-all hover:brightness-110 disabled:opacity-60 disabled:cursor-not-allowed flex items-center justify-center gap-2"
+                  style={{ backgroundColor: '#1A5C38' }}
+                >
+                  {forgotLoading && <span className="w-4 h-4 border-2 border-white border-t-transparent rounded-full animate-spin" />}
+                  {forgotLoading ? 'Mengirim...' : 'Kirim Link Reset'}
+                </button>
+              </form>
+            </>
+          )}
+
+          {/* ── Forgot password: sent ── */}
+          {view === 'sent' && (
+            <div className="text-center py-6">
+              <div className="w-16 h-16 rounded-full flex items-center justify-center mx-auto mb-5" style={{ backgroundColor: '#E8F5EE' }}>
+                <CheckCircle2 className="w-8 h-8" style={{ color: '#1A5C38' }} />
+              </div>
+              <h2 className="text-xl font-extrabold text-gray-900 mb-2">Email Terkirim!</h2>
+              <p className="text-sm text-gray-500 mb-1">
+                Link reset kata sandi telah dikirim ke:
+              </p>
+              <p className="text-sm font-bold text-gray-800 mb-6">{forgotEmail}</p>
+              <p className="text-xs text-gray-400 mb-8">
+                Cek folder <span className="font-semibold">Inbox</span> atau <span className="font-semibold">Spam</span>. Link berlaku selama 1 jam.
+              </p>
+              <button
+                type="button"
+                onClick={() => setView('login')}
+                className="w-full py-3 rounded-xl font-bold text-sm border border-gray-200 text-gray-700 hover:bg-gray-50 transition-colors"
+              >
+                Kembali ke Login
+              </button>
+            </div>
+          )}
+
+          {/* ── Login form ── */}
+          {view === 'login' && <>
           <h2 className="text-[1.9rem] font-extrabold text-gray-900 mb-1 leading-tight">
             Selamat Datang Kembali
           </h2>
@@ -215,7 +312,12 @@ export default function LoginPage() {
             <div>
               <div className="flex items-center justify-between mb-1.5">
                 <label className="block text-sm font-semibold text-gray-700">Kata Sandi</label>
-                <button type="button" className="text-xs font-semibold" style={{ color: '#F0A500' }}>
+                <button
+                  type="button"
+                  className="text-xs font-semibold"
+                  style={{ color: '#F0A500' }}
+                  onClick={() => { setForgotEmail(email); setForgotError(''); setView('forgot') }}
+                >
                   Lupa sandi?
                 </button>
               </div>
@@ -289,6 +391,7 @@ export default function LoginPage() {
               Daftar Sekarang
             </Link>
           </p>
+          </>}
         </div>
       </div>
     </div>
