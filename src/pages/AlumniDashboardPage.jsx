@@ -1420,13 +1420,14 @@ export default function AlumniDashboardPage() {
     { label: 'LinkedIn', weight: 10, done: !!profil.linkedin },
     { label: 'Riwayat Pendidikan', weight: 15, done: pendidikan.length > 0 },
     { label: 'Riwayat Pekerjaan', weight: 15, done: pekerjaan.length > 0 },
+    { label: 'Pengalaman Organisasi', weight: 5, done: organisasi.length > 0 },
     { label: 'Keahlian', weight: 5, done: keahlian.length > 0 },
     { label: 'Sertifikasi', weight: 5, done: sertifikasi.length > 0 },
     { label: 'Publikasi', weight: 5, done: publikasi.length > 0 },
     { label: 'Lembaga/Badan Usaha', weight: 5, done: usaha.length > 0 },
     { label: 'Dokumen & Lampiran', weight: 5, done: dokumen.length > 0 },
   ]
-  const profileCompletion = completionItems.reduce((a, i) => a + (i.done ? i.weight : 0), 0)
+  const profileCompletion = Math.min(100, completionItems.reduce((a, i) => a + (i.done ? i.weight : 0), 0))
   const missing = completionItems.filter(i => !i.done)
 
   const unreadCount = notif.filter(n => !n.dibaca).length
@@ -2073,13 +2074,14 @@ export default function AlumniDashboardPage() {
                     {[
                       { label: 'Edit Profil',       icon: Pencil,     action: () => setModal({ type: 'editProfil' }) },
                       { label: 'Tambah Karir',       icon: Briefcase,  action: () => setModal({ type: 'addPekerjaan' }) },
+                      { label: 'Organisasi',         icon: Users,      action: () => setModal({ type: 'addOrganisasi' }) },
                       { label: 'Keahlian & Bahasa',  icon: Star,       action: () => setModal({ type: 'editKeahlianBahasa' }) },
                       { label: 'Sertifikasi',        icon: Award,      action: () => setModal({ type: 'addSertifikasi' }) },
                       { label: 'Publikasi',          icon: BookOpen,   action: () => setModal({ type: 'addPublikasi' }) },
                       { label: 'Lembaga',            icon: Building2,  action: () => setModal({ type: 'addUsaha' }) },
                       { label: 'Berkas',             icon: Paperclip,  action: () => setModal({ type: 'addBerkas' }) },
                       { label: 'Kartu Alumni',       icon: FileText,   action: () => setModal({ type: 'kartu' }) },
-                      { label: 'Direktori',          icon: Users,      action: () => navigate('/direktori') },
+                      { label: 'Direktori',          icon: BookOpen,   action: () => navigate('/direktori') },
                     ].map(({ label, icon: Icon, action }) => (
                       <button key={label} onClick={action}
                         className="flex flex-col items-center gap-1.5 py-3 px-2 rounded-xl hover:bg-white/30 transition-all"
@@ -2567,13 +2569,14 @@ export default function AlumniDashboardPage() {
                     {[
                       { label: 'Edit Profil',       icon: Pencil,     action: () => setModal({ type: 'editProfil' }) },
                       { label: 'Tambah Karir',       icon: Briefcase,  action: () => setModal({ type: 'addPekerjaan' }) },
+                      { label: 'Organisasi',         icon: Users,      action: () => setModal({ type: 'addOrganisasi' }) },
                       { label: 'Keahlian & Bahasa',  icon: Star,       action: () => setModal({ type: 'editKeahlianBahasa' }) },
                       { label: 'Sertifikasi',        icon: Award,      action: () => setModal({ type: 'addSertifikasi' }) },
                       { label: 'Publikasi',          icon: BookOpen,   action: () => setModal({ type: 'addPublikasi' }) },
                       { label: 'Lembaga',            icon: Building2,  action: () => setModal({ type: 'addUsaha' }) },
                       { label: 'Berkas',             icon: Paperclip,  action: () => setModal({ type: 'addBerkas' }) },
                       { label: 'Kartu Alumni',       icon: FileText,   action: () => setModal({ type: 'kartu' }) },
-                      { label: 'Direktori',          icon: Users,      action: () => navigate('/direktori') },
+                      { label: 'Direktori',          icon: BookOpen,   action: () => navigate('/direktori') },
                     ].map(({ label, icon: Icon, action }) => (
                       <button key={label} onClick={action}
                         className="flex flex-col items-center gap-1.5 py-3 px-1 rounded-xl hover:bg-white/30 transition-all"
