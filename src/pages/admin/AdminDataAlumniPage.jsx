@@ -4,7 +4,7 @@ import {
   Search, ChevronDown, X, BadgeCheck,
   GraduationCap, Briefcase, BookOpen, Mail, Globe,
   Link2, Filter, Eye, FileSpreadsheet, Building2, Handshake,
-  AlertCircle, Phone, MapPin, Calendar, Award, Loader2, RefreshCw, Download,
+  AlertCircle, Phone, MapPin, Calendar, Award, Loader2, RefreshCw, Download, Users,
 } from 'lucide-react'
 
 function IconInstagram({ size = 16 }) {
@@ -194,6 +194,7 @@ function DetailModal({ alumni, detail, angkatanInfo, onClose }) {
           {[
             { key: 'ringkasan',  label: 'Ringkasan' },
             { key: 'karir',      label: 'Karir' },
+            { key: 'organisasi', label: 'Organisasi' },
             { key: 'lembaga',    label: 'Lembaga' },
             { key: 'portofolio', label: 'Portofolio' },
             { key: 'kontak',     label: 'Kontak' },
@@ -305,6 +306,29 @@ function DetailModal({ alumni, detail, angkatanInfo, onClose }) {
                 </div>
               </div>
             </>
+          )}
+
+          {tab === 'organisasi' && (
+            <div className="space-y-3">
+              {detail?.organisasi?.length > 0 ? detail.organisasi.map((o, i) => (
+                <div key={i} className="flex gap-4 p-4 bg-gray-50 rounded-xl">
+                  <div className="w-9 h-9 bg-[#F5F3FF] rounded-lg flex items-center justify-center flex-shrink-0">
+                    <Users className="w-4 h-4 text-[#7C3AED]" />
+                  </div>
+                  <div className="flex-1 min-w-0">
+                    <div className="flex items-center gap-2 flex-wrap">
+                      <p className="font-semibold text-sm text-[#0A2415]">{o.nama_org}</p>
+                      {o.is_current && <span className="text-[10px] font-bold bg-purple-100 text-purple-700 px-2 py-0.5 rounded-full">Aktif</span>}
+                    </div>
+                    {o.jabatan && <p className="text-xs font-semibold text-[#7C3AED] mt-0.5">{o.jabatan}</p>}
+                    <p className="text-xs text-gray-400 mt-0.5">{o.periode}</p>
+                    {o.deskripsi && <p className="text-xs text-gray-500 mt-1.5 leading-relaxed">{o.deskripsi}</p>}
+                  </div>
+                </div>
+              )) : (
+                <p className="text-sm text-gray-400 text-center py-8">Belum ada pengalaman organisasi.</p>
+              )}
+            </div>
           )}
 
           {tab === 'lembaga' && (
@@ -521,16 +545,17 @@ export default function AdminDataAlumniPage() {
       const apIds  = apAll.map((ap) => ap.id)
 
       // Phase 2: sub-tables keyed by alumni_profiles.id
-      const [keahlianRes, bahasaRes, pekerjaanRes, pendidikanRes, lembagaRes, sertifikasiRes, publikasiRes, berkasRes] =
+      const [keahlianRes, bahasaRes, pekerjaanRes, pendidikanRes, lembagaRes, sertifikasiRes, publikasiRes, berkasRes, organisasiRes] =
         await Promise.all([
-          apIds.length ? supabase.from('keahlian_alumni').select('*').in('alumni_id', apIds)  : Promise.resolve({ data: [] }),
-          apIds.length ? supabase.from('bahasa_alumni').select('*').in('alumni_id', apIds)    : Promise.resolve({ data: [] }),
-          apIds.length ? supabase.from('pekerjaan').select('*').in('alumni_id', apIds)        : Promise.resolve({ data: [] }),
-          apIds.length ? supabase.from('pendidikan').select('*').in('alumni_id', apIds)       : Promise.resolve({ data: [] }),
-          apIds.length ? supabase.from('lembaga_alumni').select('*').in('alumni_id', apIds)   : Promise.resolve({ data: [] }),
-          apIds.length ? supabase.from('sertifikasi').select('*').in('alumni_id', apIds)      : Promise.resolve({ data: [] }),
-          apIds.length ? supabase.from('publikasi').select('*').in('alumni_id', apIds)        : Promise.resolve({ data: [] }),
-          apIds.length ? supabase.from('berkas_alumni').select('*').in('alumni_id', apIds)    : Promise.resolve({ data: [] }),
+          apIds.length ? supabase.from('keahlian_alumni').select('*').in('alumni_id', apIds)      : Promise.resolve({ data: [] }),
+          apIds.length ? supabase.from('bahasa_alumni').select('*').in('alumni_id', apIds)        : Promise.resolve({ data: [] }),
+          apIds.length ? supabase.from('pekerjaan').select('*').in('alumni_id', apIds)            : Promise.resolve({ data: [] }),
+          apIds.length ? supabase.from('pendidikan').select('*').in('alumni_id', apIds)           : Promise.resolve({ data: [] }),
+          apIds.length ? supabase.from('lembaga_alumni').select('*').in('alumni_id', apIds)       : Promise.resolve({ data: [] }),
+          apIds.length ? supabase.from('sertifikasi').select('*').in('alumni_id', apIds)          : Promise.resolve({ data: [] }),
+          apIds.length ? supabase.from('publikasi').select('*').in('alumni_id', apIds)            : Promise.resolve({ data: [] }),
+          apIds.length ? supabase.from('berkas_alumni').select('*').in('alumni_id', apIds)        : Promise.resolve({ data: [] }),
+          apIds.length ? supabase.from('alumni_organisasi').select('*').in('alumni_id', apIds)    : Promise.resolve({ data: [] }),
         ])
 
       const keahlianAll    = keahlianRes.data ?? []
@@ -541,6 +566,7 @@ export default function AdminDataAlumniPage() {
       const sertifikasiAll = sertifikasiRes.data ?? []
       const publikasiAll   = publikasiRes.data ?? []
       const berkasAll      = berkasRes.data ?? []
+      const organisasiAll  = organisasiRes.data ?? []
 
       const enrichedData = profiles.map((p) => {
         const ap   = apAll.find((a) => a.user_id === p.id) ?? {}
@@ -639,6 +665,16 @@ export default function AdminDataAlumniPage() {
               openKerjasama: l.open_kerjasama ?? false,
               deskripsi:     l.deskripsi ?? '',
               website:       l.website ?? '',
+            })) : [],
+          organisasi: apId ? organisasiAll
+            .filter((o) => o.alumni_id === apId)
+            .sort((a, b) => (b.tahun_mulai ?? 0) - (a.tahun_mulai ?? 0))
+            .map((o) => ({
+              nama_org:     o.nama_org ?? '',
+              jabatan:      o.jabatan ?? '',
+              periode:      periodeStr(o.tahun_mulai, o.tahun_selesai, o.is_current),
+              is_current:   o.is_current ?? false,
+              deskripsi:    o.deskripsi ?? '',
             })) : [],
         }
 

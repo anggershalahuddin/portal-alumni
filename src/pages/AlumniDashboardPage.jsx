@@ -499,6 +499,61 @@ function KarirModal({ item, onSave, onClose }) {
   )
 }
 
+function OrganisasiModal({ item, onSave, onClose }) {
+  const curYear = new Date().getFullYear()
+  const [form, setForm] = useState({
+    nama_org:     item?.nama_org     ?? '',
+    jabatan:      item?.jabatan      ?? '',
+    tahun_mulai:  item?.tahun_mulai  ? String(item.tahun_mulai)  : '',
+    tahun_selesai:item?.tahun_selesai? String(item.tahun_selesai): '',
+    is_current:   item?.is_current   ?? false,
+    deskripsi:    item?.deskripsi    ?? '',
+  })
+  const s = k => e => setForm(p => ({ ...p, [k]: e.target.value }))
+  return (
+    <ModalWrapper onClose={onClose}>
+      <div className="relative bg-white rounded-2xl shadow-2xl w-full max-w-md max-h-[90vh] flex flex-col">
+        <div className="flex items-center justify-between px-6 py-4 border-b border-gray-100">
+          <h2 className="text-base font-bold text-gray-900">{item ? 'Edit' : 'Tambah'} Pengalaman Organisasi</h2>
+          <button onClick={onClose}><X className="w-5 h-5 text-gray-400" /></button>
+        </div>
+        <div className="p-6 space-y-4 overflow-y-auto flex-1">
+          <MF label="Nama Organisasi *">
+            <input className={inp} value={form.nama_org} onChange={s('nama_org')} placeholder="cth. OSIS, BEM, Karang Taruna" />
+          </MF>
+          <MF label="Jabatan / Peran">
+            <input className={inp} value={form.jabatan} onChange={s('jabatan')} placeholder="cth. Ketua, Sekretaris, Anggota" />
+          </MF>
+          <div className="grid grid-cols-2 gap-3">
+            <MF label="Tahun Mulai">
+              <input className={inp} type="number" value={form.tahun_mulai} onChange={s('tahun_mulai')} placeholder={String(curYear - 2)} min="1970" max={curYear} />
+            </MF>
+            <MF label="Tahun Selesai">
+              <input className={inp} type="number" value={form.tahun_selesai} onChange={s('tahun_selesai')}
+                placeholder={form.is_current ? 'Sekarang' : String(curYear)}
+                disabled={form.is_current} min="1970" max={curYear + 10} />
+            </MF>
+          </div>
+          <label className="flex items-center gap-2 cursor-pointer text-sm text-gray-600">
+            <input type="checkbox" checked={form.is_current}
+              onChange={e => setForm(p => ({ ...p, is_current: e.target.checked, tahun_selesai: e.target.checked ? '' : p.tahun_selesai }))}
+              className="w-4 h-4 accent-green-600" />
+            Masih aktif di organisasi ini
+          </label>
+          <MF label="Deskripsi (opsional)">
+            <textarea className={inp + ' resize-none'} rows={3} value={form.deskripsi} onChange={s('deskripsi')} placeholder="Ceritakan peran dan kontribusi Anda..." />
+          </MF>
+        </div>
+        <div className="flex justify-end gap-3 px-6 py-4 border-t border-gray-100">
+          <button onClick={onClose} className="px-5 py-2.5 rounded-xl border border-gray-200 text-sm font-medium text-gray-700 hover:bg-gray-50">Batal</button>
+          <button onClick={() => form.nama_org && onSave(form)} disabled={!form.nama_org}
+            className="px-5 py-2.5 rounded-xl text-sm font-bold text-white hover:opacity-90 disabled:opacity-40" style={{ backgroundColor: '#1A5C38' }}>Simpan</button>
+        </div>
+      </div>
+    </ModalWrapper>
+  )
+}
+
 function SertifikasiModal({ item, onSave, onClose }) {
   const [form, setForm] = useState({ nama: item?.nama ?? '', penerbit: item?.penerbit ?? '', tahun: item?.tahun ?? '', noCert: item?.noCert ?? '', url: item?.url ?? '' })
   const s = k => e => setForm(p => ({ ...p, [k]: e.target.value }))
@@ -1139,6 +1194,7 @@ export default function AlumniDashboardPage() {
   })
   const [pendidikan, setPendidikan] = useState([])
   const [pekerjaan, setPekerjaan]   = useState([])
+  const [organisasi, setOrganisasi] = useState([])
   const [sertifikasi, setSertifikasi] = useState([])
   const [publikasi, setPublikasi]   = useState([])
   const [usaha, setUsaha]           = useState([])
@@ -1312,9 +1368,10 @@ export default function AlumniDashboardPage() {
       if (!aid) { setPageLoading(false); return }
 
       // 3. Fetch semua section secara paralel
-      const [pend, pekj, sert, publ, keahl, bah, lemb, berk] = await Promise.all([
+      const [pend, pekj, org, sert, publ, keahl, bah, lemb, berk] = await Promise.all([
         supabase.from('pendidikan').select('*').eq('alumni_id', aid).order('created_at'),
         supabase.from('pekerjaan').select('*').eq('alumni_id', aid).order('created_at', { ascending: false }),
+        supabase.from('alumni_organisasi').select('*').eq('alumni_id', aid).order('tahun_mulai', { ascending: false }),
         supabase.from('sertifikasi').select('*').eq('alumni_id', aid).order('tahun', { ascending: false }),
         supabase.from('publikasi').select('*').eq('alumni_id', aid).order('tahun', { ascending: false }),
         supabase.from('keahlian_alumni').select('*').eq('alumni_id', aid),
@@ -1324,8 +1381,8 @@ export default function AlumniDashboardPage() {
       ])
 
       setPendidikan(pend.data ?? [])
-      // Normalisasi field agar cocok dengan form modal
       setPekerjaan((pekj.data ?? []).map(r => ({ ...r, jabatan: r.posisi, current: r.is_current })))
+      setOrganisasi(org.data ?? [])
       setSertifikasi((sert.data ?? []).map(r => ({ ...r, noCert: r.no_cert })))
       setPublikasi(publ.data ?? [])
       setKeahlian((keahl.data ?? []).map(k => k.nama))
@@ -1530,6 +1587,61 @@ export default function AlumniDashboardPage() {
       onConfirm: async () => {
         await supabase.from('pekerjaan').delete().eq('id', id)
         setPekerjaan(p => p.filter(x => x.id !== id))
+        closeConfirm()
+      },
+    })
+  }
+
+  function addOrganisasi(form) {
+    askConfirm({
+      title: 'Tambah Pengalaman Organisasi',
+      message: 'Apakah Anda yakin ingin menyimpan pengalaman organisasi ini?',
+      confirmLabel: 'Ya, Simpan',
+      variant: 'success',
+      onConfirm: async () => {
+        const { data } = await supabase.from('alumni_organisasi').insert({
+          alumni_id:    alumniId,
+          nama_org:     form.nama_org,
+          jabatan:      form.jabatan     || null,
+          tahun_mulai:  form.tahun_mulai  ? Number(form.tahun_mulai)  : null,
+          tahun_selesai:form.is_current   ? null : (form.tahun_selesai ? Number(form.tahun_selesai) : null),
+          is_current:   !!form.is_current,
+          deskripsi:    form.deskripsi   || null,
+        }).select().single()
+        if (data) setOrganisasi(p => [data, ...p])
+        closeConfirm(); setModal(null)
+      },
+    })
+  }
+  function editOrganisasi(id, form) {
+    askConfirm({
+      title: 'Simpan Perubahan Organisasi',
+      message: 'Apakah Anda yakin ingin menyimpan perubahan ini?',
+      confirmLabel: 'Ya, Simpan',
+      variant: 'success',
+      onConfirm: async () => {
+        const { data } = await supabase.from('alumni_organisasi').update({
+          nama_org:     form.nama_org,
+          jabatan:      form.jabatan     || null,
+          tahun_mulai:  form.tahun_mulai  ? Number(form.tahun_mulai)  : null,
+          tahun_selesai:form.is_current   ? null : (form.tahun_selesai ? Number(form.tahun_selesai) : null),
+          is_current:   !!form.is_current,
+          deskripsi:    form.deskripsi   || null,
+        }).eq('id', id).select().single()
+        if (data) setOrganisasi(p => p.map(x => x.id === id ? data : x))
+        closeConfirm(); setModal(null)
+      },
+    })
+  }
+  function delOrganisasi(id) {
+    askConfirm({
+      title: 'Hapus Pengalaman Organisasi',
+      message: 'Data pengalaman organisasi ini akan dihapus permanen. Lanjutkan?',
+      confirmLabel: 'Ya, Hapus',
+      variant: 'danger',
+      onConfirm: async () => {
+        await supabase.from('alumni_organisasi').delete().eq('id', id)
+        setOrganisasi(p => p.filter(x => x.id !== id))
         closeConfirm()
       },
     })
@@ -2107,6 +2219,59 @@ export default function AlumniDashboardPage() {
                 )}
               </section>
 
+              {/* Pengalaman Organisasi */}
+              <section className="bg-white rounded-2xl p-5 sm:p-6 border border-gray-100 border-l-4" style={{ borderLeftColor: '#7C3AED' }}>
+                <div className="flex items-center justify-between mb-5">
+                  <div className="flex items-center gap-2.5">
+                    <div className="w-8 h-8 rounded-xl flex items-center justify-center" style={{ backgroundColor: '#F5F3FF' }}>
+                      <Users className="w-4 h-4" style={{ color: '#7C3AED' }} />
+                    </div>
+                    <h2 className="text-sm font-bold text-[#0A2415]">Pengalaman Organisasi</h2>
+                  </div>
+                  <button onClick={() => setModal({ type: 'addOrganisasi' })}
+                    className="flex items-center gap-1 text-xs font-semibold text-[#1A5C38] hover:text-[#0A2415] transition-colors">
+                    <Plus className="w-3.5 h-3.5" /> Tambah
+                  </button>
+                </div>
+                {organisasi.length === 0 ? (
+                  <p className="text-sm text-gray-400 text-center py-6">Belum ada pengalaman organisasi.</p>
+                ) : (
+                  <div className="space-y-4">
+                    {organisasi.map((o, i) => (
+                      <motion.div key={o.id} initial={{ opacity: 0, x: -8 }} animate={{ opacity: 1, x: 0 }} transition={{ delay: i * 0.05 }}>
+                        {i > 0 && <div className="border-t border-gray-100 mb-4" />}
+                        <div className="flex items-start justify-between gap-4">
+                          <div className="flex-1">
+                            <div className="flex items-center gap-2 flex-wrap">
+                              <h3 className="text-sm font-bold text-[#0A2415]">{o.nama_org}</h3>
+                              {o.is_current && <span className="text-[10px] font-bold bg-purple-100 text-purple-700 px-2 py-0.5 rounded-full">Aktif</span>}
+                            </div>
+                            {o.jabatan && <p className="text-xs font-semibold text-[#7C3AED] mt-0.5">{o.jabatan}</p>}
+                            {(o.tahun_mulai || o.tahun_selesai) && (
+                              <div className="flex items-center gap-1 mt-1.5 text-[11px] text-gray-400">
+                                <Calendar className="w-3 h-3" />
+                                {o.tahun_mulai ?? '?'} – {o.is_current ? 'Sekarang' : (o.tahun_selesai ?? '?')}
+                              </div>
+                            )}
+                            {o.deskripsi && <p className="text-xs text-gray-500 mt-2 leading-relaxed">{o.deskripsi}</p>}
+                          </div>
+                          <div className="flex items-center gap-1 shrink-0">
+                            <button onClick={() => setModal({ type: 'editOrganisasi', item: o })}
+                              className="w-7 h-7 rounded-lg hover:bg-gray-100 flex items-center justify-center text-gray-400 hover:text-[#1A5C38] transition-colors">
+                              <Pencil className="w-3.5 h-3.5" />
+                            </button>
+                            <button onClick={() => delOrganisasi(o.id)}
+                              className="w-7 h-7 rounded-lg hover:bg-red-50 flex items-center justify-center text-gray-400 hover:text-red-500 transition-colors">
+                              <Trash2 className="w-3.5 h-3.5" />
+                            </button>
+                          </div>
+                        </div>
+                      </motion.div>
+                    ))}
+                  </div>
+                )}
+              </section>
+
               {/* Sertifikasi */}
               <section className="bg-white rounded-2xl p-5 sm:p-6 border border-gray-100 border-l-4" style={{ borderLeftColor: '#0E7490' }}>
                 <div className="flex items-center justify-between mb-5">
@@ -2628,6 +2793,12 @@ export default function AlumniDashboardPage() {
       )}
       {modal?.type === 'editPekerjaan' && (
         <KarirModal item={modal.item} onSave={form => editPekerjaan(modal.item.id, form)} onClose={() => setModal(null)} />
+      )}
+      {modal?.type === 'addOrganisasi' && (
+        <OrganisasiModal item={null} onSave={addOrganisasi} onClose={() => setModal(null)} />
+      )}
+      {modal?.type === 'editOrganisasi' && (
+        <OrganisasiModal item={modal.item} onSave={form => editOrganisasi(modal.item.id, form)} onClose={() => setModal(null)} />
       )}
       {modal?.type === 'addSertifikasi' && (
         <SertifikasiModal item={null} onSave={addSertifikasi} onClose={() => setModal(null)} />

@@ -198,7 +198,7 @@ export default function AlumniProfilePage() {
 
         const apId = ap?.id ?? null
 
-        const [keahlianRes, bahasaRes, pekerjaanRes, pendidikanRes, lembagaRes, berkasRes, angkatanRes, publikasiRes] =
+        const [keahlianRes, bahasaRes, pekerjaanRes, pendidikanRes, lembagaRes, berkasRes, angkatanRes, publikasiRes, organisasiRes] =
           await Promise.all([
             apId ? supabase.from('keahlian_alumni').select('nama').eq('alumni_id', apId) : { data: [] },
             apId ? supabase.from('bahasa_alumni').select('nama').eq('alumni_id', apId) : { data: [] },
@@ -208,6 +208,7 @@ export default function AlumniProfilePage() {
             apId ? supabase.from('berkas_alumni').select('nama, tipe, ukuran, kategori, file_url').eq('alumni_id', apId) : { data: [] },
             supabase.from('angkatan').select('id, tahun_lulus, nama_angkatan').order('tahun_lulus'),
             apId ? supabase.from('publikasi').select('*').eq('alumni_id', apId).order('tahun', { ascending: false }) : { data: [] },
+            apId ? supabase.from('alumni_organisasi').select('*').eq('alumni_id', apId).order('tahun_mulai', { ascending: false }) : { data: [] },
           ])
 
         const fetchedAngkatan = (angkatanRes.data ?? []).map(mapAngkatan)
@@ -280,6 +281,14 @@ export default function AlumniProfilePage() {
             tahun:    pub.tahun ?? '',
             url:      pub.url ?? '',
             deskripsi: pub.deskripsi ?? '',
+          })),
+          organisasi: (organisasiRes.data ?? []).map((o) => ({
+            nama_org:     o.nama_org ?? '',
+            jabatan:      o.jabatan ?? '',
+            tahun_mulai:  o.tahun_mulai ?? null,
+            tahun_selesai:o.tahun_selesai ?? null,
+            is_current:   o.is_current ?? false,
+            deskripsi:    o.deskripsi ?? '',
           })),
         }
 
@@ -633,6 +642,38 @@ export default function AlumniProfilePage() {
                       ))}
                     </div>
                   </div>
+
+                  {/* Organisasi */}
+                  {detail.organisasi?.length > 0 && (
+                    <div className="bg-white rounded-xl border border-gray-100 p-6">
+                      <h2 className="flex items-center gap-2 font-bold text-[#0A2415] mb-5">
+                        <Users className="w-4 h-4 text-[#7C3AED]" />
+                        Pengalaman Organisasi
+                      </h2>
+                      <div className="space-y-5">
+                        {detail.organisasi.map((o, i) => (
+                          <div key={i} className={`flex gap-4 ${i > 0 ? 'pt-5 border-t border-gray-100' : ''}`}>
+                            <div className="w-10 h-10 bg-[#F5F3FF] rounded-lg flex items-center justify-center flex-shrink-0">
+                              <Users className="w-5 h-5 text-[#7C3AED]" />
+                            </div>
+                            <div>
+                              <div className="flex items-center gap-2 flex-wrap">
+                                <p className="font-bold text-sm text-[#0A2415]">{o.nama_org}</p>
+                                {o.is_current && <span className="text-[10px] font-bold bg-purple-100 text-purple-700 px-2 py-0.5 rounded-full">Aktif</span>}
+                              </div>
+                              {o.jabatan && <p className="text-xs text-[#7C3AED] font-medium mt-0.5">{o.jabatan}</p>}
+                              {(o.tahun_mulai || o.tahun_selesai) && (
+                                <p className="text-xs text-gray-400 mt-0.5">
+                                  {o.tahun_mulai ?? '?'} – {o.is_current ? 'Sekarang' : (o.tahun_selesai ?? '?')}
+                                </p>
+                              )}
+                              {o.deskripsi && <p className="text-xs text-gray-500 mt-1.5 leading-relaxed">{o.deskripsi}</p>}
+                            </div>
+                          </div>
+                        ))}
+                      </div>
+                    </div>
+                  )}
 
                 </div>
               )}
