@@ -1,4 +1,4 @@
-import { useState, useMemo, useEffect, useCallback } from 'react'
+import { useState, useMemo } from 'react'
 import { Link, useNavigate } from 'react-router-dom'
 import { useAuth } from '@/context/AuthContext'
 import { motion } from 'framer-motion'
@@ -12,8 +12,8 @@ import { agendaKategori, agendaLokasi, kategoriStyle } from '@/data/agenda'
 import { getAvatarColor, getInitials } from '@/data/alumni'
 import { PaginationBar, PerPageSelector } from '@/components/PaginationBar'
 import { fadeUp, stagger } from '@/lib/animations'
-import { supabase } from '@/lib/supabase'
 import { ensureAbsoluteUrl } from '@/lib/utils'
+import { useAgenda } from '@/lib/queries'
 
 const FALLBACK_IMAGE = 'https://images.unsplash.com/photo-1540575467063-178a50c2df87?auto=format&fit=crop&w=600&q=80'
 
@@ -481,8 +481,6 @@ function EventModal({ event, onClose }) {
 export default function AgendaPage() {
   const { supaUser } = useAuth()
   const navigate = useNavigate()
-  const [agendaList, setAgendaList] = useState([])
-  const [loadingAgenda, setLoadingAgenda] = useState(true)
   const [selectedDate, setSelectedDate] = useState(null)
   const [filterKategori, setFilterKategori] = useState('semua')
   const [filterLokasi, setFilterLokasi] = useState('semua')
@@ -491,20 +489,8 @@ export default function AgendaPage() {
   const [perPage, setPerPage] = useState(4)
   const [openEvent, setOpenEvent] = useState(null)
 
-  const loadAgenda = useCallback(async () => {
-    setLoadingAgenda(true)
-    try {
-      const { data } = await supabase
-        .from('agenda')
-        .select('id, judul, deskripsi, lokasi, lokasi_kategori, tanggal_mulai, tanggal_selesai, kategori, foto_url, link_registrasi, maps_url, pembicara, status_pendaftaran, htm, has_sertifikat, published_by, image_hero, pamflet_url')
-        .eq('is_aktif', true)
-        .order('tanggal_mulai', { ascending: true })
-      setAgendaList((data ?? []).map(mapAgenda))
-    } catch {}
-    finally { setLoadingAgenda(false) }
-  }, [])
-
-  useEffect(() => { loadAgenda() }, [loadAgenda])
+  const { data: rawAgenda = [], isLoading: loadingAgenda } = useAgenda()
+  const agendaList = rawAgenda.map(mapAgenda)
 
   const eventDates = agendaList.map(e => e.tanggalISO)
 

@@ -1,4 +1,4 @@
-import { useState, useEffect, useCallback } from 'react'
+import { useState, useMemo } from 'react'
 import { Link } from 'react-router-dom'
 import { motion } from 'framer-motion'
 import { Search, Calendar, ArrowUpRight, Bell, Loader2, AlertCircle } from 'lucide-react'
@@ -8,7 +8,7 @@ import { PaginationBar, PerPageSelector } from '@/components/PaginationBar'
 import { fadeUp, stagger, viewport } from '@/lib/animations'
 import Navbar from '@/components/landing/Navbar'
 import Footer from '@/components/landing/Footer'
-import { supabase } from '@/lib/supabase'
+import { useBeritaList, useAgenda } from '@/lib/queries'
 
 const BULAN = ['JAN','FEB','MAR','APR','MEI','JUN','JUL','AGU','SEP','OKT','NOV','DES']
 
@@ -38,61 +38,34 @@ function mapBerita(row) {
 }
 
 export default function NewsListingPage() {
-  const [newsList, setNewsList] = useState([])
-  const [loading, setLoading] = useState(true)
-  const [error, setError] = useState(null)
   const [activeCategory, setActiveCategory] = useState('semua')
   const [search, setSearch] = useState('')
   const [page, setPage] = useState(1)
   const [perPage, setPerPage] = useState(6)
   const [email, setEmail] = useState('')
   const [filterTag, setFilterTag] = useState('')
-  const [sidebarAgenda, setSidebarAgenda] = useState([])
 
-  const loadNews = useCallback(async () => {
-    setLoading(true)
-    setError(null)
-    try {
-      const { data, error: err } = await supabase
-        .from('berita')
-        .select('slug, judul, ringkasan, foto_url, kategori, tag, published_at, profiles(nama_lengkap)')
-        .eq('status', 'published')
-        .order('published_at', { ascending: false })
+  const { data: rawBerita = [], isLoading: loading, error: beritaError } = useBeritaList()
+  const { data: rawAgenda = [] } = useAgenda()
+  const error = beritaError?.message ?? null
 
-      if (err) throw err
-      setNewsList((data ?? []).map(mapBerita))
-    } catch (e) {
-      setError(e.message ?? 'Gagal memuat berita')
-    } finally {
-      setLoading(false)
-    }
-  }, [])
+  const newsList = rawBerita.map(mapBerita)
 
-  useEffect(() => {
-    loadNews()
-  }, [loadNews])
-
-  useEffect(() => {
-    const today = new Date().toISOString()
-    supabase
-      .from('agenda')
-      .select('id, judul, tanggal_mulai, lokasi')
-      .gte('tanggal_mulai', today)
-      .eq('is_aktif', true)
-      .order('tanggal_mulai', { ascending: true })
-      .limit(3)
-      .then(({ data }) => {
-        setSidebarAgenda((data ?? []).map(a => {
-          const d = new Date(a.tanggal_mulai)
-          return {
-            day: String(d.getDate()).padStart(2, '0'),
-            month: BULAN[d.getMonth()],
-            title: a.judul,
-            location: a.lokasi ?? '',
-          }
-        }))
+  const today = new Date()
+  const sidebarAgenda = useMemo(() =>
+    rawAgenda
+      .filter(a => new Date(a.tanggal_mulai ?? a.tanggal) >= today)
+      .slice(0, 3)
+      .map(a => {
+        const d = new Date(a.tanggal_mulai ?? a.tanggal)
+        return {
+          day: String(d.getDate()).padStart(2, '0'),
+          month: BULAN[d.getMonth()],
+          title: a.judul,
+          location: a.lokasi ?? '',
+        }
       })
-  }, [])
+  , [rawAgenda]) // eslint-disable-line react-hooks/exhaustive-deps
 
   const popularTags = (() => {
     const freq = {}

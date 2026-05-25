@@ -1,10 +1,10 @@
-import { useState, useEffect } from 'react'
+import { useState } from 'react'
 import { Link } from 'react-router-dom'
 import { Search, MapPin, Clock, Briefcase, ExternalLink, X, CheckCircle, ChevronRight, Loader2 } from 'lucide-react'
 import Navbar from '../components/landing/Navbar'
 import Footer from '../components/landing/Footer'
 import { bidangLowongan, tipeLowongan } from '../data/lowongan'
-import { supabase } from '@/lib/supabase'
+import { useLowongan } from '@/lib/queries'
 
 function ensureAbsoluteUrl(url) {
   if (!url) return url
@@ -185,23 +185,12 @@ function mapLowongan(row) {
 }
 
 export default function KarirPage() {
-  const [jobs, setJobs]               = useState([])
-  const [loading, setLoading]         = useState(true)
   const [search, setSearch]           = useState('')
   const [filterBidang, setFilterBidang] = useState('semua')
   const [selectedJob, setSelectedJob] = useState(null)
 
-  useEffect(() => {
-    supabase
-      .from('lowongan')
-      .select('id, judul, perusahaan, lokasi, tipe, deskripsi, persyaratan, gaji_min, gaji_max, deadline, is_aktif, created_at, link_pendaftaran')
-      .eq('is_aktif', true)
-      .order('created_at', { ascending: false })
-      .then(({ data }) => {
-        setJobs((data ?? []).map(mapLowongan))
-        setLoading(false)
-      })
-  }, [])
+  const { data = [], isLoading: loading } = useLowongan()
+  const jobs = data.map(mapLowongan)
 
   const filtered = jobs.filter((l) => {
     const q = search.toLowerCase()

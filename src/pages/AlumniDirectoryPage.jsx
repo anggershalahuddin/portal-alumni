@@ -1,4 +1,4 @@
-import { useState, useMemo, useEffect, useCallback } from 'react'
+import { useState, useMemo } from 'react'
 import { Link } from 'react-router-dom'
 import { motion } from 'framer-motion'
 import {
@@ -13,7 +13,7 @@ import {
   getAvatarColor, getInitials,
 } from '@/data/alumni'
 import { fadeUp, stagger } from '@/lib/animations'
-import { supabase } from '@/lib/supabase'
+import { useAlumniDirectory, useAngkatanList } from '@/lib/queries'
 
 const ITEMS_PER_PAGE = 9
 
@@ -59,8 +59,8 @@ function FilterCheckbox({ label, checked, onChange }) {
 }
 
 export default function AlumniDirectoryPage() {
-  const [alumniList, setAlumniList] = useState([])
-  const [listLoading, setListLoading]  = useState(true)
+  const { data: alumniList = [], isLoading: listLoading } = useAlumniDirectory()
+  const { data: angkatanFromDB = [] } = useAngkatanList()
 
   const [inputValue, setInputValue] = useState('')
   const [search, setSearch]         = useState('')
@@ -74,99 +74,6 @@ export default function AlumniDirectoryPage() {
   const [expandBidang, setExpandBidang]     = useState(false)
   const [showAllAngkatan, setShowAllAngkatan] = useState(false)
   const [showMobileFilter, setShowMobileFilter] = useState(false)
-  const [angkatanFromDB, setAngkatanFromDB]     = useState([])
-
-  /* ── Load verified alumni from Supabase ── */
-  const loadAlumni = useCallback(async () => {
-    setListLoading(true)
-    try {
-      // Step 1: Ambil alumni_profiles yang publik
-      const { data: apRows } = await supabase
-        .from('alumni_profiles')
-        .select('id, user_id')
-        .eq('is_publik', true)
-
-      if (!apRows?.length) { setAlumniList([]); return }
-
-      const userIds = apRows.map((ap) => ap.user_id)
-      const apIds   = apRows.map((ap) => ap.id)
-
-      // Map user_id → alumni_profiles.id
-      const apIdByUserId = {}
-      apRows.forEach((ap) => { apIdByUserId[ap.user_id] = ap.id })
-
-      // Step 2: Ambil profiles, pekerjaan, keahlian secara paralel
-      const [profilesRes, pekerjaanRes, keahlianRes] = await Promise.all([
-        supabase
-          .from('profiles')
-          .select('id, nama_lengkap, angkatan, bidang, domisili, foto_url')
-          .in('id', userIds)
-          .eq('status', 'disetujui'),
-        supabase
-          .from('pekerjaan')
-          .select('alumni_id, posisi, perusahaan, is_current')
-          .in('alumni_id', apIds),
-        supabase
-          .from('keahlian_alumni')
-          .select('alumni_id, nama')
-          .in('alumni_id', apIds),
-      ])
-
-      // Prioritaskan pekerjaan is_current=true, fallback ke entri pertama
-      const pekerjaanMap = {}
-      ;(pekerjaanRes.data ?? []).forEach((pek) => {
-        const existing = pekerjaanMap[pek.alumni_id]
-        if (!existing || pek.is_current) pekerjaanMap[pek.alumni_id] = pek
-      })
-
-      const keahlianMap = {}
-      ;(keahlianRes.data ?? []).forEach((k) => {
-        if (!keahlianMap[k.alumni_id]) keahlianMap[k.alumni_id] = []
-        keahlianMap[k.alumni_id].push(k.nama)
-      })
-
-      const result = (profilesRes.data ?? []).map((p) => {
-        const apId = apIdByUserId[p.id]
-        return {
-          id:         p.id,
-          name:       p.nama_lengkap || p.id,
-          angkatan:   p.angkatan,
-          bidang:     p.bidang ?? '',
-          profesi:    pekerjaanMap[apId]?.posisi ?? '',
-          perusahaan: pekerjaanMap[apId]?.perusahaan ?? '',
-          domisili:   p.domisili ?? '',
-          wilayah:    p.domisili ?? '',
-          keahlian:   keahlianMap[apId] ?? [],
-          isVerified: true,
-          avatar:     p.foto_url ?? null,
-        }
-      })
-
-      setAlumniList(result)
-    } catch (err) {
-      console.error('Error loading alumni directory:', err)
-    } finally {
-      setListLoading(false)
-    }
-  }, [])
-
-  useEffect(() => { loadAlumni() }, [loadAlumni])
-
-  useEffect(() => {
-    supabase
-      .from('angkatan')
-      .select('tahun_lulus, nama_angkatan')
-      .eq('is_aktif', true)
-      .order('tahun_lulus', { ascending: false })
-      .then(({ data }) => {
-        if (data?.length) {
-          setAngkatanFromDB(data.map(a => ({
-            year: a.tahun_lulus,
-            angkatanKe: a.tahun_lulus - 2005,
-          })))
-        }
-      })
-  }, [])
 
   const TOTAL_ALUMNI   = alumniList.length
   const TOTAL_VERIFIED = alumniList.filter((a) => a.isVerified).length

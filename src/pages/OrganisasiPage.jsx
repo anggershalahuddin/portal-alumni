@@ -1,10 +1,10 @@
-import { useState, useEffect } from 'react'
+import { useState } from 'react'
 import { motion } from 'framer-motion'
 import { Building2, Users, Mail, Calendar, Search, Loader2, X, ExternalLink } from 'lucide-react'
 import Navbar from '@/components/landing/Navbar'
 import Footer from '@/components/landing/Footer'
 import { fadeUp, stagger } from '@/lib/animations'
-import { supabase } from '@/lib/supabase'
+import { useOrganisasi } from '@/lib/queries'
 
 function mapOrg(row) {
   return {
@@ -194,24 +194,11 @@ function OrgCard({ org, index, onClick }) {
 }
 
 export default function OrganisasiPage() {
-  const [list, setList] = useState([])
-  const [loading, setLoading] = useState(true)
   const [search, setSearch] = useState('')
   const [selected, setSelected] = useState(null)
 
-  useEffect(() => {
-    async function load() {
-      setLoading(true)
-      const { data } = await supabase
-        .from('organisasi')
-        .select('id, nama, singkatan, deskripsi, logo_url, tahun_berdiri, ketua, kontak')
-        .eq('is_aktif', true)
-        .order('id', { ascending: true })
-      setList((data ?? []).map(mapOrg))
-      setLoading(false)
-    }
-    load()
-  }, [])
+  const { data = [], isLoading: loading } = useOrganisasi()
+  const list = data.map(mapOrg)
 
   const filtered = list.filter(o => {
     const q = search.toLowerCase()

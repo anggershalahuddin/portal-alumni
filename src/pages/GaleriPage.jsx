@@ -1,11 +1,11 @@
-import { useState, useEffect, useCallback } from 'react'
+import { useState, useEffect } from 'react'
 import { Link } from 'react-router-dom'
 import { motion, AnimatePresence } from 'framer-motion'
 import { X, ZoomIn, ChevronLeft, ChevronRight, Loader2, AlertCircle } from 'lucide-react'
 import Navbar from '@/components/landing/Navbar'
 import Footer from '@/components/landing/Footer'
 import { kategoriGaleri } from '@/data/galeri'
-import { supabase } from '@/lib/supabase'
+import { useGaleri } from '@/lib/queries'
 
 const KATEGORI_LIST = [{ value: 'semua', label: 'Semua' }, ...kategoriGaleri]
 
@@ -15,33 +15,19 @@ function formatTanggal(iso) {
 }
 
 export default function GaleriPage() {
-  const [galeri, setGaleri]           = useState([])
-  const [loading, setLoading]         = useState(true)
-  const [error, setError]             = useState(null)
   const [activeKat, setActiveKat]     = useState('semua')
-  const [lightbox, setLightbox]       = useState(null) // index of current item in filtered
+  const [lightbox, setLightbox]       = useState(null)
 
-  const loadData = useCallback(async () => {
-    setLoading(true)
-    setError(null)
-    const { data, error: err } = await supabase
-      .from('galeri')
-      .select('id, judul, deskripsi, foto_url, kategori, created_at')
-      .eq('is_aktif', true)
-      .order('created_at', { ascending: false })
-    if (err) { setError(err.message); setLoading(false); return }
-    setGaleri((data ?? []).map(row => ({
-      id:       row.id,
-      judul:    row.judul,
-      deskripsi:row.deskripsi ?? '',
-      url:      row.foto_url,
-      kategori: row.kategori ?? 'kegiatan',
-      tanggal:  formatTanggal(row.created_at),
-    })))
-    setLoading(false)
-  }, [])
-
-  useEffect(() => { loadData() }, [loadData])
+  const { data: rawGaleri = [], isLoading: loading, error: galeriError } = useGaleri()
+  const error = galeriError?.message ?? null
+  const galeri = rawGaleri.map(row => ({
+    id:       row.id,
+    judul:    row.judul,
+    deskripsi:row.deskripsi ?? '',
+    url:      row.foto_url,
+    kategori: row.kategori ?? 'kegiatan',
+    tanggal:  formatTanggal(row.created_at),
+  }))
 
   const filtered = activeKat === 'semua' ? galeri : galeri.filter(g => g.kategori === activeKat)
 
