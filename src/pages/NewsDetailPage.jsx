@@ -1,12 +1,13 @@
 import { useState, useEffect } from 'react'
 import { useParams, Link, useNavigate } from 'react-router-dom'
 import { motion } from 'framer-motion'
-import { Calendar, Clock, ArrowLeft, ArrowUpRight, Lock, Tag, Loader2 } from 'lucide-react'
+import { Calendar, Clock, ArrowLeft, ArrowUpRight, Lock, Tag, Loader2, Send, Trash2 } from 'lucide-react'
 import { getCategoryStyle, getCategoryLabel } from '@/data/news'
 import { fadeUp, viewport } from '@/lib/animations'
 import Navbar from '@/components/landing/Navbar'
 import Footer from '@/components/landing/Footer'
 import { supabase } from '@/lib/supabase'
+import { useAuth } from '@/context/AuthContext'
 
 function formatTanggal(iso) {
   if (!iso) return '—'
@@ -78,10 +79,18 @@ function ContentBlock({ block }) {
 export default function NewsDetailPage() {
   const { slug } = useParams()
   const navigate = useNavigate()
+  const { user, profile } = useAuth()
 
-  const [article, setArticle] = useState(null)
-  const [related, setRelated] = useState([])
-  const [loading, setLoading] = useState(true)
+  const [article, setArticle]           = useState(null)
+  const [related, setRelated]           = useState([])
+  const [loading, setLoading]           = useState(true)
+  const [comments, setComments]         = useState([])
+  const [commentsLoading, setCommentsLoading] = useState(false)
+  const [commentInput, setCommentInput] = useState('')
+  const [submitting, setSubmitting]     = useState(false)
+  const [commentError, setCommentError] = useState('')
+
+  const isVerified = profile?.status === 'disetujui' && profile?.is_active !== false
 
   useEffect(() => {
     let cancelled = false
@@ -178,6 +187,43 @@ export default function NewsDetailPage() {
     fetchArticle()
     return () => { cancelled = true }
   }, [slug])
+
+  async function fetchComments(beritaId) {
+    setCommentsLoading(true)
+    const { data } = await supabase
+      .from('komentar_berita')
+      .select('id, isi, created_at, user_id, profiles(nama_lengkap)')
+      .eq('berita_id', beritaId)
+      .eq('is_disetujui', true)
+      .order('created_at', { ascending: false })
+    setComments(data ?? [])
+    setCommentsLoading(false)
+  }
+
+  useEffect(() => {
+    if (article?.id) fetchComments(article.id)
+  }, [article?.id])
+
+  async function submitComment() {
+    if (!commentInput.trim() || submitting) return
+    setCommentError('')
+    setSubmitting(true)
+    const { error } = await supabase
+      .from('komentar_berita')
+      .insert({ berita_id: article.id, user_id: user.id, isi: commentInput.trim() })
+    if (error) {
+      setCommentError('Gagal mengirim komentar. Coba lagi.')
+    } else {
+      setCommentInput('')
+      await fetchComments(article.id)
+    }
+    setSubmitting(false)
+  }
+
+  async function deleteComment(commentId) {
+    await supabase.from('komentar_berita').delete().eq('id', commentId)
+    setComments((prev) => prev.filter((c) => c.id !== commentId))
+  }
 
   function copyLink() {
     navigator.clipboard.writeText(window.location.href)
@@ -366,32 +412,129 @@ export default function NewsDetailPage() {
 
             {/* Comments section */}
             <div className="mt-10 bg-white rounded-2xl border border-gray-100 overflow-hidden">
-              <div className="px-6 py-4 border-b border-gray-100">
-                <h3 className="font-bold text-[#0A2415] text-base">Komentar</h3>
+              <div className="px-6 py-4 border-b border-gray-100 flex items-center justify-between">
+                <h3 className="font-bold text-[#0A2415] text-base">
+                  Komentar
+                  {comments.length > 0 && (
+                    <span className="ml-2 text-gray-400 font-normal text-sm">({comments.length})</span>
+                  )}
+                </h3>
               </div>
-              <div className="px-6 py-10 flex flex-col items-center text-center">
-                <div className="w-12 h-12 rounded-full bg-[#F8FAF9] border border-gray-100 flex items-center justify-center mb-3">
-                  <Lock className="w-5 h-5 text-gray-400" />
+
+              {/* Belum login */}
+              {!user && (
+                <div className="px-6 py-10 flex flex-col items-center text-center">
+                  <div className="w-12 h-12 rounded-full bg-[#F8FAF9] border border-gray-100 flex items-center justify-center mb-3">
+                    <Lock className="w-5 h-5 text-gray-400" />
+                  </div>
+                  <p className="font-bold text-[#0A2415] mb-1">Hanya Alumni yang Dapat Berkomentar</p>
+                  <p className="text-gray-500 text-sm mb-5 max-w-xs">
+                    Masuk dengan akun alumni terverifikasi untuk bergabung dalam diskusi.
+                  </p>
+                  <div className="flex gap-3">
+                    <Link
+                      to="/masuk"
+                      className="bg-[#0A2415] hover:bg-[#1A5C38] text-white text-sm font-bold px-5 py-2.5 rounded-lg transition-colors"
+                    >
+                      Masuk
+                    </Link>
+                    <Link
+                      to="/daftar"
+                      className="border border-[#0A2415] text-[#0A2415] hover:bg-[#0A2415] hover:text-white text-sm font-medium px-5 py-2.5 rounded-lg transition-colors"
+                    >
+                      Daftar Alumni
+                    </Link>
+                  </div>
                 </div>
-                <p className="font-bold text-[#0A2415] mb-1">Hanya Alumni yang Dapat Berkomentar</p>
-                <p className="text-gray-500 text-sm mb-5 max-w-xs">
-                  Masuk dengan akun alumni terverifikasi untuk bergabung dalam diskusi.
-                </p>
-                <div className="flex gap-3">
-                  <Link
-                    to="/masuk"
-                    className="bg-[#0A2415] hover:bg-[#1A5C38] text-white text-sm font-bold px-5 py-2.5 rounded-lg transition-colors"
-                  >
-                    Masuk
-                  </Link>
-                  <Link
-                    to="/daftar"
-                    className="border border-[#0A2415] text-[#0A2415] hover:bg-[#0A2415] hover:text-white text-sm font-medium px-5 py-2.5 rounded-lg transition-colors"
-                  >
-                    Daftar Alumni
-                  </Link>
+              )}
+
+              {/* Login tapi belum terverifikasi */}
+              {user && !isVerified && (
+                <div className="px-6 py-8 flex flex-col items-center text-center">
+                  <Lock className="w-8 h-8 text-gray-300 mb-3" />
+                  <p className="text-sm text-gray-500 max-w-xs">
+                    Akun Anda belum terverifikasi. Komentar hanya dapat diposting oleh alumni yang sudah disetujui admin.
+                  </p>
                 </div>
-              </div>
+              )}
+
+              {/* Form komentar — alumni terverifikasi */}
+              {user && isVerified && (
+                <div className="px-6 pt-5 pb-4 border-b border-gray-100">
+                  <div className="flex items-start gap-3">
+                    <div className="w-8 h-8 rounded-full bg-[#1A5C38] flex items-center justify-center text-white text-xs font-bold flex-shrink-0 mt-1">
+                      {getInitials(profile?.nama_lengkap ?? user.email ?? 'A')}
+                    </div>
+                    <div className="flex-1">
+                      <textarea
+                        value={commentInput}
+                        onChange={(e) => setCommentInput(e.target.value)}
+                        placeholder="Tulis komentar Anda..."
+                        rows={3}
+                        maxLength={1000}
+                        className="w-full border border-gray-200 rounded-xl px-4 py-3 text-sm focus:outline-none focus:border-[#1A5C38] focus:ring-2 focus:ring-[#1A5C38]/10 resize-none transition-all"
+                      />
+                      {commentError && (
+                        <p className="text-xs text-red-500 mt-1">{commentError}</p>
+                      )}
+                      <div className="flex items-center justify-between mt-2">
+                        <span className="text-[10px] text-gray-400">{commentInput.length}/1000</span>
+                        <button
+                          onClick={submitComment}
+                          disabled={!commentInput.trim() || submitting}
+                          className="flex items-center gap-1.5 bg-[#0A2415] hover:bg-[#1A5C38] text-white text-sm font-bold px-4 py-2 rounded-lg transition-colors disabled:opacity-40 disabled:cursor-not-allowed"
+                        >
+                          <Send className="w-3.5 h-3.5" />
+                          {submitting ? 'Mengirim...' : 'Kirim'}
+                        </button>
+                      </div>
+                    </div>
+                  </div>
+                </div>
+              )}
+
+              {/* Daftar komentar */}
+              {commentsLoading ? (
+                <div className="px-6 py-8 flex justify-center">
+                  <Loader2 className="w-6 h-6 animate-spin text-[#1A5C38]" />
+                </div>
+              ) : comments.length === 0 ? (
+                <div className="px-6 py-8 text-center text-gray-400 text-sm">
+                  Belum ada komentar. {isVerified ? 'Jadilah yang pertama!' : ''}
+                </div>
+              ) : (
+                <div className="divide-y divide-gray-50">
+                  {comments.map((c) => (
+                    <div key={c.id} className="px-6 py-4">
+                      <div className="flex items-start gap-3">
+                        <div className="w-8 h-8 rounded-full bg-[#E8F5EE] flex items-center justify-center text-[#1A5C38] text-xs font-bold flex-shrink-0">
+                          {getInitials(c.profiles?.nama_lengkap ?? 'A')}
+                        </div>
+                        <div className="flex-1 min-w-0">
+                          <div className="flex items-center gap-2 mb-1">
+                            <span className="text-xs font-bold text-[#0A2415]">
+                              {c.profiles?.nama_lengkap ?? 'Alumni'}
+                            </span>
+                            <span className="text-[10px] text-gray-400">
+                              {formatTanggal(c.created_at)}
+                            </span>
+                          </div>
+                          <p className="text-sm text-gray-700 leading-relaxed">{c.isi}</p>
+                        </div>
+                        {user?.id === c.user_id && (
+                          <button
+                            onClick={() => deleteComment(c.id)}
+                            className="flex-shrink-0 text-gray-300 hover:text-red-400 transition-colors mt-0.5"
+                            title="Hapus komentar"
+                          >
+                            <Trash2 className="w-3.5 h-3.5" />
+                          </button>
+                        )}
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              )}
             </div>
           </motion.div>
 

@@ -6,7 +6,7 @@ import {
   Link2, Download, Shield, MessageCircle, UserPlus,
   MoreHorizontal, Briefcase, BookOpen, Activity, ExternalLink,
   ChevronRight, Heart, Building2, ShoppingBag, Users, Layers,
-  Handshake, Calendar,
+  Handshake, Calendar, Award,
 } from 'lucide-react'
 import Navbar from '@/components/landing/Navbar'
 import Footer from '@/components/landing/Footer'
@@ -191,7 +191,7 @@ export default function AlumniProfilePage() {
 
   const detail = useMemo(() => {
     if (!profileData?.profile) return null
-    const { profile: p, ap, pekerjaanRes, pendidikanRes, bahasaRes, lembagaRes, berkasRes, publikasiRes, organisasiRes } = profileData
+    const { profile: p, ap, pekerjaanRes, pendidikanRes, bahasaRes, lembagaRes, berkasRes, publikasiRes, organisasiRes, sertifikasiRes } = profileData
     return {
       bio:    ap?.bio ?? '',
       bahasa: (bahasaRes?.data ?? []).map((b) => b.nama),
@@ -250,6 +250,12 @@ export default function AlumniProfilePage() {
         tahun_selesai:o.tahun_selesai ?? null,
         is_current:   o.is_current ?? false,
         deskripsi:    o.deskripsi ?? '',
+      })),
+      sertifikasi: (sertifikasiRes?.data ?? []).map((s) => ({
+        nama:     s.nama ?? '',
+        penerbit: s.penerbit ?? '',
+        tahun:    s.tahun ?? '',
+        url:      s.url ?? '',
       })),
     }
   }, [profileData])
@@ -357,10 +363,22 @@ export default function AlumniProfilePage() {
 
                   {/* Action buttons */}
                   <div className="flex items-center gap-2 flex-shrink-0">
-                    <button className="flex items-center gap-1.5 border border-[#1A5C38] text-[#1A5C38] hover:bg-[#E8F5EE] text-sm font-semibold px-4 py-2 rounded-lg transition-colors">
-                      <MessageCircle className="w-4 h-4" />
-                      Hubungi
-                    </button>
+                    {detail.kontak.instagram ? (
+                      <a
+                        href={`https://instagram.com/${detail.kontak.instagram.replace('@', '')}`}
+                        target="_blank"
+                        rel="noreferrer"
+                        className="flex items-center gap-1.5 border border-[#1A5C38] text-[#1A5C38] hover:bg-[#E8F5EE] text-sm font-semibold px-4 py-2 rounded-lg transition-colors"
+                      >
+                        <MessageCircle className="w-4 h-4" />
+                        Hubungi
+                      </a>
+                    ) : (
+                      <button disabled className="flex items-center gap-1.5 border border-gray-200 text-gray-400 text-sm font-semibold px-4 py-2 rounded-lg cursor-not-allowed">
+                        <MessageCircle className="w-4 h-4" />
+                        Hubungi
+                      </button>
+                    )}
                     <button className="flex items-center gap-1.5 bg-[#1A5C38] hover:bg-[#0A2415] text-white text-sm font-semibold px-4 py-2 rounded-lg transition-colors">
                       <UserPlus className="w-4 h-4" />
                       Minta Koneksi
@@ -608,6 +626,36 @@ export default function AlumniProfilePage() {
                                 </p>
                               )}
                               {o.deskripsi && <p className="text-xs text-gray-500 mt-1.5 leading-relaxed">{o.deskripsi}</p>}
+                            </div>
+                          </div>
+                        ))}
+                      </div>
+                    </div>
+                  )}
+
+                  {/* Sertifikasi */}
+                  {detail.sertifikasi?.length > 0 && (
+                    <div className="bg-white rounded-xl border border-gray-100 p-6">
+                      <h2 className="flex items-center gap-2 font-bold text-[#0A2415] mb-5">
+                        <Award className="w-4 h-4 text-[#0E7490]" />
+                        Sertifikasi & Penghargaan
+                      </h2>
+                      <div className="space-y-5">
+                        {detail.sertifikasi.map((s, i) => (
+                          <div key={i} className={`flex gap-4 ${i > 0 ? 'pt-5 border-t border-gray-100' : ''}`}>
+                            <div className="w-10 h-10 bg-[#ECFEFF] rounded-lg flex items-center justify-center flex-shrink-0">
+                              <Award className="w-5 h-5 text-[#0E7490]" />
+                            </div>
+                            <div>
+                              <p className="font-bold text-sm text-[#0A2415]">{s.nama}</p>
+                              {s.penerbit && <p className="text-xs text-[#0E7490] font-medium mt-0.5">{s.penerbit}</p>}
+                              {s.tahun && <p className="text-xs text-gray-400 mt-0.5">{s.tahun}</p>}
+                              {s.url && (
+                                <a href={s.url} target="_blank" rel="noreferrer"
+                                  className="text-[11px] text-[#1A5C38] font-semibold flex items-center gap-1 mt-1 hover:underline">
+                                  <ExternalLink className="w-3 h-3" /> Lihat Sertifikat
+                                </a>
+                              )}
                             </div>
                           </div>
                         ))}

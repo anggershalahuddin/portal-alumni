@@ -190,7 +190,7 @@ export function useAlumniProfile(profileId) {
 
       const [
         keahlianRes, bahasaRes, pekerjaanRes, pendidikanRes,
-        lembagaRes, berkasRes, publikasiRes, organisasiRes, angkatanRes,
+        lembagaRes, berkasRes, publikasiRes, organisasiRes, angkatanRes, sertifikasiRes,
       ] = await Promise.all([
         apId ? supabase.from('keahlian_alumni').select('nama').eq('alumni_id', apId) : { data: [] },
         apId ? supabase.from('bahasa_alumni').select('nama').eq('alumni_id', apId) : { data: [] },
@@ -201,6 +201,7 @@ export function useAlumniProfile(profileId) {
         apId ? supabase.from('publikasi').select('*').eq('alumni_id', apId).order('tahun', { ascending: false }) : { data: [] },
         apId ? supabase.from('alumni_organisasi').select('*').eq('alumni_id', apId).order('tahun_mulai', { ascending: false }) : { data: [] },
         supabase.from('angkatan').select('id, tahun_lulus, nama_angkatan').order('tahun_lulus'),
+        apId ? supabase.from('sertifikasi').select('*').eq('alumni_id', apId).order('tahun', { ascending: false }) : { data: [] },
       ])
 
       const { data: similar } = await supabase
@@ -215,7 +216,7 @@ export function useAlumniProfile(profileId) {
         profile, ap, apId,
         keahlianRes, bahasaRes, pekerjaanRes, pendidikanRes,
         lembagaRes, berkasRes, publikasiRes, organisasiRes,
-        angkatanRes, alumniSerupa: similar ?? [],
+        angkatanRes, sertifikasiRes, alumniSerupa: similar ?? [],
       }
     },
     enabled: !!profileId,
