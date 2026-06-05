@@ -47,6 +47,7 @@ const AdminDataAlumniPage   = lazy(() => import('./pages/admin/AdminDataAlumniPa
 const AdminGaleriPage       = lazy(() => import('./pages/admin/AdminGaleriPage'))
 const AdminOrganisasiPage   = lazy(() => import('./pages/admin/AdminOrganisasiPage'))
 const AdminKarirPage        = lazy(() => import('./pages/admin/AdminKarirPage'))
+const AdminKomentarPage     = lazy(() => import('./pages/admin/AdminKomentarPage'))
 const AdminPengaturanPage   = lazy(() => import('./pages/admin/AdminPengaturanPage'))
 const AdminNotifikasiPage   = lazy(() => import('./pages/admin/AdminNotifikasiPage'))
 const AdminLogPage          = lazy(() => import('./pages/admin/AdminLogPage'))
@@ -109,6 +110,7 @@ function App() {
               <Route path="galeri"      element={<ProtectedAdminRoute requiredPerm="galeri"><AdminGaleriPage /></ProtectedAdminRoute>} />
               <Route path="landing"     element={<ProtectedAdminRoute requiredPerm="landing"><AdminLandingPage /></ProtectedAdminRoute>} />
               <Route path="karir"       element={<ProtectedAdminRoute requiredPerm="karir"><AdminKarirPage /></ProtectedAdminRoute>} />
+              <Route path="komentar"    element={<ProtectedAdminRoute requiredPerm="komentar"><AdminKomentarPage /></ProtectedAdminRoute>} />
               <Route path="notifikasi"  element={<ProtectedAdminRoute requiredPerm="notifikasi"><AdminNotifikasiPage /></ProtectedAdminRoute>} />
               <Route path="log"         element={<ProtectedAdminRoute requiredPerm="log"><AdminLogPage /></ProtectedAdminRoute>} />
               <Route path="pengaturan"  element={<ProtectedAdminRoute requiredPerm="pengaturan"><AdminPengaturanPage /></ProtectedAdminRoute>} />

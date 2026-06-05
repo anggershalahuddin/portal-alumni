@@ -1,6 +1,6 @@
 import {
   LayoutDashboard, Shield, Users, Database,
-  GraduationCap, Building2, Newspaper, CalendarDays,
+  GraduationCap, Building2, Newspaper, MessageSquare, CalendarDays,
   Image, Layers, Briefcase, Bell, Activity, Settings,
 } from 'lucide-react'
 
@@ -77,6 +77,16 @@ export const ADMIN_MENUS = [
     icon: Newspaper,
     group: 'Konten',
     desc: 'Buat, edit, arsip, dan hapus artikel berita',
+    defaultRoles: ['Super Admin', 'Admin', 'Editor'],
+  },
+  {
+    id: 'komentar',
+    label: 'Moderasi Komentar',
+    labelPerm: 'Moderasi Komentar',
+    href: '/admin/komentar',
+    icon: MessageSquare,
+    group: 'Konten',
+    desc: 'Tinjau dan moderasi komentar berita dari alumni',
     defaultRoles: ['Super Admin', 'Admin', 'Editor'],
   },
   {

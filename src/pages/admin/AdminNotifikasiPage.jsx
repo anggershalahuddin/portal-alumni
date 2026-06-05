@@ -1,9 +1,111 @@
 import { useState, useEffect, useCallback } from 'react'
-import { Bell, Check, CheckCheck, Trash2, Shield, Newspaper, CalendarDays, Users, AlertCircle, Loader2, RefreshCw } from 'lucide-react'
+import { Bell, Check, CheckCheck, Trash2, Shield, Newspaper, CalendarDays, Users, AlertCircle, Loader2, RefreshCw, Send, X } from 'lucide-react'
 import { motion } from 'framer-motion'
 import AdminHeader from '../../components/admin/AdminHeader'
 import ConfirmDialog from '../../components/admin/ConfirmDialog'
 import { supabase } from '@/lib/supabase'
+
+const TARGET_OPTS = [
+  { value: 'semua',       label: 'Semua Admin' },
+  { value: 'alumni',      label: 'Alumni' },
+  { value: 'editor',      label: 'Editor' },
+  { value: 'admin',       label: 'Admin' },
+  { value: 'super_admin', label: 'Super Admin' },
+]
+
+const TIPE_SEND_OPTS = ['sistem', 'berita', 'agenda', 'verifikasi', 'user']
+
+const EMPTY_FORM = { judul: '', pesan: '', tipe: 'sistem', target: 'semua' }
+
+function KirimModal({ onClose, onSent }) {
+  const [form, setForm]       = useState(EMPTY_FORM)
+  const [loading, setLoading] = useState(false)
+  const [error, setError]     = useState('')
+
+  const set = k => e => setForm(f => ({ ...f, [k]: e.target.value }))
+
+  async function handleSubmit(e) {
+    e.preventDefault()
+    if (!form.judul.trim() || !form.pesan.trim()) {
+      setError('Judul dan pesan wajib diisi.')
+      return
+    }
+    setLoading(true)
+    setError('')
+
+    const payload = {
+      judul:      form.judul.trim(),
+      pesan:      form.pesan.trim(),
+      tipe:       form.tipe,
+      is_dibaca:  false,
+      target_role: form.target === 'semua' ? null : form.target,
+    }
+
+    const { error: err } = await supabase.from('notifikasi').insert(payload)
+    setLoading(false)
+    if (err) { setError('Gagal mengirim notifikasi. Coba lagi.'); return }
+    onSent()
+  }
+
+  const inputCls = 'w-full px-4 py-2.5 rounded-xl border border-gray-200 text-sm outline-none transition-all bg-white focus:border-[#1A5C38]'
+
+  return (
+    <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/40 backdrop-blur-sm">
+      <motion.div
+        initial={{ opacity: 0, scale: 0.95 }}
+        animate={{ opacity: 1, scale: 1 }}
+        className="bg-white rounded-2xl shadow-xl w-full max-w-md"
+      >
+        <div className="flex items-center justify-between px-6 pt-5 pb-4 border-b border-gray-100">
+          <h2 className="text-base font-bold text-gray-900">Kirim Notifikasi</h2>
+          <button onClick={onClose} className="p-1.5 rounded-lg hover:bg-gray-100 transition-colors">
+            <X className="w-4 h-4 text-gray-500" />
+          </button>
+        </div>
+        <form onSubmit={handleSubmit} className="p-6 space-y-4">
+          <div>
+            <label className="block text-[11px] font-bold text-gray-500 uppercase tracking-wider mb-1.5">Tipe</label>
+            <select value={form.tipe} onChange={set('tipe')} className={inputCls}>
+              {TIPE_SEND_OPTS.map(t => <option key={t} value={t}>{t.charAt(0).toUpperCase() + t.slice(1)}</option>)}
+            </select>
+          </div>
+          <div>
+            <label className="block text-[11px] font-bold text-gray-500 uppercase tracking-wider mb-1.5">Target Penerima</label>
+            <select value={form.target} onChange={set('target')} className={inputCls}>
+              {TARGET_OPTS.map(t => <option key={t.value} value={t.value}>{t.label}</option>)}
+            </select>
+          </div>
+          <div>
+            <label className="block text-[11px] font-bold text-gray-500 uppercase tracking-wider mb-1.5">Judul</label>
+            <input type="text" value={form.judul} onChange={set('judul')} placeholder="Judul notifikasi" className={inputCls} maxLength={150} />
+          </div>
+          <div>
+            <label className="block text-[11px] font-bold text-gray-500 uppercase tracking-wider mb-1.5">Pesan</label>
+            <textarea value={form.pesan} onChange={set('pesan')} placeholder="Isi pesan notifikasi..." rows={3} className={inputCls + ' resize-none'} maxLength={500} />
+            <p className="text-[10px] text-gray-400 mt-1 text-right">{form.pesan.length}/500</p>
+          </div>
+          {error && (
+            <p className="text-xs text-red-600 bg-red-50 border border-red-200 rounded-xl px-3 py-2">{error}</p>
+          )}
+          <div className="flex gap-3 pt-1">
+            <button type="button" onClick={onClose} className="flex-1 py-2.5 rounded-xl border border-gray-200 text-sm font-semibold text-gray-700 hover:bg-gray-50 transition-colors">
+              Batal
+            </button>
+            <button
+              type="submit"
+              disabled={loading}
+              className="flex-1 py-2.5 rounded-xl text-sm font-bold text-white flex items-center justify-center gap-2 disabled:opacity-60"
+              style={{ backgroundColor: '#1A5C38' }}
+            >
+              {loading ? <Loader2 className="w-4 h-4 animate-spin" /> : <Send className="w-4 h-4" />}
+              {loading ? 'Mengirim...' : 'Kirim'}
+            </button>
+          </div>
+        </form>
+      </motion.div>
+    </div>
+  )
+}
 
 const TIPE_CONFIG = {
   verifikasi: { icon: Shield,       color: '#1A5C38', bg: '#F0FDF4', label: 'Verifikasi' },
@@ -41,6 +143,7 @@ export default function AdminNotifikasiPage() {
   const [confirm, setConfirm] = useState({ open: false })
   const [loading, setLoading] = useState(true)
   const [refreshing, setRefreshing] = useState(false)
+  const [showKirim, setShowKirim] = useState(false)
 
   const loadData = useCallback(async ({ silent = false } = {}) => {
     if (!silent) setLoading(true)
@@ -120,6 +223,13 @@ export default function AdminNotifikasiPage() {
                   <CheckCheck className="w-4 h-4" /> Tandai Semua Dibaca
                 </button>
               )}
+              <button
+                onClick={() => setShowKirim(true)}
+                className="flex items-center gap-1.5 px-4 py-2 rounded-xl text-sm font-bold text-white transition-colors"
+                style={{ backgroundColor: '#1A5C38' }}
+              >
+                <Send className="w-4 h-4" /> Kirim Notifikasi
+              </button>
             </div>
           </div>
 
@@ -220,6 +330,13 @@ export default function AdminNotifikasiPage() {
         onConfirm={confirm.onConfirm}
         onCancel={closeConfirm}
       />
+
+      {showKirim && (
+        <KirimModal
+          onClose={() => setShowKirim(false)}
+          onSent={() => { setShowKirim(false); loadData({ silent: true }) }}
+        />
+      )}
     </>
   )
 }
