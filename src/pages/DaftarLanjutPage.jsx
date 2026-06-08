@@ -76,7 +76,7 @@ function DocSlot({ file, onSelect, onRemove }) {
           <p className="text-sm font-semibold text-gray-800 leading-tight">Foto Bukti Alumni</p>
           {file
             ? <p className="text-xs text-green-700 font-medium truncate mt-0.5">{file.name}</p>
-            : <p className="text-xs text-gray-400 mt-0.5 leading-snug">Memegang ijazah/raport pesantren atau berseragam Daarul Mughni</p>
+            : <p className="text-xs text-gray-400 mt-0.5 leading-snug">Foto yang membuktikan Anda adalah alumni Pondok Pesantren Daarul Mughni (ijazah, raport, sertifikat, atau dokumen pesantren lainnya)</p>
           }
         </div>
         {file ? (
