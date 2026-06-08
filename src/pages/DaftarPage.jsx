@@ -555,22 +555,20 @@ export default function DaftarPage() {
                   <TextInput value={form.nama} onChange={set('nama')} placeholder="Sesuai KTP / akta lahir" required />
                 </Field>
 
-                <div className="grid grid-cols-2 gap-3">
-                  {isGoogleMode ? (
-                    <Field label="Email">
-                      <div className={inputCls + ' bg-gray-50 text-gray-500 truncate'} style={{ borderColor: '#E5E7EB' }}>
-                        {supaUser?.email}
-                      </div>
-                    </Field>
-                  ) : (
-                    <Field label="Email" required>
-                      <TextInput value={form.email} onChange={set('email')} placeholder="email@contoh.com" type="email" required />
-                    </Field>
-                  )}
-                  <Field label="No. HP / WhatsApp" required>
-                    <TextInput value={form.hp} onChange={set('hp')} placeholder="08xxxxxxxxxx" type="tel" required />
+                {isGoogleMode ? (
+                  <Field label="Email">
+                    <div className={inputCls + ' bg-gray-50 text-gray-500 truncate'} style={{ borderColor: '#E5E7EB' }}>
+                      {supaUser?.email}
+                    </div>
                   </Field>
-                </div>
+                ) : (
+                  <Field label="Email" required>
+                    <TextInput value={form.email} onChange={set('email')} placeholder="email@contoh.com" type="email" required />
+                  </Field>
+                )}
+                <Field label="No. HP / WhatsApp" required>
+                  <TextInput value={form.hp} onChange={set('hp')} placeholder="08xxxxxxxxxx" type="tel" required />
+                </Field>
 
                 <div className="grid grid-cols-2 gap-3">
                   <Field label="Tempat Lahir" required badge>
