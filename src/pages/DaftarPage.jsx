@@ -9,6 +9,7 @@ import logoUrl from '@/assets/Logo DM Fix.jpg'
 import { useAuth } from '@/context/AuthContext'
 import { supabase } from '@/lib/supabase'
 import { toast } from '@/lib/toast'
+import CitySelect from '@/components/ui/CitySelect'
 
 const DOMISILI_GROUPS = [
   { label: 'DKI Jakarta', cities: ['Jakarta Pusat', 'Jakarta Barat', 'Jakarta Selatan', 'Jakarta Timur', 'Jakarta Utara'] },
@@ -600,16 +601,7 @@ export default function DaftarPage() {
                     </SelectInput>
                   </Field>
                   <Field label="Domisili Saat Ini" required>
-                    <SelectInput value={form.domisili} onChange={set('domisili')} required>
-                      <option value="">Pilih kota / kabupaten</option>
-                      {DOMISILI_GROUPS.map(({ label, cities }) => (
-                        <optgroup key={label} label={label}>
-                          {cities.map((c) => (
-                            <option key={c} value={c}>{c}</option>
-                          ))}
-                        </optgroup>
-                      ))}
-                    </SelectInput>
+                    <CitySelect value={form.domisili} onChange={set('domisili')} required />
                   </Field>
                 </div>
 

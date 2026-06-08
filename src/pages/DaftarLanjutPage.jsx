@@ -8,23 +8,7 @@ import logoUrl from '@/assets/Logo DM Fix.jpg'
 import { useAuth } from '@/context/AuthContext'
 import { supabase } from '@/lib/supabase'
 import { toast } from '@/lib/toast'
-
-const DOMISILI_GROUPS = [
-  { label: 'DKI Jakarta', cities: ['Jakarta Pusat', 'Jakarta Barat', 'Jakarta Selatan', 'Jakarta Timur', 'Jakarta Utara'] },
-  { label: 'Jawa Barat', cities: ['Bandung', 'Bekasi', 'Bogor', 'Cimahi', 'Cirebon', 'Depok', 'Garut', 'Indramayu', 'Karawang', 'Purwakarta', 'Sukabumi', 'Tasikmalaya'] },
-  { label: 'Banten', cities: ['Cilegon', 'Serang', 'Tangerang', 'Tangerang Selatan'] },
-  { label: 'Jawa Tengah', cities: ['Magelang', 'Pekalongan', 'Salatiga', 'Semarang', 'Surakarta', 'Tegal'] },
-  { label: 'DI Yogyakarta', cities: ['Bantul', 'Gunungkidul', 'Kulon Progo', 'Sleman', 'Yogyakarta'] },
-  { label: 'Jawa Timur', cities: ['Banyuwangi', 'Blitar', 'Gresik', 'Jember', 'Kediri', 'Madiun', 'Malang', 'Mojokerto', 'Pasuruan', 'Probolinggo', 'Sidoarjo', 'Surabaya'] },
-  { label: 'Sumatera Utara', cities: ['Binjai', 'Medan', 'Padangsidimpuan', 'Pematangsiantar', 'Sibolga', 'Tanjungbalai', 'Tebing Tinggi'] },
-  { label: 'Sumatera Barat', cities: ['Bukittinggi', 'Padang', 'Padangpanjang', 'Pariaman', 'Payakumbuh', 'Sawahlunto', 'Solok'] },
-  { label: 'Riau', cities: ['Dumai', 'Pekanbaru'] },
-  { label: 'Sumatera Selatan', cities: ['Lubuklinggau', 'Pagar Alam', 'Palembang', 'Prabumulih'] },
-  { label: 'Lampung', cities: ['Bandar Lampung', 'Metro'] },
-  { label: 'Kalimantan Timur', cities: ['Balikpapan', 'Bontang', 'Samarinda'] },
-  { label: 'Sulawesi Selatan', cities: ['Makassar', 'Palopo', 'Parepare'] },
-  { label: 'Luar Negeri', cities: ['Luar Negeri'] },
-]
+import CitySelect from '@/components/ui/CitySelect'
 
 const inputCls = 'w-full px-3 py-2.5 rounded-xl border border-gray-200 text-sm outline-none transition-all bg-white'
 const focusStyle = { borderColor: '#1A5C38' }
@@ -389,14 +373,7 @@ export default function DaftarLanjutPage() {
                     </SelectInput>
                   </Field>
                   <Field label="Domisili Saat Ini" required>
-                    <SelectInput value={form.domisili} onChange={set('domisili')} required>
-                      <option value="">Pilih kota / kabupaten</option>
-                      {DOMISILI_GROUPS.map(({ label, cities }) => (
-                        <optgroup key={label} label={label}>
-                          {cities.map((c) => <option key={c} value={c}>{c}</option>)}
-                        </optgroup>
-                      ))}
-                    </SelectInput>
+                    <CitySelect value={form.domisili} onChange={set('domisili')} required />
                   </Field>
                 </div>
 
