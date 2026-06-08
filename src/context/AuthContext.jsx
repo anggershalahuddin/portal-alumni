@@ -191,7 +191,7 @@ export function AuthProvider({ children }) {
     email, password,
     namaLengkap, noHp, angkatan,
     tempatLahir, tanggalLahir,
-    domisili, bidang, alamat,
+    domisili, alamat,
   }) => {
     const { data, error } = await supabase.auth.signUp({
       email,
@@ -204,7 +204,6 @@ export function AuthProvider({ children }) {
           tempat_lahir:   tempatLahir,
           tanggal_lahir:  tanggalLahir,   // format 'YYYY-MM-DD'
           domisili,
-          bidang,
           alamat_lengkap: alamat,
         },
       },

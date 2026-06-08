@@ -129,7 +129,7 @@ export default function DaftarLanjutPage() {
   const [form, setForm] = useState({
     nama: '', hp: '', angkatan: '',
     tempatLahir: '', tanggalLahir: '',
-    domisili: '', bidang: '', alamat: '',
+    domisili: '', alamat: '',
   })
   const [bukti, setBukti]       = useState(null)
   const [submitted, setSubmitted] = useState(false)
@@ -163,7 +163,7 @@ export default function DaftarLanjutPage() {
 
   const isValid = form.nama && form.hp && form.angkatan &&
     form.tempatLahir && form.tanggalLahir &&
-    form.domisili && form.bidang && form.alamat && !!bukti
+    form.domisili && form.alamat && !!bukti
 
   async function handleSubmit(e) {
     e.preventDefault()
@@ -180,7 +180,6 @@ export default function DaftarLanjutPage() {
         tempat_lahir:  form.tempatLahir,
         tanggal_lahir: form.tanggalLahir,
         domisili:      form.domisili,
-        bidang:        form.bidang,
         alamat_lengkap: form.alamat,
         status:        'menunggu',
       }).eq('id', supaUser.id)
@@ -389,15 +388,7 @@ export default function DaftarLanjutPage() {
                       ))}
                     </SelectInput>
                   </Field>
-                  <Field label="Bidang / Profesi" required>
-                    <input
-                      type="text" value={form.bidang} onChange={set('bidang')}
-                      placeholder="Teknik, Kesehatan…" required
-                      className={inputCls}
-                      onFocus={(e) => Object.assign(e.target.style, focusStyle)}
-                      onBlur={(e)  => Object.assign(e.target.style, blurStyle)}
-                    />
-                  </Field>
+
                 </div>
 
                 <Field label="Domisili Saat Ini" required>

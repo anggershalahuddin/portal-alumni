@@ -227,7 +227,7 @@ export default function DaftarPage() {
   const [form, setForm] = useState({
     nama: '', email: '', hp: '', angkatan: '',
     tempatLahir: '', tanggalLahir: '',
-    domisili: '', bidang: '', alamat: '',
+    domisili: '', alamat: '',
     password: '', konfirmasi: '',
   })
   const [docs, setDocs] = useState({ bukti: null })
@@ -265,10 +265,10 @@ export default function DaftarPage() {
   const isValid = isGoogleMode
     ? form.nama && form.hp && form.angkatan &&
       form.tempatLahir && form.tanggalLahir &&
-      form.domisili && form.bidang && form.alamat && docsOk
+      form.domisili && form.alamat && docsOk
     : form.nama && form.email && form.hp && form.angkatan &&
       form.tempatLahir && form.tanggalLahir &&
-      form.domisili && form.bidang && form.alamat &&
+      form.domisili && form.alamat &&
       passwordOk && konfirmasiOk && docsOk
 
   async function handleSubmit(e) {
@@ -287,7 +287,6 @@ export default function DaftarPage() {
           tempat_lahir:   form.tempatLahir,
           tanggal_lahir:  form.tanggalLahir,
           domisili:       form.domisili,
-          bidang:         form.bidang,
           alamat_lengkap: form.alamat,
           status:         'menunggu',
         }).eq('id', supaUser.id)
@@ -329,7 +328,6 @@ export default function DaftarPage() {
       tempatLahir:  form.tempatLahir,
       tanggalLahir: form.tanggalLahir,
       domisili:     form.domisili,
-      bidang:       form.bidang,
       alamat:       form.alamat,
     })
 
@@ -603,9 +601,7 @@ export default function DaftarPage() {
                       ))}
                     </SelectInput>
                   </Field>
-                  <Field label="Bidang / Profesi" required>
-                    <TextInput value={form.bidang} onChange={set('bidang')} placeholder="Teknik, Kesehatan…" required />
-                  </Field>
+
                 </div>
 
                 <Field label="Domisili Saat Ini" required>
