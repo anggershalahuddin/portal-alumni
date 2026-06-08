@@ -601,21 +601,19 @@ export default function DaftarPage() {
                       ))}
                     </SelectInput>
                   </Field>
-
+                  <Field label="Domisili Saat Ini" required>
+                    <SelectInput value={form.domisili} onChange={set('domisili')} required>
+                      <option value="">Pilih kota / kabupaten</option>
+                      {DOMISILI_GROUPS.map(({ label, cities }) => (
+                        <optgroup key={label} label={label}>
+                          {cities.map((c) => (
+                            <option key={c} value={c}>{c}</option>
+                          ))}
+                        </optgroup>
+                      ))}
+                    </SelectInput>
+                  </Field>
                 </div>
-
-                <Field label="Domisili Saat Ini" required>
-                  <SelectInput value={form.domisili} onChange={set('domisili')} required>
-                    <option value="">Pilih kota / kabupaten</option>
-                    {DOMISILI_GROUPS.map(({ label, cities }) => (
-                      <optgroup key={label} label={label}>
-                        {cities.map((c) => (
-                          <option key={c} value={c}>{c}</option>
-                        ))}
-                      </optgroup>
-                    ))}
-                  </SelectInput>
-                </Field>
 
                 <Field label="Alamat Lengkap" required badge>
                   <textarea
