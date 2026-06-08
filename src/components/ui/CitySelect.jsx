@@ -115,7 +115,7 @@ export default function CitySelect({ value, onChange, required }) {
 
       {/* Dropdown */}
       {open && (
-        <div className="absolute z-50 w-full mt-1 bg-white border border-gray-200 rounded-xl shadow-lg max-h-56 overflow-y-auto">
+        <div className="absolute z-50 left-0 w-full min-w-[280px] mt-1 bg-white border border-gray-200 rounded-xl shadow-xl max-h-60 overflow-y-auto">
           {filtered.length > 0 ? (
             filtered.map((group) => (
               <div key={group.label}>

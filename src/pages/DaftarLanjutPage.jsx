@@ -361,21 +361,20 @@ export default function DaftarLanjutPage() {
                   </Field>
                 </div>
 
-                <div className="grid grid-cols-2 gap-3">
-                  <Field label="Angkatan" required>
-                    <SelectInput value={form.angkatan} onChange={set('angkatan')} required>
-                      <option value="">Pilih tahun</option>
-                      {angkatanList.map((row) => (
-                        <option key={row.id} value={row.tahun_lulus}>
-                          {row.tahun_lulus} ({row.nama_angkatan || `Ke-${row.tahun_lulus - 2005}`})
-                        </option>
-                      ))}
-                    </SelectInput>
-                  </Field>
-                  <Field label="Domisili Saat Ini" required>
-                    <CitySelect value={form.domisili} onChange={set('domisili')} required />
-                  </Field>
-                </div>
+                <Field label="Angkatan" required>
+                  <SelectInput value={form.angkatan} onChange={set('angkatan')} required>
+                    <option value="">Pilih tahun</option>
+                    {angkatanList.map((row) => (
+                      <option key={row.id} value={row.tahun_lulus}>
+                        {row.tahun_lulus} ({row.nama_angkatan || `Ke-${row.tahun_lulus - 2005}`})
+                      </option>
+                    ))}
+                  </SelectInput>
+                </Field>
+
+                <Field label="Domisili Saat Ini" required>
+                  <CitySelect value={form.domisili} onChange={set('domisili')} required />
+                </Field>
 
                 <Field label="Alamat Lengkap" required badge>
                   <textarea
