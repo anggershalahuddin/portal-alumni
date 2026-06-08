@@ -117,7 +117,7 @@ const DOC_SLOTS = [
     key: 'bukti',
     icon: Camera,
     label: 'Foto Bukti Alumni',
-    desc: 'Foto yang membuktikan Anda adalah alumni Pondok Pesantren Daarul Mughni (ijazah, raport, sertifikat, atau dokumen pesantren lainnya)',
+    desc: 'Bukti kelulusan atau dokumen dari Ponpes Daarul Mughni',
     accept: 'image/jpeg,image/webp',
     maxMB: 2,
     required: true,
