@@ -1,7 +1,7 @@
 import { useState, useEffect } from 'react'
 import { useParams, Link, useNavigate } from 'react-router-dom'
 import { motion } from 'framer-motion'
-import { Calendar, Clock, ArrowLeft, ArrowUpRight, Lock, Tag, Loader2, Send, Trash2 } from 'lucide-react'
+import { Calendar, Clock, ArrowLeft, ArrowUpRight, Lock, Tag, Loader2, Send, Trash2, X, ZoomIn } from 'lucide-react'
 import { getCategoryStyle, getCategoryLabel } from '@/data/news'
 import { fadeUp, viewport } from '@/lib/animations'
 import Navbar from '@/components/landing/Navbar'
@@ -47,7 +47,39 @@ function ShareButton({ label, color, icon }) {
   )
 }
 
-function ContentBlock({ block }) {
+function ImageLightbox({ src, onClose }) {
+  useEffect(() => {
+    document.body.style.overflow = 'hidden'
+    const onKey = (e) => { if (e.key === 'Escape') onClose() }
+    window.addEventListener('keydown', onKey)
+    return () => {
+      document.body.style.overflow = ''
+      window.removeEventListener('keydown', onKey)
+    }
+  }, [onClose])
+
+  return (
+    <div
+      className="fixed inset-0 z-[9999] flex items-center justify-center bg-black/90 p-4"
+      onClick={onClose}
+    >
+      <button
+        className="absolute top-4 right-4 w-10 h-10 rounded-full bg-white/10 hover:bg-white/20 flex items-center justify-center text-white transition-colors"
+        onClick={onClose}
+      >
+        <X className="w-5 h-5" />
+      </button>
+      <img
+        src={src}
+        alt=""
+        className="max-w-full max-h-[90vh] object-contain rounded-xl shadow-2xl"
+        onClick={(e) => e.stopPropagation()}
+      />
+    </div>
+  )
+}
+
+function ContentBlock({ block, onImageClick }) {
   if (block.type === 'paragraph') {
     return <p className="text-gray-700 leading-relaxed text-base mb-5">{block.text}</p>
   }
@@ -66,8 +98,15 @@ function ContentBlock({ block }) {
     return (
       <div className="grid grid-cols-2 gap-3 mb-6">
         {block.items.map((src, i) => (
-          <div key={i} className="rounded-xl overflow-hidden aspect-video">
-            <img src={src} alt="" className="w-full h-full object-cover" />
+          <div
+            key={i}
+            className="relative rounded-xl overflow-hidden aspect-video group cursor-zoom-in"
+            onClick={() => onImageClick?.(src)}
+          >
+            <img src={src} alt="" className="w-full h-full object-cover transition-transform duration-300 group-hover:scale-105" />
+            <div className="absolute inset-0 bg-black/0 group-hover:bg-black/30 transition-colors flex items-center justify-center">
+              <ZoomIn className="w-7 h-7 text-white opacity-0 group-hover:opacity-100 transition-opacity drop-shadow-lg" />
+            </div>
           </div>
         ))}
       </div>
@@ -89,6 +128,7 @@ export default function NewsDetailPage() {
   const [commentInput, setCommentInput] = useState('')
   const [submitting, setSubmitting]     = useState(false)
   const [commentError, setCommentError] = useState('')
+  const [lightboxSrc, setLightboxSrc]   = useState(null)
 
   const isVerified = profile?.status === 'disetujui' && profile?.is_active !== false
 
@@ -192,7 +232,7 @@ export default function NewsDetailPage() {
     setCommentsLoading(true)
     const { data } = await supabase
       .from('komentar_berita')
-      .select('id, isi, created_at, user_id, profiles(nama_lengkap)')
+      .select('id, isi, created_at, user_id, profiles(nama_lengkap, foto_url)')
       .eq('berita_id', beritaId)
       .eq('is_disetujui', true)
       .order('created_at', { ascending: false })
@@ -380,7 +420,7 @@ export default function NewsDetailPage() {
             {/* Article content */}
             <div className="prose-custom">
               {article.content.map((block, i) => (
-                <ContentBlock key={i} block={block} />
+                <ContentBlock key={i} block={block} onImageClick={setLightboxSrc} />
               ))}
             </div>
 
@@ -462,9 +502,13 @@ export default function NewsDetailPage() {
               {user && isVerified && (
                 <div className="px-6 pt-5 pb-4 border-b border-gray-100">
                   <div className="flex items-start gap-3">
-                    <div className="w-8 h-8 rounded-full bg-[#1A5C38] flex items-center justify-center text-white text-xs font-bold flex-shrink-0 mt-1">
-                      {getInitials(profile?.nama_lengkap ?? user.email ?? 'A')}
-                    </div>
+                    {profile?.foto_url ? (
+                      <img src={profile.foto_url} alt={profile.nama_lengkap} className="w-8 h-8 rounded-full object-cover flex-shrink-0 mt-1" />
+                    ) : (
+                      <div className="w-8 h-8 rounded-full bg-[#1A5C38] flex items-center justify-center text-white text-xs font-bold flex-shrink-0 mt-1">
+                        {getInitials(profile?.nama_lengkap ?? user.email ?? 'A')}
+                      </div>
+                    )}
                     <div className="flex-1">
                       <textarea
                         value={commentInput}
@@ -507,9 +551,13 @@ export default function NewsDetailPage() {
                   {comments.map((c) => (
                     <div key={c.id} className="px-6 py-4">
                       <div className="flex items-start gap-3">
-                        <div className="w-8 h-8 rounded-full bg-[#E8F5EE] flex items-center justify-center text-[#1A5C38] text-xs font-bold flex-shrink-0">
-                          {getInitials(c.profiles?.nama_lengkap ?? 'A')}
-                        </div>
+                        {c.profiles?.foto_url ? (
+                          <img src={c.profiles.foto_url} alt={c.profiles.nama_lengkap} className="w-8 h-8 rounded-full object-cover flex-shrink-0" />
+                        ) : (
+                          <div className="w-8 h-8 rounded-full bg-[#E8F5EE] flex items-center justify-center text-[#1A5C38] text-xs font-bold flex-shrink-0">
+                            {getInitials(c.profiles?.nama_lengkap ?? 'A')}
+                          </div>
+                        )}
                         <div className="flex-1 min-w-0">
                           <div className="flex items-center gap-2 mb-1">
                             <span className="text-xs font-bold text-[#0A2415]">
@@ -637,6 +685,7 @@ export default function NewsDetailPage() {
       </div>
 
       <Footer />
+      {lightboxSrc && <ImageLightbox src={lightboxSrc} onClose={() => setLightboxSrc(null)} />}
     </div>
   )
 }
